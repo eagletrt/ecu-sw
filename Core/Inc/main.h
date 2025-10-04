@@ -65,10 +65,14 @@ void Error_Handler(void);
 #define DBG_RX_GPIO_Port GPIOA
 #define PTT_Pin GPIO_PIN_15
 #define PTT_GPIO_Port GPIOB
-#define AUX_BUZZER_Pin GPIO_PIN_10
-#define AUX_BUZZER_GPIO_Port GPIOC
-#define RTD_BUZZER_Pin GPIO_PIN_11
-#define RTD_BUZZER_GPIO_Port GPIOC
+#define SWDIO_Pin GPIO_PIN_13
+#define SWDIO_GPIO_Port GPIOA
+#define SWCLK_Pin GPIO_PIN_14
+#define SWCLK_GPIO_Port GPIOA
+#define AUX_TIMER_Pin GPIO_PIN_3
+#define AUX_TIMER_GPIO_Port GPIOB
+#define RTD_BUZZER_Pin GPIO_PIN_4
+#define RTD_BUZZER_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
 
