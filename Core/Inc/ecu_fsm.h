@@ -13,6 +13,8 @@ The finite state machine has:
 
 ******************************************************************************/
 
+//TODO: add Docs folder and add fsm image + a doc to ilustrate the states and transitions
+//TODO: add git hooks
 
 #ifndef ECU_FSM_H
 #define ECU_FSM_H
@@ -30,28 +32,28 @@ typedef void state_data_t;
 
 // List of states
 typedef enum {
-  STATE_INIT = 0,  
-  STATE_POST,  
-  STATE_FATAL_ERROR,  
-  STATE_ENABLE_INV_UPDATES,  
-  STATE_FLASH,  
-  STATE_IDLE,  
-  STATE_PAUSE,  
-  STATE_CHECK_INV_SETTINGS,  
-  STATE_START_TS_PRECHARGE,  
-  STATE_WAIT_TS_PRECHARGE,  
-  STATE_START_TS_DISCHARGE,  
-  STATE_WAIT_DRIVER,  
-  STATE_DISABLE_INV_DRIVE,  
-  STATE_WAIT_TS_DISCHARGE,  
-  STATE_ENABLE_AS_DRIVER,  
-  STATE_ENABLE_INV_DRIVE,  
-  STATE_AS_INIT_ERROR,  
-  STATE_DISABLE_AS_DRIVER,  
-  STATE_R2D,  
-  STATE_RE_ENABLE_INV_DRIVE,  
-  NUM_STATES,
-  NO_CHANGE
+    STATE_INIT = 0,
+    STATE_POST,
+    STATE_FATAL_ERROR,
+    STATE_ENABLE_INV_UPDATES,
+    STATE_FLASH,
+    STATE_IDLE,
+    STATE_PAUSE,
+    STATE_CHECK_INV_SETTINGS,
+    STATE_START_TS_PRECHARGE,
+    STATE_WAIT_TS_PRECHARGE,
+    STATE_START_TS_DISCHARGE,
+    STATE_WAIT_DRIVER,
+    STATE_DISABLE_INV_DRIVE,
+    STATE_WAIT_TS_DISCHARGE,
+    STATE_ENABLE_AS_DRIVER,
+    STATE_ENABLE_INV_DRIVE,
+    STATE_AS_INIT_ERROR,
+    STATE_DISABLE_AS_DRIVER,
+    STATE_R2D,
+    STATE_RE_ENABLE_INV_DRIVE,
+    NUM_STATES,
+    NO_CHANGE
 } state_t;
 
 // State human-readable names
@@ -122,10 +124,8 @@ state_t do_r2d(state_data_t *data);
 // valid return states: STATE_R2D
 state_t do_re_enable_inv_drive(state_data_t *data);
 
-
 // List of state functions
 extern state_func_t *const state_table[NUM_STATES];
-
 
 // No transition functions
 
