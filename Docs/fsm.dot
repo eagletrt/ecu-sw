@@ -1,0 +1,117 @@
+digraph "ecu_fsm" {
+    graph [pad="0.5", nodesep="1", ranksep="0.5"]
+    node [shape=oval]
+    margin=0
+    layout=dot
+
+    init 
+    post // check communication with other boards and configs
+    flash // flash new code or abort and go back to idle
+    pause // change new params that has to be checked in init or abort and go back to idle
+    fatal_error
+
+    enable_inv_updates
+    check_inv_settings
+
+    idle 
+
+    start_ts_precharge
+    wait_ts_precharge
+
+    disable_inv_drive
+    start_ts_discharge
+
+    wait_driver // if manual, need to check basic conditions such as brake pedal
+                // if auto, need to define a parameter or simply define a pre compiling flag
+
+    enable_as_driver
+    disable_as_driver // again, go in this state only if a parameter is set or by compiling flag
+    as_init_error // an error in initialization in as should allow to drive in manual mode
+
+    enable_inv_drive
+
+    r2d // manual or automatic, from here the car is drivable
+
+    re_enable_inv_drive
+
+    //------------------------
+
+    // Uncomment for nice drawing, comment for gv_fsm generation
+    // { rank=source;init; }
+    // { rank=same;fatal_error;flash;pause }
+    // { rank=same;start_ts_precharge;wait_ts_discharge; }
+    // { rank=same;wait_ts_precharge;start_ts_discharge; }
+    // { rank=same;enable_inv_drive;disable_inv_drive; }
+    // { rank=sink;r2d; }
+
+    //------------------------
+
+    init -> post
+
+    post -> enable_inv_updates
+    post -> fatal_error
+
+    enable_inv_updates -> enable_inv_updates
+    enable_inv_updates -> check_inv_settings
+
+    check_inv_settings -> check_inv_settings
+    check_inv_settings -> idle
+    check_inv_settings -> fatal_error
+
+    fatal_error -> fatal_error
+
+    idle -> idle
+    idle -> flash
+    idle -> pause
+    idle -> fatal_error
+    idle -> start_ts_precharge
+
+    pause -> pause
+    pause -> idle
+
+    flash -> flash
+    flash -> idle
+
+    start_ts_precharge -> start_ts_precharge
+    start_ts_precharge -> wait_ts_precharge 
+    start_ts_precharge -> start_ts_discharge
+
+    wait_ts_precharge -> wait_ts_precharge
+    wait_ts_precharge -> wait_driver
+    wait_ts_precharge -> start_ts_discharge
+
+    wait_driver -> wait_driver
+    wait_driver -> enable_inv_drive
+    wait_driver -> start_ts_discharge
+    wait_driver -> enable_as_driver
+
+    enable_as_driver -> enable_as_driver
+    enable_as_driver -> enable_inv_drive
+    enable_as_driver -> as_init_error
+
+    as_init_error -> as_init_error
+    as_init_error -> wait_driver
+
+    enable_inv_drive -> enable_inv_drive
+    enable_inv_drive -> r2d
+    enable_inv_drive -> disable_inv_drive
+
+    r2d -> r2d
+    r2d -> disable_as_driver
+    r2d -> disable_inv_drive
+    r2d -> re_enable_inv_drive
+
+    re_enable_inv_drive -> r2d
+
+    disable_as_driver -> disable_as_driver
+    disable_as_driver -> disable_inv_drive
+
+    disable_inv_drive -> disable_inv_drive
+    disable_inv_drive -> start_ts_discharge
+
+    start_ts_discharge -> start_ts_discharge
+    start_ts_discharge -> wait_ts_discharge
+
+    wait_ts_discharge -> wait_ts_discharge
+    wait_ts_discharge -> idle
+}

@@ -13,9 +13,6 @@ The finite state machine has:
 
 ******************************************************************************/
 
-//TODO: add Docs folder and add fsm image + a doc to ilustrate the states and transitions
-//TODO: add git hooks
-
 #ifndef ECU_FSM_H
 #define ECU_FSM_H
 #ifdef __cplusplus
