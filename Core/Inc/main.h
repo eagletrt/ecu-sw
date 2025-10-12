@@ -57,24 +57,22 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define ENABLE_Pin GPIO_PIN_2
+#define ENABLE_GPIO_Port GPIOE
 #define DBG_TX_Pin GPIO_PIN_0
 #define DBG_TX_GPIO_Port GPIOA
 #define DBG_RX_Pin GPIO_PIN_1
 #define DBG_RX_GPIO_Port GPIOA
-#define DBG_TXA5_Pin GPIO_PIN_5
-#define DBG_TXA5_GPIO_Port GPIOA
-#define DBG_RXA6_Pin GPIO_PIN_6
-#define DBG_RXA6_GPIO_Port GPIOA
+#define PTT_Pin GPIO_PIN_15
+#define PTT_GPIO_Port GPIOB
 #define SWDIO_Pin GPIO_PIN_13
-#define SWDIO_GPIO_Port GPIOD
+#define SWDIO_GPIO_Port GPIOA
 #define SWCLK_Pin GPIO_PIN_14
-#define SWCLK_GPIO_Port GPIOD
-#define AUX_BUZZER_Pin GPIO_PIN_10
-#define AUX_BUZZER_GPIO_Port GPIOC
-#define RTD_BUZZER_Pin GPIO_PIN_11
-#define RTD_BUZZER_GPIO_Port GPIOC
-#define PTT_Pin GPIO_PIN_0
-#define PTT_GPIO_Port GPIOE
+#define SWCLK_GPIO_Port GPIOA
+#define AUX_TIMER_Pin GPIO_PIN_3
+#define AUX_TIMER_GPIO_Port GPIOB
+#define RTD_BUZZER_Pin GPIO_PIN_4
+#define RTD_BUZZER_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
 
