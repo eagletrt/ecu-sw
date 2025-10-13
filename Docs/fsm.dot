@@ -8,7 +8,7 @@ digraph "ecu_fsm" {
     post // check communication with other boards and configs
     flash // flash new code or abort and go back to idle
     pause // change new params that has to be checked in init or abort and go back to idle
-    fatal_error
+    fatal
 
     enable_inv_updates
     check_inv_settings
@@ -38,7 +38,7 @@ digraph "ecu_fsm" {
 
     // Uncomment for nice drawing, comment for gv_fsm generation
     // { rank=source;init; }
-    // { rank=same;fatal_error;flash;pause }
+    // { rank=same;fatal;flash;pause }
     // { rank=same;start_ts_precharge;wait_ts_discharge; }
     // { rank=same;wait_ts_precharge;start_ts_discharge; }
     // { rank=same;enable_inv_drive;disable_inv_drive; }
@@ -49,21 +49,21 @@ digraph "ecu_fsm" {
     init -> post
 
     post -> enable_inv_updates
-    post -> fatal_error
+    post -> fatal
 
     enable_inv_updates -> enable_inv_updates
     enable_inv_updates -> check_inv_settings
 
     check_inv_settings -> check_inv_settings
     check_inv_settings -> idle
-    check_inv_settings -> fatal_error
+    check_inv_settings -> fatal
 
-    fatal_error -> fatal_error
+    fatal -> fatal
 
     idle -> idle
     idle -> flash
     idle -> pause
-    idle -> fatal_error
+    idle -> fatal
     idle -> start_ts_precharge
 
     pause -> pause
