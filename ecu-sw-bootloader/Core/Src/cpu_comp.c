@@ -1,12 +1,12 @@
 /************************************************************************************/ /**
-* \file         Source/can.h
-* \brief        Bootloader CAN communication interface header file.
-* \ingroup      Core
+* \file         Source/ARMCM7_STM32F7/GCC/cpu_comp.c
+* \brief        Bootloader cpu module source file.
+* \ingroup      Target_ARMCM7_STM32F7
 * \internal
 *----------------------------------------------------------------------------------------
 *                          C O P Y R I G H T
 *----------------------------------------------------------------------------------------
-*   Copyright (c) 2016  by Feaser    http://www.feaser.com    All rights reserved
+*   Copyright (c) 2017  by Feaser    http://www.feaser.com    All rights reserved
 *
 *----------------------------------------------------------------------------------------
 *                            L I C E N S E
@@ -25,17 +25,28 @@
 *
 * \endinternal
 ****************************************************************************************/
-#ifndef CAN_H
-#define CAN_H
 
-#if (BOOT_COM_CAN_ENABLE > 0)
 /****************************************************************************************
-* Function prototypes
+* Include files
 ****************************************************************************************/
-void CanInit(void);
-void CanTransmitPacket(blt_int8u *data, blt_int8u len);
-blt_bool CanReceivePacket(blt_int8u *data, blt_int8u *len);
-#endif /* BOOT_COM_CAN_ENABLE > 0 */
+#include "boot.h" /* bootloader generic header          */
 
-#endif /* CAN_H */
-/*********************************** end of can.h **************************************/
+/************************************************************************************/ /**
+** \brief     Disable global interrupts.
+** \return    none.
+**
+****************************************************************************************/
+void CpuIrqDisable(void) {
+    __asm volatile("cpsid i");
+} /*** end of CpuIrqDisable ***/
+
+/************************************************************************************/ /**
+** \brief     Enable global interrupts.
+** \return    none.
+**
+****************************************************************************************/
+void CpuIrqEnable(void) {
+    __asm volatile("cpsie i");
+} /*** end of CpuIrqEnable ***/
+
+/*********************************** end of cpu_comp.c *********************************/

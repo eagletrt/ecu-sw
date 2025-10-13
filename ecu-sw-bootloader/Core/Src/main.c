@@ -19,6 +19,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "can.h"
+#include "tim.h"
 #include "usart.h"
 #include "gpio.h"
 
@@ -59,8 +60,8 @@ static void MPU_Config(void);
 /* USER CODE BEGIN 0 */
 static void VectorBase_Config(void) {
     /* The constant array with vectors of the vector table is declared externally in the
-  * c-startup code.
-  */
+   * c-startup code.
+   */
     extern const unsigned long g_pfnVectors[];
 
     /* Remap the vector table to where the vector table is located for this program. */
@@ -100,17 +101,16 @@ int main(void) {
 
     /* Initialize all configured peripherals */
     MX_GPIO_Init();
-    MX_CAN1_Init();
-    MX_CAN2_Init();
-    MX_CAN3_Init();
-    MX_UART4_Init();
     /* USER CODE BEGIN 2 */
-
+    CanInit();
+    Rs232Init();
+    BootInit();
     /* USER CODE END 2 */
 
     /* Infinite loop */
     /* USER CODE BEGIN WHILE */
     while (1) {
+        BootTask();
         /* USER CODE END WHILE */
 
         /* USER CODE BEGIN 3 */

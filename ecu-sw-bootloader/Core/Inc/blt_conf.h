@@ -21,7 +21,7 @@
 ****************************************************************************************/
 /* CAN communication */
 #define BOOT_COM_CAN_ENABLE (1)
-#define BOOT_COM_CAN_BAUDRATE (500000) /* pick what matches your bus */
+#define BOOT_COM_CAN_BAUDRATE (666666) /* pick what matches your bus */
 #define BOOT_COM_CAN_TX_MSG_ID (0x17u)
 #define BOOT_COM_CAN_TX_MAX_DATA (8)
 #define BOOT_COM_CAN_RX_MSG_ID (0x18u)
@@ -44,7 +44,7 @@
 *   N O N - V O L A T I L E   M E M O R Y   D R I V E R   C O N F I G U R A T I O N
 ****************************************************************************************/
 /* STMF767ZI has up to 2MB Flash. But we are using the MCU stm32f767vgtx!!!!!! */
-#define BOOT_NVM_HOOKS_ENABLE (1) // to use internal Flash
+#define BOOT_NVM_HOOKS_ENABLE (0)
 #define BOOT_NVM_SIZE_KB (1024)
 #define BOOT_NVM_CHECKSUM_HOOKS_ENABLE (0)
 

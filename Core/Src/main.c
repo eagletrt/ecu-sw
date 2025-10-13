@@ -97,7 +97,7 @@ int main(void) {
     /* USER CODE BEGIN SysInit */
 
     /* USER CODE END SysInit */
-  
+
     /* Initialize all configured peripherals */
     MX_GPIO_Init();
     MX_CAN1_Init();
@@ -106,7 +106,7 @@ int main(void) {
     MX_UART4_Init();
     MX_TIM2_Init();
     /* USER CODE BEGIN 2 */
-  
+
     /* USER CODE END 2 */
 
     /* Infinite loop */
@@ -118,7 +118,6 @@ int main(void) {
 
         //testing fsm state change
         current_state = run_state(current_state, NULL);
-        HAL_Delay(1000);
     }
     /* USER CODE END 3 */
 }
