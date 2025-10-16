@@ -102,8 +102,6 @@ int main(void) {
     /* Initialize all configured peripherals */
     MX_GPIO_Init();
     /* USER CODE BEGIN 2 */
-    CanInit();
-    Rs232Init();
     BootInit();
     /* USER CODE END 2 */
 
