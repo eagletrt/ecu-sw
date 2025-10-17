@@ -46,7 +46,7 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-
+state_t current_state = STATE_INIT;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -98,7 +98,7 @@ int main(void) {
     MX_UART4_Init();
     MX_TIM2_Init();
     /* USER CODE BEGIN 2 */
-    state_t current_state = STATE_INIT;
+
     /* USER CODE END 2 */
 
     /* Infinite loop */

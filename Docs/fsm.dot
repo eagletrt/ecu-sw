@@ -4,52 +4,49 @@ digraph "ecu_fsm" {
     margin=0
     layout=dot
 
-    init 
-    post // check communication with other boards and configs
+    init // implements also post (power on self test) to check communication with other boards and configs
     flash // flash new code or abort and go back to idle
-    pause // change new params that has to be checked in init or abort and go back to idle
-    fatal
+    pause // change params for current or next execution or abort and go back to idle
+    fatal // a fatal error that cannot be handled
 
     enable_inv_updates
     check_inv_settings
 
-    idle 
+    idle // a non critical state
 
-    start_ts_precharge
-    wait_ts_precharge
-
-    disable_inv_drive
-    start_ts_discharge
+    wait_ts_precharge // reachable after a start_ts_precahrge transition function
 
     wait_driver // if manual, need to check basic conditions such as brake pedal
-                // if auto, need to define a parameter or simply define a pre compiling flag
+                // if auto, need to define a parameter or simply define directives
 
-    enable_as_driver
-    disable_as_driver // again, go in this state only if a parameter is set or by compiling flag
-    as_init_error // an error in initialization in as should allow to drive in manual mode
+    enable_as_driver // similar to init, might require to make some checks and wait for some peripherals
+    disable_as_driver // again, go in this state only if a parameter is set or by directives
 
     enable_inv_drive
+    disable_inv_drive
 
     r2d // manual or automatic, from here the car is drivable
+        // in the previous fsm there was the case where one or both inverters
+        // can get disabled, a re-enable state managed this case.
+        // r2d should implement this check
 
-    re_enable_inv_drive
+    // ------------------------
 
-    //------------------------
+    // commands to generate the source file + png of fsm
+    // gv_fsm fsm.dot -o ecu_fsm
+    // dot -Tpng fsm.dot -o fsm.png
 
     // Uncomment for nice drawing, comment for gv_fsm generation
-    // { rank=source;init; }
-    // { rank=same;fatal;flash;pause }
-    // { rank=same;start_ts_precharge;wait_ts_discharge; }
-    // { rank=same;wait_ts_precharge;start_ts_discharge; }
-    // { rank=same;enable_inv_drive;disable_inv_drive; }
-    // { rank=sink;r2d; }
+    { rank=source;init; }
+    { rank=same;fatal;flash;pause }
+    { rank=same;wait_ts_discharge;wait_ts_precharge; }
+    { rank=same;enable_inv_drive;disable_inv_drive; }
+    { rank=sink;r2d;disable_as_driver; }
 
-    //------------------------
+    // ------------------------
 
-    init -> post
-
-    post -> enable_inv_updates
-    post -> fatal
+    init -> enable_inv_updates
+    init -> fatal
 
     enable_inv_updates -> enable_inv_updates
     enable_inv_updates -> check_inv_settings
@@ -64,7 +61,7 @@ digraph "ecu_fsm" {
     idle -> flash
     idle -> pause
     idle -> fatal
-    idle -> start_ts_precharge
+    idle -> wait_ts_precharge [label="start_ts_precharge"]
 
     pause -> pause
     pause -> idle
@@ -72,25 +69,18 @@ digraph "ecu_fsm" {
     flash -> flash
     flash -> idle
 
-    start_ts_precharge -> start_ts_precharge
-    start_ts_precharge -> wait_ts_precharge 
-    start_ts_precharge -> start_ts_discharge
-
     wait_ts_precharge -> wait_ts_precharge
     wait_ts_precharge -> wait_driver
-    wait_ts_precharge -> start_ts_discharge
+    wait_ts_precharge -> wait_ts_discharge [label="start_ts_discharge"]
 
     wait_driver -> wait_driver
     wait_driver -> enable_inv_drive
-    wait_driver -> start_ts_discharge
+    wait_driver -> wait_ts_discharge [label="start_ts_discharge"]
     wait_driver -> enable_as_driver
 
     enable_as_driver -> enable_as_driver
     enable_as_driver -> enable_inv_drive
-    enable_as_driver -> as_init_error
-
-    as_init_error -> as_init_error
-    as_init_error -> wait_driver
+    enable_as_driver -> wait_ts_discharge [label="start_ts_discharge"]
 
     enable_inv_drive -> enable_inv_drive
     enable_inv_drive -> r2d
@@ -99,18 +89,12 @@ digraph "ecu_fsm" {
     r2d -> r2d
     r2d -> disable_as_driver
     r2d -> disable_inv_drive
-    r2d -> re_enable_inv_drive
-
-    re_enable_inv_drive -> r2d
 
     disable_as_driver -> disable_as_driver
     disable_as_driver -> disable_inv_drive
 
     disable_inv_drive -> disable_inv_drive
-    disable_inv_drive -> start_ts_discharge
-
-    start_ts_discharge -> start_ts_discharge
-    start_ts_discharge -> wait_ts_discharge
+    disable_inv_drive -> wait_ts_discharge [label="start_ts_discharge"]
 
     wait_ts_discharge -> wait_ts_discharge
     wait_ts_discharge -> idle
