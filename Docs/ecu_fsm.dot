@@ -1,0 +1,96 @@
+digraph "ecu_fsm" {
+    graph [pad="0.5", nodesep="1", ranksep="0.5"]
+    margin=0
+    layout=dot
+    node [shape=oval]
+
+    init
+    enable_inv_updates
+    check_inv_settings
+    idle
+    fatal_error
+    as_init_error
+    start_ts_precharge
+    wait_ts_precharge
+    precharge_error
+    wait_driver
+    enable_as_driver
+    disable_as_driver
+    check_as_settings
+    enable_inv_drive
+    re_enable_inv_drive
+    drive
+    disable_inv_drive
+    start_ts_discharge
+    wait_ts_discharge
+    shutdown
+
+    init -> enable_inv_updates
+
+    enable_inv_updates -> enable_inv_updates
+    enable_inv_updates -> check_inv_settings
+
+    check_inv_settings -> check_inv_settings
+    check_inv_settings -> idle
+    check_inv_settings -> fatal_error
+
+    fatal_error -> fatal_error
+    fatal_error -> shutdown
+
+    shutdown -> shutdown
+
+    idle -> idle
+    idle -> fatal_error
+    idle -> start_ts_precharge
+    idle -> shutdown
+
+    start_ts_precharge -> start_ts_precharge
+    start_ts_precharge -> wait_ts_precharge
+    start_ts_precharge -> precharge_error
+
+    wait_ts_precharge -> wait_ts_precharge
+    wait_ts_precharge -> wait_driver
+    wait_ts_precharge -> precharge_error
+
+    precharge_error -> precharge_error
+    precharge_error -> start_ts_discharge
+
+    wait_driver -> wait_driver
+    wait_driver -> enable_inv_drive
+    wait_driver -> start_ts_discharge
+    wait_driver -> enable_as_driver
+
+    enable_as_driver -> enable_as_driver
+    enable_as_driver -> check_as_settings
+    enable_as_driver -> as_init_error
+
+    check_as_settings -> check_as_settings
+    check_as_settings -> enable_inv_drive
+    check_as_settings -> as_init_error
+
+    as_init_error -> as_init_error
+    as_init_error -> wait_driver
+
+    enable_inv_drive -> enable_inv_drive
+    enable_inv_drive -> drive
+    enable_inv_drive -> disable_inv_drive
+
+    drive -> drive
+    drive -> disable_inv_drive
+    drive -> re_enable_inv_drive
+
+    re_enable_inv_drive -> drive
+
+    disable_inv_drive -> disable_inv_drive
+    disable_inv_drive -> start_ts_discharge
+    disable_inv_drive -> disable_as_driver
+
+    disable_as_driver -> start_ts_discharge
+
+    start_ts_discharge -> start_ts_discharge
+    start_ts_discharge -> wait_ts_discharge
+
+    wait_ts_discharge -> wait_ts_discharge
+    wait_ts_discharge -> idle
+    wait_ts_discharge -> shutdown
+}
