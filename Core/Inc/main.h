@@ -69,8 +69,8 @@ void Error_Handler(void);
 #define SWDIO_GPIO_Port GPIOA
 #define SWCLK_Pin GPIO_PIN_14
 #define SWCLK_GPIO_Port GPIOA
-#define AUX_TIMER_Pin GPIO_PIN_3
-#define AUX_TIMER_GPIO_Port GPIOB
+#define AUX_BUZZER_Pin GPIO_PIN_3
+#define AUX_BUZZER_GPIO_Port GPIOB
 #define RTD_BUZZER_Pin GPIO_PIN_4
 #define RTD_BUZZER_GPIO_Port GPIOB
 
