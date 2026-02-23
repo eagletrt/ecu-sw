@@ -134,5 +134,21 @@ void HAL_TIM_Base_MspDeInit(TIM_HandleTypeDef *tim_baseHandle) {
 }
 
 /* USER CODE BEGIN 1 */
+enum BuzzerReturnCode tim_buzzer_on() {
+    uint32_t arr = __HAL_TIM_GET_AUTORELOAD(&AUX_BUZZER_TIM);
+    uint32_t pulse = (arr * BUZZER_ASSI_SOUND_DT) / 100;
+    __HAL_TIM_SET_COMPARE(&AUX_BUZZER_TIM, AUX_BUZZER_CHANNEL, pulse);
 
+    if (HAL_TIM_PWM_Start(&AUX_BUZZER_TIM, AUX_BUZZER_CHANNEL) != HAL_OK) {
+        return BUZZER_RC_ERROR;
+    }
+    return BUZZER_RC_OK;
+}
+
+enum BuzzerReturnCode tim_buzzer_off() {
+    if (HAL_TIM_PWM_Stop(&AUX_BUZZER_TIM, AUX_BUZZER_CHANNEL) != HAL_OK) {
+        return BUZZER_RC_ERROR;
+    }
+    return BUZZER_RC_OK;
+}
 /* USER CODE END 1 */

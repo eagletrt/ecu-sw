@@ -71,5 +71,15 @@ void MX_GPIO_Init(void) {
 }
 
 /* USER CODE BEGIN 2 */
+enum BuzzerReturnCode gpio_buzzer_on() {
+    HAL_GPIO_WritePin(RTD_BUZZER_GPIO_Port, RTD_BUZZER_Pin, GPIO_PIN_SET);
+    //GPIO doesn't return any code
+    return BUZZER_RC_OK;
+}
 
+enum BuzzerReturnCode gpio_buzzer_off() {
+    HAL_GPIO_WritePin(RTD_BUZZER_GPIO_Port, RTD_BUZZER_Pin, GPIO_PIN_RESET);
+    //GPIO doesn't return any code
+    return BUZZER_RC_OK;
+}
 /* USER CODE END 2 */

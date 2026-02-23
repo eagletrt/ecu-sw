@@ -2,125 +2,129 @@
  * \file buzzer.c
  * \author Dorijan Di Zepp
  * \date 14-02-2026
- * \brief Implementation of buzzer control logic and hardware wrappers.
- * \note The async_update function must be called periodically to ensure 
- * the buzzer stops after the defined duration.
+ * \brief Hardware-agnostic module for buzzer timing logic.
+ *
+ * This module manages synchronous and asynchronous timing.
+ * \note To switch hardware behaviors (e.g., from GPIO to PWM), re-initialize the module with new callbacks.
  */
 
 #include "buzzer.h"
-#include "tim.h"
-#include "main.h"
 #include "eagletrt-api.h"
-
-// Timer configuration for the Autonomous (ASSI) buzzer
-#define AUX_BUZZER_TIM htim2
-#define AUX_BUZZER_CHANNEL TIM_CHANNEL_2
-
-#define BUZZER_ASSI_SOUND_DT (50) // Duty cycle (%) for the ASSI emergency sound
 
 EAGLETRT_STATIC struct BuzzerHandler buzzer_handler;
 
-/*!
- * \brief Direct hardware access to switch off the buzzer.
- */
-EAGLETRT_STATIC void prv_buzzer_off(void) {
-    switch (buzzer_handler.mode) {
-        case BUZZER_MODE_R2D:
-            HAL_GPIO_WritePin(RTD_BUZZER_GPIO_Port, RTD_BUZZER_Pin, GPIO_PIN_RESET);
-            break;
-
-        case BUZZER_MODE_ASSI:
-            /* Note: Must use the Channel define (e.g., TIM_CHANNEL_1) */
-            HAL_TIM_PWM_Stop(&AUX_BUZZER_TIM, AUX_BUZZER_CHANNEL);
-            break;
-
-        default:
-            // if mode is unknown, attempt to kill both
-            HAL_GPIO_WritePin(RTD_BUZZER_GPIO_Port, RTD_BUZZER_Pin, GPIO_PIN_RESET);
-            HAL_TIM_PWM_Stop(&AUX_BUZZER_TIM, AUX_BUZZER_CHANNEL);
-            break;
-    }
-}
-
-/*!
- * \brief Direct hardware access to activate the buzzer with predefined duty cycles.
- */
-EAGLETRT_STATIC void prv_buzzer_on() {
-    switch (buzzer_handler.mode) {
-        case BUZZER_MODE_R2D:
-            HAL_GPIO_WritePin(RTD_BUZZER_GPIO_Port, RTD_BUZZER_Pin, GPIO_PIN_SET);
-            break;
-
-        case BUZZER_MODE_ASSI: {
-            // brackets required for variable declaration inside switch
-            uint32_t arr = __HAL_TIM_GET_AUTORELOAD(&AUX_BUZZER_TIM);
-            uint32_t pulse = (arr * BUZZER_ASSI_SOUND_DT) / 100;
-
-            __HAL_TIM_SET_COMPARE(&AUX_BUZZER_TIM, AUX_BUZZER_CHANNEL, pulse);
-            HAL_TIM_PWM_Start(&AUX_BUZZER_TIM, AUX_BUZZER_CHANNEL);
-            break;
-        }
-
-        default:
-            // BUZZER_MODE_UNKNOWN
-            break;
-    }
-}
-
-void buzzer_init(enum BuzzerMode mode, uint64_t duration) {
-    buzzer_handler.mode = mode;
-    buzzer_handler.duration = duration;
-    buzzer_handler.start_time = 0;
-    buzzer_handler.is_playing = false;
-    prv_buzzer_off(); // in case the pin floated high
-}
-
-void buzzer_clear() {
-    prv_buzzer_off();
-    buzzer_handler.mode = BUZZER_MODE_UNKNOWN;
-    buzzer_handler.is_playing = false;
-    buzzer_handler.duration = 0;
-    buzzer_handler.start_time = 0;
-}
-
-void buzzer_set_mode(enum BuzzerMode mode) {
+enum BuzzerReturnCode buzzer_init(
+    enum BuzzerReturnCode (*on_ptr)(void),
+    enum BuzzerReturnCode (*off_ptr)(void),
+    void (*delay_ptr)(uint32_t),
+    uint32_t (*tick_ptr)(void),
+    uint32_t duration) {
+    // If we are already playing, stop the current hardware
     if (buzzer_handler.is_playing) {
-        prv_buzzer_off(); // turn off current "buzzer" BEFORE changing the mode
+        if (buzzer_handler.buzzer_off != NULL) {
+            buzzer_handler.buzzer_off();
+        }
     }
-    buzzer_handler.mode = mode;
-}
 
-void buzzer_set_duration(uint64_t duration) {
+    // validate pointers
+    if (on_ptr == NULL || off_ptr == NULL || delay_ptr == NULL || tick_ptr == NULL) {
+        return BUZZER_RC_ERROR;
+    }
+
+    buzzer_handler.buzzer_on = on_ptr;
+    buzzer_handler.buzzer_off = off_ptr;
+    buzzer_handler.buzzer_delay = delay_ptr;
+    buzzer_handler.buzzer_get_tick = tick_ptr;
+
+    // reset state
     buzzer_handler.duration = duration;
+    buzzer_handler.is_playing = false;
+
+    return BUZZER_RC_OK;
 }
 
-void buzzer_play_sync() {
-    if (buzzer_handler.duration == 0 || buzzer_handler.mode == BUZZER_MODE_UNKNOWN)
-        return;
+enum BuzzerReturnCode buzzer_play_sync() {
+    if (buzzer_handler.buzzer_on == NULL || buzzer_handler.buzzer_off == NULL || buzzer_handler.buzzer_delay == NULL) {
+        return BUZZER_RC_ERROR;
+    }
 
-    prv_buzzer_on();
+    buzzer_handler.is_playing = true;
+    if (buzzer_handler.buzzer_on() != BUZZER_RC_OK) {
+        return BUZZER_RC_ERROR;
+    }
 
-    HAL_Delay(buzzer_handler.duration);
-    prv_buzzer_off();
+    buzzer_handler.buzzer_delay(buzzer_handler.duration);
+
+    if (buzzer_handler.buzzer_off() != BUZZER_RC_OK) {
+        return BUZZER_RC_ERROR;
+    }
+
+    buzzer_handler.is_playing = false;
+
+    return BUZZER_RC_OK;
 }
 
-void buzzer_start_async() {
-    if (buzzer_handler.is_playing || buzzer_handler.duration == 0 ||
-        buzzer_handler.mode == BUZZER_MODE_UNKNOWN)
-        return;
+enum BuzzerReturnCode buzzer_start_async() {
+    if (buzzer_handler.buzzer_on == NULL || buzzer_handler.buzzer_get_tick == NULL) {
+        return BUZZER_RC_ERROR;
+    }
 
-    buzzer_handler.start_time = HAL_GetTick();
+    if (buzzer_handler.buzzer_on() != BUZZER_RC_OK) {
+        return BUZZER_RC_ERROR;
+    }
+
+    buzzer_handler.start_time = buzzer_handler.buzzer_get_tick();
     buzzer_handler.is_playing = true;
 
-    prv_buzzer_on();
+    return BUZZER_RC_OK;
 }
 
-void buzzer_async_update() {
-    if (!buzzer_handler.is_playing)
-        return;
-
-    if ((HAL_GetTick() - buzzer_handler.start_time) >= buzzer_handler.duration) {
-        prv_buzzer_off();
-        buzzer_handler.is_playing = false;
+enum BuzzerReturnCode buzzer_async_update() {
+    if (buzzer_handler.buzzer_off == NULL || buzzer_handler.buzzer_get_tick == NULL) {
+        return BUZZER_RC_ERROR;
     }
+
+    if (!buzzer_handler.is_playing) {
+        return BUZZER_RC_OK;
+    }
+
+    // check elapsed time
+    uint32_t current_time = buzzer_handler.buzzer_get_tick();
+
+    if ((current_time - buzzer_handler.start_time) >= buzzer_handler.duration) {
+        /* if turning off fails, stop the 'playing' state but report 
+        the error so the system knows the buzzer might be stuck */
+        if (buzzer_handler.buzzer_off() != BUZZER_RC_OK) {
+            buzzer_handler.is_playing = false;
+            return BUZZER_RC_ERROR;
+        }
+
+        buzzer_handler.is_playing = false;
+        return BUZZER_RC_OK;
+    }
+
+    return BUZZER_RC_PLAYING;
+}
+
+enum BuzzerReturnCode buzzer_clear() {
+    if (buzzer_handler.buzzer_off == NULL) {
+        return BUZZER_RC_ERROR;
+    }
+
+    buzzer_handler.buzzer_off();
+    buzzer_handler.is_playing = false;
+    return BUZZER_RC_OK;
+}
+
+void buzzer_set_duration(uint32_t duration) {
+    if (!buzzer_handler.is_playing)
+        buzzer_handler.duration = duration;
+}
+
+uint32_t buzzer_get_duration() {
+    return buzzer_handler.duration;
+}
+
+bool buzzer_is_playing() {
+    return buzzer_handler.is_playing;
 }

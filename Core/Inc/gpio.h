@@ -29,7 +29,7 @@ extern "C" {
 #include "main.h"
 
 /* USER CODE BEGIN Includes */
-
+#include "buzzer.h"
 /* USER CODE END Includes */
 
 /* USER CODE BEGIN Private defines */
@@ -39,11 +39,18 @@ extern "C" {
 void MX_GPIO_Init(void);
 
 /* USER CODE BEGIN Prototypes */
+/*!
+ * \brief Direct hardware access to activate the buzzer.
+ */
+enum BuzzerReturnCode gpio_buzzer_on();
 
+/*!
+ * \brief Direct hardware access to switch off the buzzer.
+ */
+enum BuzzerReturnCode gpio_buzzer_off();
 /* USER CODE END Prototypes */
 
 #ifdef __cplusplus
 }
 #endif
 #endif /*__ GPIO_H__ */
-
