@@ -53,7 +53,6 @@ enum TSReturnCode TS_request_power_on() {
 
         ts_handler.request_on = true;
         ts_handler.request_off = false;
-
         return TS_RC_OK;
     }
 
@@ -65,9 +64,9 @@ enum TSReturnCode TS_request_power_off() {
     // if the sending is not ok, abort
     if (ts_handler.send_ts_command(TS_COMMAND_OFF) != TS_RC_OK)
         return TS_RC_ERROR;
+
     ts_handler.request_off = true;
     ts_handler.request_on = false;
-
     return TS_RC_OK;
 }
 

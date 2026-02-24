@@ -18,8 +18,6 @@
 #define BUZZER_RD2_SOUND_DURATION (3000) // Sound duration in ms for the RD2
 
 // ASSI defines
-#define AUX_BUZZER_TIM htim2
-#define AUX_BUZZER_CHANNEL TIM_CHANNEL_2
 #define BUZZER_ASSI_SOUND_DURATION (8000) // Sound duration in ms for the ASSI emergency
 #define BUZZER_ASSI_SOUND_DT (50)         // Duty cycle (%) for the ASSI emergency sound
 

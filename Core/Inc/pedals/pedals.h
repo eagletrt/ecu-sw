@@ -16,8 +16,6 @@
 
 #define PEDALS_BRAKE_THRESHOLD_PCT (5.0f)
 
-#define PEDALS_TIMEOUT_MS (100)
-
 /*!
  * \brief Return codes for the pedals module APIs.
  */

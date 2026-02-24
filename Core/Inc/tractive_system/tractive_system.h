@@ -80,7 +80,7 @@ enum TSReturnCode TS_init(enum TSReturnCode (*send_ts_command)(enum TSCommand));
 enum TSReturnCode TS_set_status(enum TsStatus);
 
 /*!
- * \brief Returns the current filtered status of the Tractive System.
+ * \brief Returns the current status of the Tractive System.
  * \return The current status of the TS
  */
 enum TsStatus TS_get_status();

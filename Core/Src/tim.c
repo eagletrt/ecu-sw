@@ -21,7 +21,9 @@
 #include "tim.h"
 
 /* USER CODE BEGIN 0 */
-
+// ASSI tim peripheral
+#define AUX_BUZZER_TIM htim2
+#define AUX_BUZZER_CHANNEL TIM_CHANNEL_2
 /* USER CODE END 0 */
 
 TIM_HandleTypeDef htim2;
