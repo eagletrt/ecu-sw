@@ -2,7 +2,7 @@
  * \file pedals.h
  * \author Dorijan Di Zepp
  * \date 15-02-2026
- * \brief Module for interfacing with the pedals board.
+ * \brief Module for managing the pedals states.
  */
 
 #ifndef PEDALS_H
@@ -14,43 +14,68 @@
 #define PEDALS_MAX_BK_PRESSURE (100.0f) // bars or PSI
 #define PEDALS_MAX_TORQUE (91.0f)       // Nm
 
-#define PEDALS_BRAKE_THRESHOLD_PCT (5.0f) // percentage
+#define PEDALS_BRAKE_THRESHOLD_PCT (5.0f)
 
 #define PEDALS_TIMEOUT_MS (100)
+
+/*!
+ * \brief Return codes for the pedals module APIs.
+ */
+enum PedalsReturnCode {
+    PEDALS_RC_OK,   /*!< Operation completed successfully */
+    PEDALS_RC_ERROR /*!< Operation NOt completed */
+};
 
 /*!
  * \brief Internal state of the pedals module.
  */
 struct PedalsHandler {
-    float throttle_pct;    /*!< Throttle in percentage 0.0 to 100.0 */
-    float brake_pct;       /*!< Brake in percentage 0.0 to 100.0 */
-    float brake_pressure;  /*!< Brake pressure in bars or PSI */
-    bool is_available;     /*!< Health status of the pedal board connection */
-    uint32_t last_rx_tick; /*!< Last time (ms) a CAN message was received */
+    float throttle_pct;   /*!< Throttle in percentage 0.0 to 100.0 */
+    float brake_pct;      /*!< Brake in percentage 0.0 to 100.0 */
+    float brake_pressure; /*!< Brake pressure in bars or PSI */
+    bool is_available;    /*!< Health status of the pedal board connection */
 };
 
 /*!
  * \brief Initializes the pedals internal handler.
  */
-void pedals_init();
+enum PedalsReturnCode pedals_init();
 
 /*!
- * \brief Updates pedal values from incoming CAN data.
- * 
- * \param id CAN message identifier.
- * \param data Pointer to the 8-byte CAN payload.
- * 
- * \note This function updates the 'last_rx_tick' to reset the timeout watchdog.
+ * \brief Allows the setting of the throttle percentage
+ * \note The function checks if the throttle is in a valid range
+ * otherwise, the percentage will be leaved unchanged
+ * \return PEDALS_RC_OK on success, PEDALS_RC_ERROR in case of any error.
  */
-void pedals_update_from_can(uint32_t id, uint8_t *data);
+enum PedalsReturnCode pedals_set_throttle_pct(float throttle_pct);
 
 /*!
- * \brief Monitors communication health. 
- * 
- * \note Must be called periodically. If the timeout is 
- * exceeded, it sets is_available to false.
+ * \brief Allows the setting of the brake percentage
+ * \note The function checks if the brake is in a valid range
+ * otherwise, the percentage will be leaved unchanged
+ * \return PEDALS_RC_OK on success, PEDALS_RC_ERROR in case of any error.
  */
-void pedals_rx_timeout();
+enum PedalsReturnCode pedals_set_brake_pct(float brake_pct);
+
+/*!
+ * \brief Allows the setting of the brake pressure
+ * \note The function checks if the pressure is in a valid range
+ * otherwise, the value will be leaved unchanged
+ * \return PEDALS_RC_OK on success, PEDALS_RC_ERROR in case of any error.
+ */
+enum PedalsReturnCode pedals_set_brake_pressure(float brake_pressure);
+
+/*!
+ * \brief Allows to modify the availability state of the pedals
+ * \return PEDALS_RC_OK on success, PEDALS_RC_ERROR in case of any error.
+ */
+enum PedalsReturnCode pedals_set_is_available(bool is_available);
+
+/*!
+ * \brief Function to determine the availability of the pedals
+ * \return true if the pedals are availabele, false otherwise
+ */
+bool pedals_is_available();
 
 /*!
  * \brief Maps current throttle percentage to the driver's requested motor torque.

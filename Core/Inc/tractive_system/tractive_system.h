@@ -12,11 +12,19 @@
 #include <stdbool.h>
 
 /*!
+ * \brief Return codes for the tractive system module APIs.
+ */
+enum TSReturnCode {
+    TS_RC_OK,   /*!< Operation completed successfully */
+    TS_RC_ERROR /*!< Operation NOT completed successfully */
+};
+
+/*!
  * \brief TS commands.
  */
 enum TSCommand {
-    TS_COMMAND_OFF = 0x00,
-    TS_COMMAND_ON = 0x02
+    TS_COMMAND_ON, /*!< Send a logical ON */
+    TS_COMMAND_OFF /*!< Send a logical OFF */
 };
 
 /*!
@@ -34,20 +42,23 @@ enum TsStatus {
  * \brief Internal state of the tractive system module.
  */
 struct TsHandler {
-    /*!
+    /*!< \brief Function to physically send ts commands */
+    enum TSReturnCode (*send_ts_command)(enum TSCommand);
+
+    /*!<
      * \brief Current physical status of the TS.
      * \details Represents the last confirmed state received from the CAN bus 
      */
     enum TsStatus status;
 
-    /*!
+    /*!<
      * \brief Pending "Power On" request flag.
      * \details Set to true when the driver initiates the start sequence. 
      * Automatically cleared once the status transition to TS_STATUS_ON is confirmed.
      */
     bool request_on;
 
-    /*!
+    /*!<
      * \brief Pending "Power Off" request flag.
      * \details Set to true when a shutdown is commanded. 
      * Automatically cleared once the status transition to TS_STATUS_OFF is confirmed.
@@ -57,48 +68,58 @@ struct TsHandler {
 
 /*!
  * \brief Initializes the TS handler and internal variables.
+ * \return TS_RC_OK if the initialization completed, TS_RC_ERROR in case the callback is a NULL
  */
-void TS_init();
+enum TSReturnCode TS_init(enum TSReturnCode (*send_ts_command)(enum TSCommand));
 
 /*!
- * \brief Updates the internal state based on a status byte.
- * \param status_byte Raw status code received over CAN.
+ * \brief Set the status of the Tractive System.
+ * \param TsStatus The current TS status
+ * \return TS_RC_OK if the status is possible otherwise TS_RC_ERROR
  */
-void TS_update_from_can(uint8_t status_byte);
+enum TSReturnCode TS_set_status(enum TsStatus);
 
 /*!
  * \brief Returns the current filtered status of the Tractive System.
+ * \return The current status of the TS
  */
 enum TsStatus TS_get_status();
 
 /*!
  * \brief Utility function to get the string representation of a state.
+ * \param status The status of which the name is wanted
+ * \return The name of the state as a char pointer
  */
 const char *TS_get_state_name(enum TsStatus status);
 
 /*!
- * \brief Set a request to transition to TS_ON. 
+ * \brief Set a request to transition to TS_ON.
+ * \return TS_RC_OK if the request has been received, TS_RC_ERROR otherwise
  */
-void TS_request_power_on();
+enum TSReturnCode TS_request_power_on();
 
 /*!
  * \brief Set a request to transition to TS_OFF.
+ * \return * \return TS_RC_OK if the request has been received, TS_RC_ERROR otherwise
  */
-void TS_request_power_off();
+enum TSReturnCode TS_request_power_off();
 
 /*!
  * \brief Checks if a Power On request is pending.
+ * \return true is a power on request has been sent correclty previously, false otherwise
  */
 bool TS_is_power_on_requested();
 
 /*!
  * \brief Checks if a Power Off request is pending.
+ * \return true is a power off request has been sent correclty previously, false otherwise
  */
 bool TS_is_power_off_requested();
 
 /*!
  * \brief Clears (resets) all pending requests.
+ * \return TS_RC_OK
  */
-void TS_clear_request();
+enum TSReturnCode TS_clear_request();
 
 #endif
