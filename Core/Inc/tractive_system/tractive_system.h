@@ -39,26 +39,35 @@ enum TsStatus {
 };
 
 /*!
+ * \brief Signature for the hardware command callback.
+ * \param command The logical command (ON/OFF) to be executed by the hardware.
+ * \return TS_RC_OK if the hardware command was sent successfully, TS_RC_ERROR otherwise.
+ */
+typedef enum TSReturnCode (*ts_command_callback)(enum TSCommand);
+
+/*!
  * \brief Internal state of the tractive system module.
  */
 struct TsHandler {
-    /*!< \brief Function to physically send ts commands */
-    enum TSReturnCode (*send_ts_command)(enum TSCommand);
+    /*!
+     * \brief Hardware callback to trigger physical state changes 
+     */
+    ts_command_callback send_ts_command;
 
-    /*!<
+    /*!
      * \brief Current physical status of the TS.
      * \details Represents the last confirmed state received from the CAN bus 
      */
     enum TsStatus status;
 
-    /*!<
+    /*!
      * \brief Pending "Power On" request flag.
      * \details Set to true when the driver initiates the start sequence. 
      * Automatically cleared once the status transition to TS_STATUS_ON is confirmed.
      */
     bool request_on;
 
-    /*!<
+    /*!
      * \brief Pending "Power Off" request flag.
      * \details Set to true when a shutdown is commanded. 
      * Automatically cleared once the status transition to TS_STATUS_OFF is confirmed.
@@ -68,9 +77,10 @@ struct TsHandler {
 
 /*!
  * \brief Initializes the TS handler and internal variables.
- * \return TS_RC_OK if the initialization completed, TS_RC_ERROR in case the callback is a NULL
+ * \param send_ts_command Hardware-level callback for issuing TS commands.
+ * \return TS_RC_OK if initialization succeeded, TS_RC_ERROR if the callback is NULL.
  */
-enum TSReturnCode TS_init(enum TSReturnCode (*send_ts_command)(enum TSCommand));
+enum TSReturnCode TS_init(ts_command_callback send_ts_command);
 
 /*!
  * \brief Set the status of the Tractive System.

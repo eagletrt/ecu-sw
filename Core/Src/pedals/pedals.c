@@ -14,7 +14,7 @@ enum PedalsReturnCode pedals_init() {
     pedals_handler.throttle_pct = 0.f;
     pedals_handler.brake_pct = 0.f;
     pedals_handler.brake_pressure = 0.f;
-    pedals_handler.is_available = false; // assume disconnected until someone confirm availability
+    pedals_handler.is_available = false; // assume disconnected until someone confirms availability
                                          // through pedals_set_is_available
     return PEDALS_RC_OK;
 }

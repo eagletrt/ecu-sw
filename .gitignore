@@ -374,6 +374,11 @@ CMakeUserPresets.json
 # External projects
 *-prefix/
 
+### Doxygen ###
+Doxyfile
+html
+latex
+
 # End of GITIGNORE.IO
 
 ## ---------------- MANUALLY ADDED ---------------- ##

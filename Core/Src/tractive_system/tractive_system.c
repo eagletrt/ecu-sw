@@ -15,7 +15,7 @@ const char *TS_state_names[] = { "OFF", "PRECHARGE", "ON", "FATAL", "UNKNOWN" };
 
 EAGLETRT_STATIC struct TsHandler ts_handler;
 
-enum TSReturnCode TS_init(enum TSReturnCode (*send_ts_command)(enum TSCommand)) {
+enum TSReturnCode TS_init(ts_command_callback send_ts_command) {
     if (send_ts_command == NULL)
         return TS_RC_ERROR;
 

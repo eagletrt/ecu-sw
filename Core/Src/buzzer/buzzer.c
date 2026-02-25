@@ -14,12 +14,12 @@
 EAGLETRT_STATIC struct BuzzerHandler buzzer_handler;
 
 enum BuzzerReturnCode buzzer_init(
-    enum BuzzerReturnCode (*on_ptr)(void),
-    enum BuzzerReturnCode (*off_ptr)(void),
-    void (*delay_ptr)(uint32_t),
-    uint32_t (*tick_ptr)(void),
+    buzzer_action_callback buzzer_on,
+    buzzer_action_callback buzzer_off,
+    buzzer_delay_callback buzzer_delay,
+    buzzer_tick_callback buzzer_get_tick,
     uint32_t duration) {
-    // If we are already playing, stop the current hardware
+    // if we are already playing, stop the current hardware
     if (buzzer_handler.is_playing) {
         if (buzzer_handler.buzzer_off != NULL) {
             buzzer_handler.buzzer_off();
@@ -27,14 +27,14 @@ enum BuzzerReturnCode buzzer_init(
     }
 
     // validate pointers
-    if (on_ptr == NULL || off_ptr == NULL || delay_ptr == NULL || tick_ptr == NULL) {
+    if (buzzer_on == NULL || buzzer_off == NULL || buzzer_delay == NULL || buzzer_get_tick == NULL) {
         return BUZZER_RC_ERROR;
     }
 
-    buzzer_handler.buzzer_on = on_ptr;
-    buzzer_handler.buzzer_off = off_ptr;
-    buzzer_handler.buzzer_delay = delay_ptr;
-    buzzer_handler.buzzer_get_tick = tick_ptr;
+    buzzer_handler.buzzer_on = buzzer_on;
+    buzzer_handler.buzzer_off = buzzer_off;
+    buzzer_handler.buzzer_delay = buzzer_delay;
+    buzzer_handler.buzzer_get_tick = buzzer_get_tick;
 
     // reset state
     buzzer_handler.duration = duration;
@@ -92,10 +92,9 @@ enum BuzzerReturnCode buzzer_async_update() {
     uint32_t current_time = buzzer_handler.buzzer_get_tick();
 
     if ((current_time - buzzer_handler.start_time) >= buzzer_handler.duration) {
-        /* if turning off fails, stop the 'playing' state but report 
-        the error so the system knows the buzzer might be stuck */
+        /* if turning off fails, leave unchanged the 'playing' state and
+         report the error so the system knows the buzzer might be stuck */
         if (buzzer_handler.buzzer_off() != BUZZER_RC_OK) {
-            buzzer_handler.is_playing = false;
             return BUZZER_RC_ERROR;
         }
 

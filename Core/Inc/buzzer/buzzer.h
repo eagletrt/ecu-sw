@@ -31,22 +31,32 @@ enum BuzzerReturnCode {
 };
 
 /*!
+ * \brief Signature for hardware-level buzzer control (On/Off).
+ */
+typedef enum BuzzerReturnCode (*buzzer_action_callback)(void);
+
+/*!
+ * \brief Signature for blocking delay functions (e.g., HAL_Delay).
+ * \param duration_ms Time to stall execution in milliseconds.
+ */
+typedef void (*buzzer_delay_callback)(uint32_t);
+
+/*!
+ * \brief Signature for fetching system uptime (e.g., HAL_GetTick).
+ * \return Current system time.
+ */
+typedef uint32_t (*buzzer_tick_callback)(void);
+
+/*!
  * \brief Internal state and hardware interface for the buzzer.
 
  * It stores the function pointers used to bridge the logic to the physical hardware.
  */
 struct BuzzerHandler {
-    /*!< \brief Function to physically enable the buzzer */
-    enum BuzzerReturnCode (*buzzer_on)(void);
-
-    /*!< \brief Function to physically disable the buzzer */
-    enum BuzzerReturnCode (*buzzer_off)(void);
-
-    /*!< \brief Function for blocking delay (e.g., HAL_Delay) */
-    void (*buzzer_delay)(uint32_t ms);
-
-    /*!< \brief Function to get system uptime (e.g., HAL_GetTick) */
-    uint32_t (*buzzer_get_tick)(void);
+    buzzer_action_callback buzzer_on;     /*!< Callback to enable the buzzer pin */
+    buzzer_action_callback buzzer_off;    /*!< Callback to disable the buzzer pin */
+    buzzer_delay_callback buzzer_delay;   /*!< Callback for synchronous blocking delays */
+    buzzer_tick_callback buzzer_get_tick; /*!< Callback to retrieve elapsed time for async logic */
 
     uint32_t duration;   /*!< Target sound duration in milliseconds */
     uint32_t start_time; /*!< Timestamp (ms) when async play started */
@@ -57,18 +67,18 @@ struct BuzzerHandler {
  * \brief Links the logic to hardware and sets initial duration.
  * \note Re-calling this function while a buzzer is playing will stop the 
  * previous hardware action before linking the new ones.
- * \param on_ptr Function to turn hardware ON.
- * \param off_ptr Function to turn hardware OFF.
- * \param delay_ptr Pointer to blocking delay (required for sync mode).
- * \param tick_ptr Pointer to get system uptime (required for async mode).
+ * \param buzzer_on Function to turn hardware ON.
+ * \param buzzer_off Function to turn hardware OFF.
+ * \param buzzer_delay Pointer to blocking delay (required for sync mode).
+ * \param buzzer_get_tick Pointer to get system uptime (required for async mode).
  * \param duration Sound duration in milliseconds.
  * \return BUZZER_RC_OK on success, BUZZER_RC_ERROR if critical pointers are NULL.
  */
 enum BuzzerReturnCode buzzer_init(
-    enum BuzzerReturnCode (*on_ptr)(void),
-    enum BuzzerReturnCode (*off_ptr)(void),
-    void (*delay_ptr)(uint32_t),
-    uint32_t (*tick_ptr)(void),
+    buzzer_action_callback buzzer_on,
+    buzzer_action_callback buzzer_off,
+    buzzer_delay_callback buzzer_delay,
+    buzzer_tick_callback buzzer_get_tick,
     uint32_t duration);
 
 /*!
@@ -87,7 +97,7 @@ enum BuzzerReturnCode buzzer_start_async();
 
 /*!
  * \brief Manages the non-blocking countdown.
- * Should be called in the main loop. If the duration has passed, it 
+ * \note Should be called in the main loop. If the duration has passed, it 
  * automatically calls the buzzer off callback.
  * \return BUZZER_RC_PLAYING if still active, BUZZER_RC_OK if idle or just finished.
  */

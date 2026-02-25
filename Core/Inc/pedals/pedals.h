@@ -11,10 +11,9 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#define PEDALS_MAX_BK_PRESSURE (100.0f) // bars or PSI
-#define PEDALS_MAX_TORQUE (91.0f)       // Nm
-
-#define PEDALS_BRAKE_THRESHOLD_PCT (5.0f)
+#define PEDALS_MAX_BK_PRESSURE (100.0f)   // bars or PSI
+#define PEDALS_MAX_TORQUE (91.0f)         // Nm
+#define PEDALS_BRAKE_THRESHOLD_PCT (5.0f) // %
 
 /*!
  * \brief Return codes for the pedals module APIs.
@@ -40,31 +39,35 @@ struct PedalsHandler {
 enum PedalsReturnCode pedals_init();
 
 /*!
- * \brief Allows the setting of the throttle percentage
- * \note The function checks if the throttle is in a valid range
- * otherwise, the percentage will be leaved unchanged
+ * \brief Allows the setting of the throttle percentage.
+ * \note The function checks if the throttle is in a valid range;
+ * otherwise, the percentage will be left unchanged.
+ * \param throttle_pct The throttle position in percentage (0.0f to 100.0f).
  * \return PEDALS_RC_OK on success, PEDALS_RC_ERROR in case of any error.
  */
 enum PedalsReturnCode pedals_set_throttle_pct(float throttle_pct);
 
 /*!
- * \brief Allows the setting of the brake percentage
- * \note The function checks if the brake is in a valid range
- * otherwise, the percentage will be leaved unchanged
+ * \brief Allows the setting of the brake percentage.
+ * \note The function checks if the brake is in a valid range;
+ * otherwise, the percentage will be left unchanged.
+ * \param brake_pct The brake position in percentage (0.0f to 100.0f).
  * \return PEDALS_RC_OK on success, PEDALS_RC_ERROR in case of any error.
  */
 enum PedalsReturnCode pedals_set_brake_pct(float brake_pct);
 
 /*!
- * \brief Allows the setting of the brake pressure
- * \note The function checks if the pressure is in a valid range
- * otherwise, the value will be leaved unchanged
+ * \brief Allows the setting of the brake pressure.
+ * \note The function checks if the pressure is in a valid range;
+ * otherwise, the value will be left unchanged.
+ * \param brake_pressure The physical brake pressure value.
  * \return PEDALS_RC_OK on success, PEDALS_RC_ERROR in case of any error.
  */
 enum PedalsReturnCode pedals_set_brake_pressure(float brake_pressure);
 
 /*!
- * \brief Allows to modify the availability state of the pedals
+ * \brief Allows to modify the availability state of the pedals.
+ * \param is_available Health status of the pedal board connection.
  * \return PEDALS_RC_OK on success, PEDALS_RC_ERROR in case of any error.
  */
 enum PedalsReturnCode pedals_set_is_available(bool is_available);
