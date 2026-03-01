@@ -22,7 +22,7 @@
 #include "gpio.h"
 
 /* USER CODE BEGIN 0 */
-
+#include "eagletrt-api.h"
 /* USER CODE END 0 */
 
 /*----------------------------------------------------------------------------*/
@@ -71,7 +71,12 @@ void MX_GPIO_Init(void) {
 }
 
 /* USER CODE BEGIN 2 */
-enum BuzzerReturnCode gpio_buzzer_on() {
+enum BuzzerReturnCode gpio_buzzer_on(uint32_t frequency, float amplitude) {
+    // gpio peripheral cannot use frequency and amplitude values
+    // but the function signature has to be the same as the one defined in buzzer.h
+    EAGLETRT_API_UNUSED(frequency);
+    EAGLETRT_API_UNUSED(amplitude);
+
     HAL_GPIO_WritePin(RTD_BUZZER_GPIO_Port, RTD_BUZZER_Pin, GPIO_PIN_SET);
     //GPIO doesn't return any code
     return BUZZER_RC_OK;

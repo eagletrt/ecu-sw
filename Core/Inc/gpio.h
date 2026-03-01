@@ -41,8 +41,12 @@ void MX_GPIO_Init(void);
 /* USER CODE BEGIN Prototypes */
 /*!
  * \brief Direct hardware access to activate the buzzer.
+ * \param frequency The target frequency in Hz.
+ * \param ampltude THe amplitude (volume) value between 0 and 1.
+ * \note GPIO doesn't require such parameters but the function signature has to define them
+ * in order to be compliant with the callback signature of the buzzer module
  */
-enum BuzzerReturnCode gpio_buzzer_on();
+enum BuzzerReturnCode gpio_buzzer_on(uint32_t frequency, float amplitude);
 
 /*!
  * \brief Direct hardware access to switch off the buzzer.

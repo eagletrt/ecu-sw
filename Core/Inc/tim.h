@@ -45,8 +45,10 @@ void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
 /* USER CODE BEGIN Prototypes */
 /*!
  * \brief Direct hardware access to activate the buzzer.
+ * \param frequency The target frequency in Hz.
+ * \param ampltude THe amplitude (volume) value between 0 and 1.
  */
-enum BuzzerReturnCode tim_buzzer_on();
+enum BuzzerReturnCode tim_buzzer_on(uint32_t frequency, float amplitude);
 
 /*!
  * \brief Direct hardware access to switch off the buzzer.

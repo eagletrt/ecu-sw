@@ -32,6 +32,9 @@ jobs:
       - name: Build
         run: pio run
 
+      - name: Run Unit Tests
+        run: pio test -e native # leave native so that we can test without the stm32 libraries
+
       - name: Static Code Analysis
         if: github.ref == 'refs/heads/dev'
         run: pio check --src-filters="+<Core/Src/*>" --src-filters="+<Core/Inc/*>" --src-filters="+<Core/Test/*>" --src-filters="-<Drivers/*>" || true

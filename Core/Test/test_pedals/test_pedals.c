@@ -1,23 +1,8 @@
 #include <unity.h>
-#include "pedals.h"
-
-/* Mock CAN interface */
-
-/*!
- * \brief Simulates the arrival of a CAN frame from the pedal board.
- * \note In a real implementation, the online parameter will probably be managed by a watchdog or similar
- */
-void mock_can_callback(float throttle, float brake_p, float brake_bar, bool online) {
-    pedals_set_is_available(online);
-    pedals_set_throttle_pct(throttle);
-    pedals_set_brake_pct(brake_p);
-    pedals_set_brake_pressure(brake_bar);
-}
-
-// ------------------------------------------
+#include "pedals-api.h"
 
 void setUp(void) {
-    pedals_init();
+    pedals_api_init();
 }
 
 void tearDown(void) {
@@ -26,70 +11,153 @@ void tearDown(void) {
 /* --- Test Cases --- */
 
 /*!
- * \brief Simulates normal CAN data flow and verifies torque mapping.
+ * \brief Verify that after initialization, the pedals availability is set to false
  */
-void test_pedals_normal_driving_via_mock_can(void) {
-    // simulate CAN frame: 25% throttle, 0% brake, 0bar, online
-    mock_can_callback(25.0f, 0.0f, 0.0f, true);
-
-    const struct PedalsHandler *h = pedals_get_values();
-    TEST_ASSERT_TRUE_MESSAGE(h->is_available, "Pedals should be available after online CAN frame");
-    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(25.0f, h->throttle_pct, "Throttle percentage should match CAN input");
-
-    // torque should be 25% of 91.0Nm = 22.75Nm
-    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(22.75f, pedals_get_requested_throttle_torque(), "Torque calculation should be 25% of max torque");
+void test_pedals_init(void) {
+    pedals_api_init();
+    TEST_ASSERT_FALSE_MESSAGE(pedals_api_get_is_available(), "Pedals should be unavailable after initialization");
 }
 
 /*!
- * \brief Verifies that if CAN indicates 'offline', torque is killed immediately.
+ * \brief Verify that the throttle setting is successfull only if value is in valid range
  */
-void test_pedals_failsafe_when_can_offline(void) {
-    // normal operation
-    mock_can_callback(100.0f, 0.0f, 0.0f, true);
-    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(PEDALS_MAX_TORQUE, pedals_get_requested_throttle_torque(), "Max torque should be requested when throttle is 100%");
+void test_pedals_set_throttle(void) {
+    pedals_api_init();
 
-    // CAN disconnects
-    mock_can_callback(100.0f, 0.0f, 0.0f, false);
+    // if pedals are unavailable, no change can be done
+    pedals_api_set_throttle(0.1f);
+    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(0.0f, pedals_api_get_throttle(), "Throttle should be set to 0.0");
 
-    // torque must be 0 even if the last throttle was 100%
-    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(0.0f, pedals_get_requested_throttle_torque(), "Torque must be 0.0f when pedals are unavailable");
+    pedals_api_set_is_available(true);
+
+    pedals_api_set_throttle(0.5f);
+    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(0.5f, pedals_api_get_throttle(), "Throttle should be set to 0.5");
+
+    pedals_api_set_throttle(1.5f);
+    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(0.5f, pedals_api_get_throttle(), "Throttle should be set to 0.5 as 1.5 is over the limit");
+
+    pedals_api_set_throttle(-0.5f);
+    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(0.5f, pedals_api_get_throttle(), "Throttle should be set to 0.5 as negative values are not valid");
+
+    //test limit cases
+    pedals_api_set_throttle(1.0f);
+    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(1.0f, pedals_api_get_throttle(), "Throttle should be set to 1");
+
+    pedals_api_set_throttle(0.0f);
+    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(0.0f, pedals_api_get_throttle(), "Throttle should be set to 0");
 }
 
 /*!
- * \brief Verifies that the module ignores values outside physical limits sent via CAN.
+ * \brief Verify that the brake setting is successfull only if value is in valid range
  */
-void test_pedals_ignores_invalid_can_data(void) {
-    mock_can_callback(10.0f, 0.0f, 0.0f, true);
+void test_pedals_set_brake(void) {
+    pedals_api_init();
 
-    // receive corrupted CAN frame with 150% throttle
-    mock_can_callback(150.0f, 0.0f, 0.0f, true);
+    // if pedals are unavailable, no change can be done
+    pedals_api_set_brake(0.1f);
+    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(0.0f, pedals_api_get_brake(), "Brake should be set to 0.0");
 
-    // value should remain 10% (last valid state)
-    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(10.0f, pedals_get_values()->throttle_pct, "Throttle percentage should not update with out-of-bounds values");
+    pedals_api_set_is_available(true);
+
+    pedals_api_set_brake(0.5f);
+    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(0.5f, pedals_api_get_brake(), "Brake should be set to 0.5");
+
+    pedals_api_set_brake(1.5f);
+    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(0.5f, pedals_api_get_brake(), "Brake should be set to 0.5 as 1.5 is over the limit");
+
+    pedals_api_set_brake(-0.5f);
+    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(0.5f, pedals_api_get_brake(), "Brake should be set to 0.5 as negative values are not valid");
+
+    //test limit cases
+    pedals_api_set_brake(1.0f);
+    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(1.0f, pedals_api_get_brake(), "Brake should be set to 1");
+
+    pedals_api_set_brake(0.0f);
+    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(0.0f, pedals_api_get_brake(), "Brake should be set to 0");
 }
 
 /*!
- * \brief Verifies that brake_is_pressed reacts correctly to the threshold.
+ * \brief Verify that the brake pressure setting is successfull only if value is in valid range
  */
-void test_pedals_brake_threshold_logic(void) {
-    pedals_set_is_available(true);
+void test_pedals_set_brake_pressure(void) {
+    pedals_api_init();
 
-    // below threshold (PEDALS_BRAKE_THRESHOLD_PCT = 5.0)
-    mock_can_callback(0.0f, 4.5f, 2.0f, true);
-    TEST_ASSERT_FALSE_MESSAGE(pedals_is_brake_pressed(), "Brake should report NOT pressed below threshold");
+    // if pedals are unavailable, no change can be done
+    pedals_api_set_brake_pressure(0.1f);
+    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(0.0f, pedals_api_get_brake_pressure(), "Brake pressure should be set to 0.0");
 
-    // above threshold
-    mock_can_callback(0.0f, 5.5f, 3.0f, true);
-    TEST_ASSERT_TRUE_MESSAGE(pedals_is_brake_pressed(), "Brake should report pressed above threshold");
+    pedals_api_set_is_available(true);
+
+    pedals_api_set_brake_pressure(40.0f);
+    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(40.0f, pedals_api_get_brake_pressure(), "Brake pressure should be set to 40.0");
+
+    pedals_api_set_brake_pressure(PEDALS_MAX_BRAKE_PRESSURE_BAR + 1);
+    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(40.0f, pedals_api_get_brake_pressure(), "Brake pressure should be set to 40.0 as PEDALS_MAX_BRAKE_PRESSURE_BAR + 1 is over the limit");
+
+    pedals_api_set_brake_pressure(-0.5f);
+    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(40.0f, pedals_api_get_brake_pressure(), "Brake pressure should be set to 40.0 as negative values are not valid");
+
+    //test limit cases
+    pedals_api_set_brake_pressure(PEDALS_MAX_BRAKE_PRESSURE_BAR);
+    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(PEDALS_MAX_BRAKE_PRESSURE_BAR, pedals_api_get_brake_pressure(), "Brake pressure should be set to PEDALS_MAX_BRAKE_PRESSURE_BAR");
+
+    pedals_api_set_brake_pressure(0.0f);
+    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(0.0f, pedals_api_get_brake_pressure(), "Brake pressure should be set to 0");
+}
+
+/*!
+ * \brief Verify that the torque value is fetched correctly even in the case the pedals are unavailable
+ */
+void test_pedals_get_requested_throttle_torque(void) {
+    pedals_api_init();
+
+    // pedals unavailable by default, torque should be zero
+    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(0.0f, pedals_api_get_requested_throttle_torque(), "Torque should be zero as pedals are NOT available");
+
+    pedals_api_set_is_available(true);
+
+    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(0.0f, pedals_api_get_requested_throttle_torque(), "Torque should be zero as throttle is set to zero");
+
+    // torque = PEDALS_MAX_TORQUE_NM (91.0f) * throttle
+    pedals_api_set_throttle(0.5f);
+    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(PEDALS_MAX_TORQUE_NM * 0.5f, pedals_api_get_requested_throttle_torque(), "Torque should be 5% of the max torque");
+
+    // check that even if throttle is different from zero, if pedals unavailable torque is set to zero
+    pedals_api_set_is_available(false);
+    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(0.0f, pedals_api_get_requested_throttle_torque(), "Torque should be zero as pedals are NOT available and throttle is greater than zero");
+}
+
+/*!
+ * \brief Verify that the brake is considered pressed only if over the threshold
+ */
+void test_pedals_is_brake_pressed(void) {
+    pedals_api_init();
+
+    TEST_ASSERT_FALSE_MESSAGE(pedals_api_is_brake_pressed(), "Brake is NOT pressed if pedals are unavailable");
+
+    pedals_api_set_is_available(true);
+
+    TEST_ASSERT_FALSE_MESSAGE(pedals_api_is_brake_pressed(), "Brake is NOT pressed if brake percentage is set to 0");
+
+    pedals_api_set_brake(PEDALS_BRAKE_THRESHOLD_PERCENTAGE - 0.01f);
+    TEST_ASSERT_FALSE_MESSAGE(pedals_api_is_brake_pressed(), "Brake is NOT pressed if brake percentage is below the threshold");
+
+    pedals_api_set_brake(PEDALS_BRAKE_THRESHOLD_PERCENTAGE);
+    TEST_ASSERT_TRUE_MESSAGE(pedals_api_is_brake_pressed(), "Brake is pressed if brake percentage is the same as the threshold value");
+
+    pedals_api_set_brake(0.8f);
+    TEST_ASSERT_TRUE_MESSAGE(pedals_api_is_brake_pressed(), "Brake is pressed if brake percentage is above the threshold");
 }
 
 // -------------------------------
 
 int main(void) {
     UNITY_BEGIN();
-    RUN_TEST(test_pedals_normal_driving_via_mock_can);
-    RUN_TEST(test_pedals_failsafe_when_can_offline);
-    RUN_TEST(test_pedals_ignores_invalid_can_data);
-    RUN_TEST(test_pedals_brake_threshold_logic);
+    RUN_TEST(test_pedals_init);
+    RUN_TEST(test_pedals_set_throttle);
+    RUN_TEST(test_pedals_set_brake);
+    RUN_TEST(test_pedals_set_brake_pressure);
+    RUN_TEST(test_pedals_get_requested_throttle_torque);
+    RUN_TEST(test_pedals_is_brake_pressed);
     return UNITY_END();
 }

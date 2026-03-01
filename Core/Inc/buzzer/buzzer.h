@@ -1,11 +1,10 @@
 /*!
  * \file buzzer.h
  * \author Dorijan Di Zepp
- * \date 14-02-2026
+ * \date 26-02-2026
  * \brief Hardware-agnostic module for buzzer timing logic.
  *
- * This module manages synchronous and asynchronous timing.
- * \note To switch hardware behaviors (e.g., from GPIO to PWM), re-initialize the module with new callbacks.
+ * This module defines the buzzer handler, the return codes and the callbacks signatures
  */
 
 #ifndef BUZZER_H
@@ -15,11 +14,11 @@
 #include <stdbool.h>
 
 // R2D defines
-#define BUZZER_RD2_SOUND_DURATION (3000) // Sound duration in ms for the RD2
+#define BUZZER_RD2_SOUND_DURATION_MS (3000) // Sound duration in ms for the RD2
 
 // ASSI defines
-#define BUZZER_ASSI_SOUND_DURATION (8000) // Sound duration in ms for the ASSI emergency
-#define BUZZER_ASSI_SOUND_DT (50)         // Duty cycle (%) for the ASSI emergency sound
+#define BUZZER_ASSI_SOUND_DURATION_MS (8000) // Sound duration in ms for the ASSI emergency
+#define BUZZER_ASSI_SOUND_DUTY_CYCLE (0.5f)  // Duty cycle for the ASSI emergency sound
 
 /*!
  * \brief Return codes for the buzzer module APIs.
@@ -30,16 +29,26 @@ enum BuzzerReturnCode {
     BUZZER_RC_PLAYING /*!< The buzzer is currently active in async mode */
 };
 
-/*!
- * \brief Signature for hardware-level buzzer control (On/Off).
+/*! 
+ * \brief Signature for enabling the buzzer with specific characteristics.
+ * \param frequency The target frequency in Hz.
+ * \param amplitude The amplitude (volume) value between 0 and 1.
+ * \note Regardless of the peripheral used, the two parameters have to be defined in the
+ * callback signature but in the function implementation these can be ignored (e.g. GPIO).
  */
-typedef enum BuzzerReturnCode (*buzzer_action_callback)(void);
+typedef enum BuzzerReturnCode (*buzzer_on_callback)(uint32_t frequency, float amplitude);
+
+/*!
+ * \brief Signature for disabling the buzzer. 
+ * No parameters needed for the 'Off' callback.
+ */
+typedef enum BuzzerReturnCode (*buzzer_off_callback)(void);
 
 /*!
  * \brief Signature for blocking delay functions (e.g., HAL_Delay).
  * \param duration_ms Time to stall execution in milliseconds.
  */
-typedef void (*buzzer_delay_callback)(uint32_t);
+typedef void (*buzzer_delay_callback)(uint32_t duration_ms);
 
 /*!
  * \brief Signature for fetching system uptime (e.g., HAL_GetTick).
@@ -53,78 +62,18 @@ typedef uint32_t (*buzzer_tick_callback)(void);
  * It stores the function pointers used to bridge the logic to the physical hardware.
  */
 struct BuzzerHandler {
-    buzzer_action_callback buzzer_on;     /*!< Callback to enable the buzzer pin */
-    buzzer_action_callback buzzer_off;    /*!< Callback to disable the buzzer pin */
-    buzzer_delay_callback buzzer_delay;   /*!< Callback for synchronous blocking delays */
-    buzzer_tick_callback buzzer_get_tick; /*!< Callback to retrieve elapsed time for async logic */
+    // callbacks
+    buzzer_on_callback buzzer_on;           /*!< Callback to enable the buzzer pin */
+    buzzer_off_callback buzzer_off;         /*!< Callback to disable the buzzer pin */
+    buzzer_delay_callback buzzer_play_sync; /*!< Callback for synchronous blocking delays */
+    buzzer_tick_callback buzzer_get_tick;   /*!< Callback to retrieve elapsed time for async logic */
 
+    // attributes
+    uint32_t frequency;  /*!< Desired buzzer frequency in Hz */
+    float amplitude;     /*!< Desired volume as a percentage (0-1) */
     uint32_t duration;   /*!< Target sound duration in milliseconds */
     uint32_t start_time; /*!< Timestamp (ms) when async play started */
     bool is_playing;     /*!< Flag indicating if buzzer is physically active */
 };
-
-/*!
- * \brief Links the logic to hardware and sets initial duration.
- * \note Re-calling this function while a buzzer is playing will stop the 
- * previous hardware action before linking the new ones.
- * \param buzzer_on Function to turn hardware ON.
- * \param buzzer_off Function to turn hardware OFF.
- * \param buzzer_delay Pointer to blocking delay (required for sync mode).
- * \param buzzer_get_tick Pointer to get system uptime (required for async mode).
- * \param duration Sound duration in milliseconds.
- * \return BUZZER_RC_OK on success, BUZZER_RC_ERROR if critical pointers are NULL.
- */
-enum BuzzerReturnCode buzzer_init(
-    buzzer_action_callback buzzer_on,
-    buzzer_action_callback buzzer_off,
-    buzzer_delay_callback buzzer_delay,
-    buzzer_tick_callback buzzer_get_tick,
-    uint32_t duration);
-
-/*!
- * \brief Plays the buzzer and blocks the CPU until duration elapses.
- * \warning Uses buzzer_delay. No other code will run.
- * \return BUZZER_RC_OK or BUZZER_RC_ERROR if not initialized.
- */
-enum BuzzerReturnCode buzzer_play_sync();
-
-/*!
- * \brief Starts the buzzer and returns control to the caller immediately.
- * \note Must call buzzer_async_update() periodically to stop the sound.
- * \return BUZZER_RC_OK or BUZZER_RC_ERROR if not initialized.
- */
-enum BuzzerReturnCode buzzer_start_async();
-
-/*!
- * \brief Manages the non-blocking countdown.
- * \note Should be called in the main loop. If the duration has passed, it 
- * automatically calls the buzzer off callback.
- * \return BUZZER_RC_PLAYING if still active, BUZZER_RC_OK if idle or just finished.
- */
-enum BuzzerReturnCode buzzer_async_update();
-
-/*!
- * \brief Forces the buzzer OFF and resets the internal "playing" state.
- * \return BUZZER_RC_OK.
- */
-enum BuzzerReturnCode buzzer_clear();
-
-/*!
- * \brief Updates the duration for the next play command.
- * \param duration Time in milliseconds.
- */
-void buzzer_set_duration(uint32_t duration);
-
-/*!
- * \brief Retrieves the current configured duration.
- * \return Duration in milliseconds.
- */
-uint32_t buzzer_get_duration();
-
-/**
- * \brief Check if the buzzer is playing a sound.
- * \return Boolean, true if the buzzer is playing, false otherwise
- */
-bool buzzer_is_playing();
 
 #endif
