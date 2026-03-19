@@ -13,33 +13,22 @@
 
 EAGLETRT_STATIC struct TsHandler ts_handler;
 
-enum TSReturnCode ts_api_init(ts_command_callback send_ts_command, ts_feedback_callback ts_status) {
-    if (send_ts_command == NULL || ts_status == NULL)
+enum TSReturnCode ts_api_init(ts_command_callback send_ts_command) {
+    if (send_ts_command == NULL)
         return TS_RC_ERROR;
 
     ts_handler.send_ts_command = send_ts_command;
-    ts_handler.ts_status = ts_status;
     return TS_RC_OK;
 }
 
 enum TSReturnCode ts_api_request_command(enum TSCommand command) {
     if (ts_handler.send_ts_command != NULL) {
-        if (ts_handler.send_ts_command(command) != TS_RC_OK)
-            return TS_RC_ERROR;
-
-        return TS_RC_OK;
+        return ts_handler.send_ts_command(command);
     }
     return TS_RC_ERROR;
 }
 
-enum TsStatus ts_api_get_status() {
-    if (ts_handler.ts_status == NULL)
-        return TS_STATUS_UNKNOWN;
-    return ts_handler.ts_status();
-}
-
-enum TSReturnCode ts_api_reset() {
+enum TSReturnCode ts_api_deinit() {
     ts_handler.send_ts_command = NULL;
-    ts_handler.ts_status = NULL;
     return TS_RC_OK;
 }

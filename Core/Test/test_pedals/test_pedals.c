@@ -14,7 +14,6 @@ void tearDown(void) {
  * \brief Verify that after initialization, the pedals availability is set to false
  */
 void test_pedals_init(void) {
-    pedals_api_init();
     TEST_ASSERT_FALSE_MESSAGE(pedals_api_get_is_available(), "Pedals should be unavailable after initialization");
 }
 
@@ -22,8 +21,6 @@ void test_pedals_init(void) {
  * \brief Verify that the throttle setting is successfull only if value is in valid range
  */
 void test_pedals_set_throttle(void) {
-    pedals_api_init();
-
     // if pedals are unavailable, no change can be done
     pedals_api_set_throttle(0.1f);
     TEST_ASSERT_EQUAL_FLOAT_MESSAGE(0.0f, pedals_api_get_throttle(), "Throttle should be set to 0.0");
@@ -51,8 +48,6 @@ void test_pedals_set_throttle(void) {
  * \brief Verify that the brake setting is successfull only if value is in valid range
  */
 void test_pedals_set_brake(void) {
-    pedals_api_init();
-
     // if pedals are unavailable, no change can be done
     pedals_api_set_brake(0.1f);
     TEST_ASSERT_EQUAL_FLOAT_MESSAGE(0.0f, pedals_api_get_brake(), "Brake should be set to 0.0");
@@ -80,8 +75,6 @@ void test_pedals_set_brake(void) {
  * \brief Verify that the brake pressure setting is successfull only if value is in valid range
  */
 void test_pedals_set_brake_pressure(void) {
-    pedals_api_init();
-
     // if pedals are unavailable, no change can be done
     pedals_api_set_brake_pressure(0.1f);
     TEST_ASSERT_EQUAL_FLOAT_MESSAGE(0.0f, pedals_api_get_brake_pressure(), "Brake pressure should be set to 0.0");
@@ -109,8 +102,6 @@ void test_pedals_set_brake_pressure(void) {
  * \brief Verify that the torque value is fetched correctly even in the case the pedals are unavailable
  */
 void test_pedals_get_requested_throttle_torque(void) {
-    pedals_api_init();
-
     // pedals unavailable by default, torque should be zero
     TEST_ASSERT_EQUAL_FLOAT_MESSAGE(0.0f, pedals_api_get_requested_throttle_torque(), "Torque should be zero as pedals are NOT available");
 
@@ -131,8 +122,6 @@ void test_pedals_get_requested_throttle_torque(void) {
  * \brief Verify that the brake is considered pressed only if over the threshold
  */
 void test_pedals_is_brake_pressed(void) {
-    pedals_api_init();
-
     TEST_ASSERT_FALSE_MESSAGE(pedals_api_is_brake_pressed(), "Brake is NOT pressed if pedals are unavailable");
 
     pedals_api_set_is_available(true);

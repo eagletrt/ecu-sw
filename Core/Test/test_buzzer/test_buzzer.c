@@ -1,268 +1,582 @@
 /**
  * \file test_buzzer.c
  * \author Dorijan Di Zepp
- * \date 26-02-2026
- * \brief Unit tests for checking the correct behavrio of the buzzer module
+ * \date 2026-03-19
+ * \brief Unit tests using CMock for the buzzer module
+ * \note Exhaustive testing of every buzzer instance (e.g R2D vs. ASSI) is 
+ * unnecessary for most logic tests, as the API uses the buzzer type as a 
+ * direct index into a common handler array; testing one instance validates 
+ * the shared logic.
  */
 
 #include <unity.h>
+#include <stdbool.h>
 #include "buzzer-api.h"
+#include "fff.h"
 #include "eagletrt-api.h"
 
-/* Mock state variables */
-static int mock_on_count = 0;
-static int mock_off_count = 0;
-static uint32_t mock_system_ticks = 0;
-static enum BuzzerReturnCode next_hw_return_status = BUZZER_RC_OK;
+DEFINE_FFF_GLOBALS;
 
-/* Mock implementations */
-enum BuzzerReturnCode mock_buzzer_on(uint32_t frequency, float amplitude) {
-    // both params are not used but are required to match function signature
-    // this is the typical case for GPIO while for PWM, such parameters would be used
-    // for the peripheral dynamic configuration
-    EAGLETRT_API_UNUSED(frequency);
-    EAGLETRT_API_UNUSED(amplitude);
-    mock_on_count++;
-    return next_hw_return_status;
-}
+// mocks for R2D buzzer
+FAKE_VALUE_FUNC(enum BuzzerReturnCode, buzzer_on_r2d, uint32_t, float);
+FAKE_VALUE_FUNC(enum BuzzerReturnCode, buzzer_off_r2d);
+FAKE_VALUE_FUNC(enum BuzzerReturnCode, buzzer_sync_r2d, uint32_t, float, uint32_t);
+FAKE_VALUE_FUNC(uint32_t, get_tick_r2d);
 
-enum BuzzerReturnCode mock_buzzer_off() {
-    mock_off_count++;
-    return next_hw_return_status;
-}
-
-void mock_play_sync(uint32_t ms) {
-    mock_system_ticks += ms;
-}
-
-uint32_t mock_get_tick() {
-    return mock_system_ticks;
-}
-
-// ------------------------------------------
+// mocks for ASSI buzzer
+FAKE_VALUE_FUNC(enum BuzzerReturnCode, buzzer_on_assi, uint32_t, float);
+FAKE_VALUE_FUNC(enum BuzzerReturnCode, buzzer_off_assi);
+FAKE_VALUE_FUNC(enum BuzzerReturnCode, buzzer_sync_assi, uint32_t, float, uint32_t);
+FAKE_VALUE_FUNC(uint32_t, get_tick_assi);
 
 void setUp(void) {
-    mock_on_count = 0;
-    mock_off_count = 0;
-    mock_system_ticks = 0;
-    next_hw_return_status = BUZZER_RC_OK;
+    // reset mocks state
+    RESET_FAKE(buzzer_on_r2d);
+    RESET_FAKE(buzzer_off_r2d);
+    RESET_FAKE(buzzer_sync_r2d);
+    RESET_FAKE(get_tick_r2d);
+
+    RESET_FAKE(buzzer_on_assi);
+    RESET_FAKE(buzzer_off_assi);
+    RESET_FAKE(buzzer_sync_assi);
+    RESET_FAKE(get_tick_assi);
+
+    FFF_RESET_HISTORY();
+
+    // initialize the API for both types
+    buzzer_api_init(BUZZER_TYPE_R2D, buzzer_on_r2d, buzzer_off_r2d, buzzer_sync_r2d, get_tick_r2d, BUZZER_RD2_SOUND_DURATION_MS);
+    buzzer_api_init(BUZZER_TYPE_ASSI, buzzer_on_assi, buzzer_off_assi, buzzer_sync_assi, get_tick_assi, BUZZER_ASSI_SOUND_DURATION_MS);
 }
 
 void tearDown(void) {
-    buzzer_api_reset();
+    buzzer_api_reset(BUZZER_TYPE_R2D);
+    buzzer_api_reset(BUZZER_TYPE_ASSI);
 }
 
-/* Test cases */
+/* --- Test Cases --- */
 
 /*!
- * \brief Ensures the module rejects NULL pointers for mandatory functions.
+ * \defgroup buzzer_api_init Tests for buzzer_api_init function
+ * \{
  */
-void test_buzzer_init(void) {
+
+void test_buzzer_api_init_unknown_type(void) {
+    // reset mock state to test number of calls
+    RESET_FAKE(buzzer_off_r2d);
+
+    TEST_ASSERT_EQUAL_MESSAGE(
+        BUZZER_RC_ERROR,
+        buzzer_api_init(99, buzzer_on_r2d, buzzer_off_r2d, buzzer_sync_r2d, get_tick_r2d, BUZZER_RD2_SOUND_DURATION_MS),
+        "Initialization should fail when passing an unknown buzzer type");
+
+    // check that buzzer off hasn't been called
+    TEST_ASSERT_EQUAL_MESSAGE(0, buzzer_off_r2d_fake.call_count, "Buzzer off should not be called when an unknown type is used");
+}
+
+void test_buzzer_api_init_null_callbacks(void) {
     enum BuzzerReturnCode rc;
 
-    rc = buzzer_api_init(NULL, mock_buzzer_off, mock_play_sync, mock_get_tick, 1000);
-    TEST_ASSERT_EQUAL_MESSAGE(BUZZER_RC_ERROR, rc, "Initialization should fail when 'on' callback is NULL");
+    rc = buzzer_api_init(BUZZER_TYPE_R2D, NULL, buzzer_off_r2d, buzzer_sync_r2d, get_tick_r2d, 1000);
+    TEST_ASSERT_EQUAL_MESSAGE(BUZZER_RC_ERROR, rc, "Init should fail when 'buzzer on' callback is NULL");
 
-    rc = buzzer_api_init(mock_buzzer_on, NULL, mock_play_sync, mock_get_tick, 1000);
-    TEST_ASSERT_EQUAL_MESSAGE(BUZZER_RC_ERROR, rc, "Initialization should fail when 'off' callback is NULL");
+    rc = buzzer_api_init(BUZZER_TYPE_R2D, buzzer_on_r2d, NULL, buzzer_sync_r2d, get_tick_r2d, 1000);
+    TEST_ASSERT_EQUAL_MESSAGE(BUZZER_RC_ERROR, rc, "Init should fail when 'buzzer off' callback is NULL");
 
-    rc = buzzer_api_init(mock_buzzer_on, mock_buzzer_off, NULL, mock_get_tick, 1000);
-    TEST_ASSERT_EQUAL_MESSAGE(BUZZER_RC_ERROR, rc, "Initialization should fail when 'play sync' callback is NULL");
+    rc = buzzer_api_init(BUZZER_TYPE_R2D, buzzer_on_r2d, buzzer_off_r2d, NULL, get_tick_r2d, 1000);
+    TEST_ASSERT_EQUAL_MESSAGE(BUZZER_RC_ERROR, rc, "Init should fail when 'buzzer sync' callback is NULL");
 
-    rc = buzzer_api_init(mock_buzzer_on, mock_buzzer_off, mock_play_sync, NULL, 1000);
-    TEST_ASSERT_EQUAL_MESSAGE(BUZZER_RC_ERROR, rc, "Initialization should fail when 'get_tick' callback is NULL");
-
-    rc = buzzer_api_init(mock_buzzer_on, mock_buzzer_off, mock_play_sync, mock_get_tick, 4000);
-    TEST_ASSERT_EQUAL_MESSAGE(BUZZER_RC_OK, rc, "Initialization should be successfull if all parameters are passed");
+    rc = buzzer_api_init(BUZZER_TYPE_R2D, buzzer_on_r2d, buzzer_off_r2d, buzzer_sync_r2d, NULL, 1000);
+    TEST_ASSERT_EQUAL_MESSAGE(BUZZER_RC_ERROR, rc, "Init should fail when 'get tick' callback is NULL");
 }
+
+void test_buzzer_api_init_failed_reset(void) {
+    // reset mock state to test number of calls
+    RESET_FAKE(buzzer_off_r2d);
+
+    buzzer_off_r2d_fake.return_val = BUZZER_RC_ERROR;
+    TEST_ASSERT_EQUAL_MESSAGE(BUZZER_RC_ERROR, buzzer_api_init(BUZZER_TYPE_R2D, buzzer_on_r2d, buzzer_off_r2d, buzzer_sync_r2d, get_tick_r2d, BUZZER_RD2_SOUND_DURATION_MS), "Initialization should fail if R2D off fails.");
+
+    // check that buzzer off has been called but failed
+    TEST_ASSERT_EQUAL_MESSAGE(1, buzzer_off_r2d_fake.call_count, "Buzzer off should have been called in order to return error");
+}
+
+void test_buzzer_api_init_call_off_once(void) {
+    TEST_ASSERT_EQUAL_MESSAGE(1, buzzer_off_r2d_fake.call_count, "Buzzer off should have been called exactly one time during initialization.");
+}
+
+/*! \} */
 
 /*!
- * \brief Ensure that play in sync works if all parameters are available
+ * \defgroup buzzer_api_get_duration Tests for buzzer_api_get_duration function
+ * \{
  */
-void test_buzzer_play_sync(void) {
-    enum BuzzerReturnCode rc;
 
-    // missing initialization will make fail the play
-    rc = buzzer_api_play_sync();
-    TEST_ASSERT_EQUAL_MESSAGE(BUZZER_RC_ERROR, rc, "Play sync should fail if callbacks are not correctly initialized");
-
-    buzzer_api_init(mock_buzzer_on, mock_buzzer_off, mock_play_sync, mock_get_tick, BUZZER_RD2_SOUND_DURATION_MS);
-    // at this point the handler have all values needed for playing in sync
-    rc = buzzer_api_play_sync();
-    TEST_ASSERT_EQUAL_MESSAGE(BUZZER_RC_OK, rc, "Play sync should complete after correct initialization");
-    TEST_ASSERT_EQUAL_MESSAGE(false, buzzer_api_is_playing(), "The buzzer should not be playing after sync call");
+void test_buzzer_api_get_duration_unknown_type(void) {
+    uint32_t duration;
+    TEST_ASSERT_EQUAL_MESSAGE(BUZZER_RC_ERROR, buzzer_api_get_duration(99, &duration), "Getter should return an error code when an unknown buzzer type is requested.");
 }
+
+void test_buzzer_api_get_duration_null_pointer(void) {
+    TEST_ASSERT_EQUAL_MESSAGE(BUZZER_RC_ERROR, buzzer_api_get_duration(BUZZER_TYPE_R2D, NULL), "Getter should return an error if the output pointer is NULL.");
+}
+
+/*! \} */
 
 /*!
- * \brief Verifies that sync mode respects hardware return codes.
+ * \defgroup buzzer_api_get_frequency Tests for buzzer_api_get_frequency function
+ * \{
  */
-void test_buzzer_play_sync_hw_fails(void) {
-    buzzer_api_init(mock_buzzer_on, mock_buzzer_off, mock_play_sync, mock_get_tick, 1000);
 
-    next_hw_return_status = BUZZER_RC_ERROR;
-    TEST_ASSERT_EQUAL_MESSAGE(BUZZER_RC_ERROR, buzzer_api_play_sync(), "Play sync should fail if the callback failed to turn on the buzzer");
+void test_buzzer_api_get_frequency_unknown_type(void) {
+    uint32_t frequency;
+    TEST_ASSERT_EQUAL_MESSAGE(BUZZER_RC_ERROR, buzzer_api_get_frequency(99, &frequency), "Getter should return an error code for invalid frequency requests.");
 }
+
+void test_buzzer_api_get_frequency_null_pointer(void) {
+    TEST_ASSERT_EQUAL_MESSAGE(BUZZER_RC_ERROR, buzzer_api_get_frequency(BUZZER_TYPE_R2D, NULL), "Getter should return an error if the output pointer is NULL.");
+}
+
+/*! \} */
 
 /*!
- * \brief Verify that the async play starts if all parameters are initialized corretly
+ * \defgroup buzzer_api_get_amplitude Tests for buzzer_api_get_amplitude function
+ * \{
  */
-void test_buzzer_start_async(void) {
-    enum BuzzerReturnCode rc;
 
-    // missing initialization will make fail the play
-    rc = buzzer_api_start_async();
-    TEST_ASSERT_EQUAL_MESSAGE(BUZZER_RC_ERROR, rc, "Start async should fail if callbacks are not correctly initialized");
-
-    // at this point the handler have all values needed for playing in sync
-    buzzer_api_init(mock_buzzer_on, mock_buzzer_off, mock_play_sync, mock_get_tick, BUZZER_ASSI_SOUND_DURATION_MS);
-    rc = buzzer_api_start_async();
-
-    //check that both frequency and amplitude are set to 0 as they were not modified
-    TEST_ASSERT_EQUAL_MESSAGE(0, buzzer_api_get_frequency(), "Frequency should be 0 if not modified after initialization");
-    TEST_ASSERT_EQUAL_MESSAGE(0, buzzer_api_get_amplitude(), "Amplitude should be 0 if not modified after initialization");
-
-    TEST_ASSERT_EQUAL_MESSAGE(BUZZER_RC_OK, rc, "Start async should start after correct initialization");
-    TEST_ASSERT_EQUAL_MESSAGE(true, buzzer_api_is_playing(), "The buzzer should be playing after async start");
+void test_buzzer_api_get_amplitude_unknown_type(void) {
+    float amplitude;
+    TEST_ASSERT_EQUAL_MESSAGE(BUZZER_RC_ERROR, buzzer_api_get_amplitude(99, &amplitude), "Getter should return an error code for invalid amplitude requests.");
 }
+
+void test_buzzer_api_get_amplitude_null_pointer(void) {
+    TEST_ASSERT_EQUAL_MESSAGE(BUZZER_RC_ERROR, buzzer_api_get_amplitude(BUZZER_TYPE_R2D, NULL), "Getter should return an error if the output pointer is NULL.");
+}
+
+/*! \} */
 
 /*!
- * \brief Verify that chaning frequency and amplitude can be done only if the buzzer is not
- * already playing and the new values are valid.
+ * \defgroup buzzer_api_set_duration Tests for buzzer_api_set_duration function
+ * \{
  */
-void test_buzzer_set_frequency_and_amplitude(void) {
-    enum BuzzerReturnCode rc;
-    buzzer_api_init(mock_buzzer_on, mock_buzzer_off, mock_play_sync, mock_get_tick, BUZZER_ASSI_SOUND_DURATION_MS);
-    buzzer_api_set_frequency(1000);
-    buzzer_api_set_amplitude(0.5f);
 
-    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(1000, buzzer_api_get_frequency(), "Frequency should be 1000 Hz");
-    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(0.5f, buzzer_api_get_amplitude(), "Amplitude should be 0.5");
-
-    // check that amplitude is not modified is it goes beyond limit
-    buzzer_api_set_amplitude(1.2f);
-    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(0.5f, buzzer_api_get_amplitude(), "Amplitude should be 0.5 and not 1.2 as it goes beyond the limit of 1.0");
-    buzzer_api_set_amplitude(-0.1f);
-    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(0.5f, buzzer_api_get_amplitude(), "Amplitude should be 0.5 and not 1.2 as it goes beyond the limit of 1.0");
-
-    // check limit cases for amplitude
-    buzzer_api_set_amplitude(0.0f);
-    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(0.0f, buzzer_api_get_amplitude(), "Amplitude should be 0.0");
-    buzzer_api_set_amplitude(1.0f);
-    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(1.0f, buzzer_api_get_amplitude(), "Amplitude should be 1.0");
+void test_buzzer_api_set_duration_unknown_type(void) {
+    TEST_ASSERT_EQUAL_MESSAGE(BUZZER_RC_ERROR, buzzer_api_set_duration(99, 2000), "It is not possible to set a duration for an unknown buzzer type.");
 }
+
+void test_buzzer_api_set_duration_positive_duration(void) {
+    uint32_t duration_ms = 4750;
+    uint32_t actual_duration = 0;
+
+    TEST_ASSERT_EQUAL_MESSAGE(BUZZER_RC_OK, buzzer_api_set_duration(BUZZER_TYPE_R2D, duration_ms), "If the buzzer type is known, it should be possible to change the duration.");
+
+    TEST_ASSERT_EQUAL(BUZZER_RC_OK, buzzer_api_get_duration(BUZZER_TYPE_R2D, &actual_duration));
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(duration_ms, actual_duration, "The buzzer duration should correspond to the latest value passed.");
+}
+
+void test_buzzer_api_set_duration_negative_duration(void) {
+    int32_t negative_duration = -1;
+    uint32_t expected_wrap = (uint32_t)negative_duration;
+    uint32_t actual_duration = 0;
+
+    TEST_ASSERT_EQUAL_MESSAGE(BUZZER_RC_OK, buzzer_api_set_duration(BUZZER_TYPE_R2D, (uint32_t)negative_duration), "The API should accept a value casted to the expected type.");
+
+    TEST_ASSERT_EQUAL(BUZZER_RC_OK, buzzer_api_get_duration(BUZZER_TYPE_R2D, &actual_duration));
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(expected_wrap, actual_duration, "The stored value should be the large positive unsigned equivalent (underflow).");
+}
+
+/*! \} */
 
 /*!
- * \brief Ensures that if the hardware fails to turn ON, the module 
- * returns an error and does not set the internal state to 'playing'.
+ * \defgroup buzzer_api_set_frequency Tests for buzzer_api_set_frequency function
+ * \{
  */
-void test_buzzer_start_async_hw_fails(void) {
-    buzzer_api_init(mock_buzzer_on, mock_buzzer_off, mock_play_sync, mock_get_tick, BUZZER_ASSI_SOUND_DURATION_MS);
 
-    next_hw_return_status = BUZZER_RC_ERROR; // force failure
-    enum BuzzerReturnCode rc = buzzer_api_start_async();
-
-    TEST_ASSERT_EQUAL_MESSAGE(BUZZER_RC_ERROR, rc, "start_async should return error if hardware 'on' fails");
-    // verify async_update doesn't think it's playing
-    TEST_ASSERT_EQUAL_MESSAGE(BUZZER_RC_OK, buzzer_api_async_update(), "async_update should be skipped if start_async failed");
+void test_buzzer_api_set_frequency_unknown_type(void) {
+    TEST_ASSERT_EQUAL_MESSAGE(BUZZER_RC_ERROR, buzzer_api_set_frequency(99, 1000), "It should not be possible to set a frequency for an unknown buzzer type.");
 }
+
+void test_buzzer_api_set_frequency_positive_value(void) {
+    uint32_t frequency_hz = 2500;
+    uint32_t actual_frequency = 0;
+
+    TEST_ASSERT_EQUAL_MESSAGE(BUZZER_RC_OK, buzzer_api_set_frequency(BUZZER_TYPE_R2D, frequency_hz), "If the buzzer type is known, it should be possible to change the frequency.");
+
+    TEST_ASSERT_EQUAL(BUZZER_RC_OK, buzzer_api_get_frequency(BUZZER_TYPE_R2D, &actual_frequency));
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(frequency_hz, actual_frequency, "The buzzer frequency should correspond to the latest value passed.");
+}
+
+void test_buzzer_api_set_frequency_negative_wrap_behavior(void) {
+    int32_t negative_freq = -440;
+    uint32_t expected_wrap = (uint32_t)negative_freq;
+    uint32_t actual_frequency = 0;
+
+    TEST_ASSERT_EQUAL_MESSAGE(BUZZER_RC_OK, buzzer_api_set_frequency(BUZZER_TYPE_R2D, (uint32_t)negative_freq), "The API should accept a value casted to the expected type.");
+
+    TEST_ASSERT_EQUAL(BUZZER_RC_OK, buzzer_api_get_frequency(BUZZER_TYPE_R2D, &actual_frequency));
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(expected_wrap, actual_frequency, "The stored frequency should be the large positive unsigned equivalent due to underflow.");
+}
+
+/*! \} */
 
 /*!
- * \brief Assure that the update function will stop the buzzer after the duration has elapsed
+ * \defgroup buzzer_api_set_amplitude Tests for buzzer_api_set_amplitude function
+ * \{
  */
-void test_buzzer_api_async_update(void) {
-    buzzer_api_init(mock_buzzer_on, mock_buzzer_off, mock_play_sync, mock_get_tick, 1000);
-    TEST_ASSERT_EQUAL_MESSAGE(BUZZER_RC_OK, buzzer_api_async_update(), "Sync update should return OK as the buzzer is not playing");
 
-    buzzer_api_start_async();
-    TEST_ASSERT_TRUE_MESSAGE(buzzer_api_is_playing(), "Buzzer should be in playing state after start async");
-    TEST_ASSERT_EQUAL_MESSAGE(BUZZER_RC_PLAYING, buzzer_api_async_update(), "Sync update should return PLAYING as the buzzer is playing");
-
-    //advance time manually in order to check if the next async update stops the buzzer
-    mock_system_ticks = 2000;
-    TEST_ASSERT_TRUE_MESSAGE(buzzer_api_is_playing(), "Even if time elapsed, without an update the buzzer has to still play");
-    TEST_ASSERT_EQUAL_MESSAGE(BUZZER_RC_OK, buzzer_api_async_update(), "Sync update should return OK to indicate that the buzzer have been stopped");
-    TEST_ASSERT_FALSE_MESSAGE(buzzer_api_is_playing(), "After time elapsed and update has been called, the buzzer should not be playing");
+void test_buzzer_api_set_amplitude_unknown_type(void) {
+    TEST_ASSERT_EQUAL_MESSAGE(BUZZER_RC_ERROR, buzzer_api_set_amplitude(99, 0.5f), "It should not be possible to set an amplitude for an unknown buzzer type.");
 }
+
+void test_buzzer_api_set_amplitude_in_range(void) {
+    float valid_amplitude = 0.75f;
+    float actual_amplitude = 0.0f;
+
+    TEST_ASSERT_EQUAL_MESSAGE(BUZZER_RC_OK, buzzer_api_set_amplitude(BUZZER_TYPE_R2D, valid_amplitude), "Amplitudes between 0.0 and 1.0 should be accepted.");
+
+    TEST_ASSERT_EQUAL(BUZZER_RC_OK, buzzer_api_get_amplitude(BUZZER_TYPE_R2D, &actual_amplitude));
+    TEST_ASSERT_FLOAT_WITHIN_MESSAGE(0.001f, valid_amplitude, actual_amplitude, "The stored amplitude should match the valid value passed.");
+}
+
+void test_buzzer_api_set_amplitude_boundary_cases(void) {
+    float actual_amplitude = 0.0f;
+
+    // Testing the lower limit (0.0)
+    TEST_ASSERT_EQUAL_MESSAGE(BUZZER_RC_OK, buzzer_api_set_amplitude(BUZZER_TYPE_R2D, 0.0f), "The boundary value 0.0 should be accepted.");
+
+    TEST_ASSERT_EQUAL(BUZZER_RC_OK, buzzer_api_get_amplitude(BUZZER_TYPE_R2D, &actual_amplitude));
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, 0.0f, actual_amplitude);
+
+    // Testing the upper limit (1.0)
+    TEST_ASSERT_EQUAL_MESSAGE(BUZZER_RC_OK, buzzer_api_set_amplitude(BUZZER_TYPE_R2D, 1.0f), "The boundary value 1.0 should be accepted.");
+
+    TEST_ASSERT_EQUAL(BUZZER_RC_OK, buzzer_api_get_amplitude(BUZZER_TYPE_R2D, &actual_amplitude));
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, 1.0f, actual_amplitude);
+}
+
+void test_buzzer_api_set_amplitude_out_of_range(void) {
+    // Testing just above 1.0
+    TEST_ASSERT_EQUAL_MESSAGE(BUZZER_RC_ERROR, buzzer_api_set_amplitude(BUZZER_TYPE_R2D, 1.01f), "Values greater than 1.0 should return an error.");
+
+    // Testing just below 0.0
+    TEST_ASSERT_EQUAL_MESSAGE(BUZZER_RC_ERROR, buzzer_api_set_amplitude(BUZZER_TYPE_R2D, -0.01f), "Negative values should return an error.");
+}
+
+/*! \} */
 
 /*!
- * \brief Assure that if the buzzer is currently playing, no state's attribute can be changed
- * unless the play duration elapses.
+ * \defgroup buzzer_api_is_playing Tests for buzzer_api_is_playing function
+ * \{
  */
-void test_buzzer_state_unmodified_while_playing(void) {
-    buzzer_api_init(mock_buzzer_on, mock_buzzer_off, mock_play_sync, mock_get_tick, 1000);
 
-    //modify the parameters while buzzer is not playing
-    buzzer_api_set_duration(2000);
-    buzzer_api_set_frequency(5500);
-    buzzer_api_set_amplitude(0.2);
-
-    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(2000, buzzer_api_get_duration(), "Duration should have changed if buzzer is not playing");
-    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(5500, buzzer_api_get_frequency(), "Frequency should have changed if buzzer is not playing");
-    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(0.2, buzzer_api_get_amplitude(), "Amplitude should have changed if buzzer is not playing");
-
-    buzzer_api_start_async();
-    //modify the parameters while buzzer is playing
-    buzzer_api_set_duration(1400);
-    buzzer_api_set_frequency(4000);
-    buzzer_api_set_amplitude(0.6);
-    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(2000, buzzer_api_get_duration(), "Duration should not have changed if buzzer is not playing");
-    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(5500, buzzer_api_get_frequency(), "Frequency should not have changed if buzzer is not playing");
-    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(0.2, buzzer_api_get_amplitude(), "Amplitude should not have changed if buzzer is not playing");
+void test_buzzer_api_is_playing_null_pointer(void) {
+    TEST_ASSERT_EQUAL_MESSAGE(BUZZER_RC_ERROR, buzzer_api_is_playing(BUZZER_TYPE_R2D, NULL), "The getter must return an error if the pointer is NULL.");
 }
+
+void test_buzzer_api_is_playing_unknown_type(void) {
+    bool is_playing;
+    TEST_ASSERT_EQUAL_MESSAGE(BUZZER_RC_ERROR, buzzer_api_is_playing(99, &is_playing), "Should return an error if an invalid buzzer type is provided.");
+}
+
+/*! \} */
 
 /*!
- * \brief If buzzer init is called while a buzzer is active, it must turn off the 
- * previous hardware before switching to the new configuration.
+ * \defgroup buzzer_api_play_sync Tests for buzzer_api_play_sync function
+ * \{
  */
-void test_buzzer_reinit_while_playing_stops_old_configuration(void) {
-    buzzer_api_init(mock_buzzer_on, mock_buzzer_off, mock_play_sync, mock_get_tick, BUZZER_RD2_SOUND_DURATION_MS);
-    buzzer_api_start_async();
 
-    TEST_ASSERT_EQUAL_INT_MESSAGE(1, mock_on_count, "Buzzer 'on' should have been called once");
-    mock_off_count = 0; // reset for check
-
-    // simulating a "mode" switch from R2D to ASSI
-    buzzer_api_init(mock_buzzer_on, mock_buzzer_off, mock_play_sync, mock_get_tick, BUZZER_ASSI_SOUND_DURATION_MS);
-
-    TEST_ASSERT_EQUAL_INT_MESSAGE(1, mock_off_count, "Re-initialization must stop active hardware");
-    TEST_ASSERT_FALSE_MESSAGE(buzzer_api_is_playing(), "An init should always stop the previous 'configuration'");
-    //check that module state is reset
-    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(BUZZER_ASSI_SOUND_DURATION_MS, buzzer_api_get_duration(), "Duration should have changed if buzzer is not playing");
-    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(0.0, buzzer_api_get_frequency(), "Frequency should have been cleared");
-    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(0.0, buzzer_api_get_amplitude(), "Amplitude should have been cleared");
+void test_buzzer_api_play_sync_unknown_type(void) {
+    TEST_ASSERT_EQUAL_MESSAGE(BUZZER_RC_ERROR, buzzer_api_play_sync(99), "Should return an error immediately if the buzzer type is invalid.");
 }
+
+void test_buzzer_api_play_sync_is_playing_flag_reset_on_callback_error(void) {
+    // Force the mocked callback to return an error
+    buzzer_sync_r2d_fake.return_val = BUZZER_RC_ERROR;
+
+    // We expect the function to return the error code from the callback
+    // but crucially, the 'is_playing' flag must be false afterward.
+    TEST_ASSERT_EQUAL(BUZZER_RC_ERROR, buzzer_api_play_sync(BUZZER_TYPE_R2D));
+
+    bool is_playing;
+    buzzer_api_is_playing(BUZZER_TYPE_R2D, &is_playing);
+    TEST_ASSERT_FALSE_MESSAGE(is_playing, "The is_playing flag must be false even if the callback returns an error.");
+}
+
+void test_buzzer_api_play_sync_verifies_hardware_call(void) {
+    // Setup values
+    uint32_t test_freq = 1000;
+    float test_amp = 0.8f;
+    uint32_t test_duration = 500;
+
+    buzzer_api_set_frequency(BUZZER_TYPE_R2D, test_freq);
+    buzzer_api_set_amplitude(BUZZER_TYPE_R2D, test_amp);
+    buzzer_api_set_duration(BUZZER_TYPE_R2D, test_duration);
+
+    // Reset the fake to ensure a clean call count
+    RESET_FAKE(buzzer_sync_r2d);
+    buzzer_sync_r2d_fake.return_val = BUZZER_RC_OK;
+
+    enum BuzzerReturnCode rc = buzzer_api_play_sync(BUZZER_TYPE_R2D);
+
+    TEST_ASSERT_EQUAL(BUZZER_RC_OK, rc);
+    TEST_ASSERT_EQUAL_MESSAGE(1, buzzer_sync_r2d_fake.call_count, "The sync callback should be called exactly once.");
+
+    // Verify parameters passed to the callback match what we set
+    TEST_ASSERT_EQUAL_UINT32(test_freq, buzzer_sync_r2d_fake.arg0_val);
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, test_amp, buzzer_sync_r2d_fake.arg1_val);
+    TEST_ASSERT_EQUAL_UINT32(test_duration, buzzer_sync_r2d_fake.arg2_val);
+}
+
+void test_buzzer_api_play_sync_multiple_calls(void) {
+    RESET_FAKE(buzzer_sync_r2d);
+
+    buzzer_api_play_sync(BUZZER_TYPE_R2D);
+    buzzer_api_play_sync(BUZZER_TYPE_R2D);
+    buzzer_api_play_sync(BUZZER_TYPE_R2D);
+
+    TEST_ASSERT_EQUAL_MESSAGE(3, buzzer_sync_r2d_fake.call_count, "The sync callback should track multiple sequential calls correctly.");
+}
+
+/*! \} */
 
 /*!
- * \brief Ensures that calling clear forces the hardware off regardless of time.
+ * \defgroup buzzer_api_play_async Tests buzzer_api_play_async function
+ * \{
  */
-void test_buzzer_reset(void) {
-    buzzer_api_init(mock_buzzer_on, mock_buzzer_off, mock_play_sync, mock_get_tick, 1000);
-    buzzer_api_start_async();
 
-    mock_off_count = 0;
-    buzzer_api_reset();
-
-    TEST_ASSERT_EQUAL_INT_MESSAGE(1, mock_off_count, "Buzzer reset must immediately trigger hardware 'off'");
-    TEST_ASSERT_EQUAL_MESSAGE(BUZZER_RC_ERROR, buzzer_api_async_update(), "Update after clear should return ERROR as callbacks are erased");
-    //check that module state is reset
-    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(0, buzzer_api_get_duration(), "Duration should have been cleared");
-    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(0.0, buzzer_api_get_frequency(), "Frequency should have been cleared");
-    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(0.0, buzzer_api_get_amplitude(), "Amplitude should have been cleared");
+void test_buzzer_api_play_async_unknown_type(void) {
+    TEST_ASSERT_EQUAL_MESSAGE(BUZZER_RC_ERROR, buzzer_api_play_async(99), "Should return ERROR for unknown buzzer types.");
 }
 
-// -------------------------------
+void test_buzzer_api_play_async_handles_timer_overflow(void) {
+    uint32_t duration = 100;
+    buzzer_api_set_duration(BUZZER_TYPE_ASSI, duration);
+
+    // Start just before overflow
+    get_tick_assi_fake.return_val = 0xFFFFFFF0;
+    buzzer_api_play_async(BUZZER_TYPE_ASSI);
+
+    // Tick after overflow (e.g., 50ms later)
+    get_tick_assi_fake.return_val = 0x00000022;
+
+    // (0x22 - 0xFFFFFFF0) as uint32_t correctly equals 50
+    TEST_ASSERT_EQUAL(BUZZER_RC_PLAYING, buzzer_api_play_async(BUZZER_TYPE_ASSI));
+}
+
+void test_buzzer_api_play_async_update(void) {
+    uint32_t duration = 100;
+    buzzer_api_set_duration(BUZZER_TYPE_ASSI, duration);
+
+    get_tick_assi_fake.return_val = 1000; // Current time is 1000ms
+    RESET_FAKE(buzzer_on_assi);
+
+    enum BuzzerReturnCode rc = buzzer_api_play_async(BUZZER_TYPE_ASSI);
+
+    TEST_ASSERT_EQUAL(BUZZER_RC_PLAYING, rc);
+    TEST_ASSERT_EQUAL(1, buzzer_on_assi_fake.call_count);
+
+    // Verify flag via getter
+    bool is_playing;
+    buzzer_api_is_playing(BUZZER_TYPE_ASSI, &is_playing);
+    TEST_ASSERT_TRUE(is_playing);
+
+    // simulate half playing
+    get_tick_assi_fake.return_val = 1050; // 50ms have passed (less than duration 100ms)
+
+    rc = buzzer_api_play_async(BUZZER_TYPE_ASSI);
+
+    TEST_ASSERT_EQUAL(BUZZER_RC_PLAYING, rc);
+    TEST_ASSERT_EQUAL(1, buzzer_on_assi_fake.call_count); // Should NOT call 'on' again
+
+    // simulate pass of duration
+    get_tick_assi_fake.return_val = 1100; // 100ms have passed
+    RESET_FAKE(buzzer_off_assi);
+
+    rc = buzzer_api_play_async(BUZZER_TYPE_ASSI);
+
+    TEST_ASSERT_EQUAL(BUZZER_RC_OK, rc);
+    TEST_ASSERT_EQUAL(1, buzzer_off_assi_fake.call_count);
+
+    buzzer_api_is_playing(BUZZER_TYPE_ASSI, &is_playing);
+    TEST_ASSERT_FALSE(is_playing);
+}
+
+void test_buzzer_api_play_async_params_unchanged_during_playback(void) {
+    buzzer_api_set_duration(BUZZER_TYPE_ASSI, 100);
+
+    // Start at 1000Hz / 0.5f
+    buzzer_api_set_frequency(BUZZER_TYPE_ASSI, 1000);
+    buzzer_api_set_amplitude(BUZZER_TYPE_ASSI, 0.5f);
+    get_tick_assi_fake.return_val = 1000;
+
+    buzzer_api_play_async(BUZZER_TYPE_ASSI); // Hardware gets 1000Hz, 0.5f
+
+    // Update to new values mid-play
+    buzzer_api_set_frequency(BUZZER_TYPE_ASSI, 2000);
+    buzzer_api_set_amplitude(BUZZER_TYPE_ASSI, 0.9f);
+
+    get_tick_assi_fake.return_val = 1050;
+    buzzer_api_play_async(BUZZER_TYPE_ASSI);
+
+    // Call count is still 1 (no re-trigger) and args are still the OLD ones
+    TEST_ASSERT_EQUAL(1, buzzer_on_assi_fake.call_count);
+    TEST_ASSERT_EQUAL_UINT32(1000, buzzer_on_assi_fake.arg0_val);
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, 0.5f, buzzer_on_assi_fake.arg1_val);
+}
+
+/*! \} */
+
+/*!
+ * \defgroup buzzer_api_reset Test for buzzer_api_reset function
+ * \{
+ */
+
+void test_buzzer_api_reset_unknown_type(void) {
+    TEST_ASSERT_EQUAL_MESSAGE(BUZZER_RC_ERROR, buzzer_api_reset(99), "Reset should fail for unknown buzzer types.");
+}
+
+void test_buzzer_api_reset_fails_if_hardware_fails(void) {
+    // Force the hardware 'off' command to return an error
+    buzzer_off_assi_fake.return_val = BUZZER_RC_ERROR;
+
+    // The reset function should propagate this error
+    TEST_ASSERT_EQUAL_MESSAGE(BUZZER_RC_ERROR, buzzer_api_reset(BUZZER_TYPE_ASSI), "Reset should return ERROR if the hardware buzzer_off call fails.");
+}
+
+void test_buzzer_api_reset_stops_playing(void) {
+    buzzer_api_set_duration(BUZZER_TYPE_ASSI, 500);
+    buzzer_api_set_frequency(BUZZER_TYPE_ASSI, 1000);
+    buzzer_api_set_amplitude(BUZZER_TYPE_ASSI, 0.5f);
+
+    get_tick_assi_fake.return_val = 1000;
+    buzzer_api_play_async(BUZZER_TYPE_ASSI);
+
+    // Perform reset mid-play
+    RESET_FAKE(buzzer_off_assi);
+    enum BuzzerReturnCode rc = buzzer_api_reset(BUZZER_TYPE_ASSI);
+
+    // Verify hardware was turned off
+    TEST_ASSERT_EQUAL(BUZZER_RC_OK, rc);
+    TEST_ASSERT_EQUAL_MESSAGE(1, buzzer_off_assi_fake.call_count, "Hardware should be silenced during reset.");
+
+    // Verify internal state was zeroed
+    uint32_t freq, dur;
+    float amp;
+    bool is_playing;
+
+    buzzer_api_get_frequency(BUZZER_TYPE_ASSI, &freq);
+    buzzer_api_get_duration(BUZZER_TYPE_ASSI, &dur);
+    buzzer_api_get_amplitude(BUZZER_TYPE_ASSI, &amp);
+    buzzer_api_is_playing(BUZZER_TYPE_ASSI, &is_playing);
+
+    TEST_ASSERT_EQUAL(0, freq);
+    TEST_ASSERT_EQUAL(0, dur);
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, 0.0f, amp);
+    TEST_ASSERT_FALSE(is_playing);
+}
+
+/*! \} */
 
 int main(void) {
     UNITY_BEGIN();
-    RUN_TEST(test_buzzer_init);
-    RUN_TEST(test_buzzer_play_sync);
-    RUN_TEST(test_buzzer_play_sync_hw_fails);
-    RUN_TEST(test_buzzer_start_async);
-    RUN_TEST(test_buzzer_set_frequency_and_amplitude);
-    RUN_TEST(test_buzzer_start_async_hw_fails);
-    RUN_TEST(test_buzzer_api_async_update);
-    RUN_TEST(test_buzzer_state_unmodified_while_playing);
-    RUN_TEST(test_buzzer_reinit_while_playing_stops_old_configuration);
-    RUN_TEST(test_buzzer_reset);
+
+    /*!
+    * \addtogroup buzzer_api_init
+    * \{
+    */
+    RUN_TEST(test_buzzer_api_init_unknown_type);
+    RUN_TEST(test_buzzer_api_init_null_callbacks);
+    RUN_TEST(test_buzzer_api_init_failed_reset);
+    RUN_TEST(test_buzzer_api_init_call_off_once);
+    /*! \} */
+
+    /*!
+    * \addtogroup buzzer_api_get_duration
+    * \{
+    */
+    RUN_TEST(test_buzzer_api_get_duration_unknown_type);
+    RUN_TEST(test_buzzer_api_get_duration_null_pointer);
+    /*! \} */
+
+    /*!
+    * \addtogroup buzzer_api_get_frequency
+    * \{
+    */
+    RUN_TEST(test_buzzer_api_get_frequency_unknown_type);
+    RUN_TEST(test_buzzer_api_get_frequency_null_pointer);
+    /*! \} */
+
+    /*!
+    * \addtogroup buzzer_api_get_amplitude
+    * \{
+    */
+    RUN_TEST(test_buzzer_api_get_amplitude_unknown_type);
+    RUN_TEST(test_buzzer_api_get_amplitude_null_pointer);
+    /*! \} */
+
+    /*!
+    * \addtogroup buzzer_api_set_duration
+    * \{
+    */
+    RUN_TEST(test_buzzer_api_set_duration_unknown_type);
+    RUN_TEST(test_buzzer_api_set_duration_positive_duration);
+    RUN_TEST(test_buzzer_api_set_duration_negative_duration);
+    /*! \} */
+
+    /*!
+    * \addtogroup buzzer_api_set_frequency
+    * \{
+    */
+    RUN_TEST(test_buzzer_api_set_frequency_unknown_type);
+    RUN_TEST(test_buzzer_api_set_frequency_positive_value);
+    RUN_TEST(test_buzzer_api_set_frequency_negative_wrap_behavior);
+    /*! \} */
+
+    /*!
+    * \addtogroup buzzer_api_set_amplitude
+    * \{
+    */
+    RUN_TEST(test_buzzer_api_set_amplitude_unknown_type);
+    RUN_TEST(test_buzzer_api_set_amplitude_in_range);
+    RUN_TEST(test_buzzer_api_set_amplitude_boundary_cases);
+    RUN_TEST(test_buzzer_api_set_amplitude_out_of_range);
+    /*! \} */
+
+    /*!
+    * \addtogroup buzzer_api_is_playing
+    * \{
+    */
+    RUN_TEST(test_buzzer_api_is_playing_null_pointer);
+    RUN_TEST(test_buzzer_api_is_playing_unknown_type);
+    /*! \} */
+
+    /*!
+    * \addtogroup buzzer_api_play_sync
+    * \{
+    */
+    RUN_TEST(test_buzzer_api_play_sync_unknown_type);
+    RUN_TEST(test_buzzer_api_play_sync_is_playing_flag_reset_on_callback_error);
+    RUN_TEST(test_buzzer_api_play_sync_verifies_hardware_call);
+    RUN_TEST(test_buzzer_api_play_sync_multiple_calls);
+    /*! \} */
+
+    /*!
+    * \defgroup buzzer_api_play_async
+    * \{
+    */
+    RUN_TEST(test_buzzer_api_play_async_unknown_type);
+    RUN_TEST(test_buzzer_api_play_async_handles_timer_overflow);
+    RUN_TEST(test_buzzer_api_play_async_update);
+    RUN_TEST(test_buzzer_api_play_async_params_unchanged_during_playback);
+    /*! \} */
+
+    /*!
+    * \defgroup buzzer_api_reset Test for buzzer_api_reset function
+    * \{
+    */
+    RUN_TEST(test_buzzer_api_reset_unknown_type);
+    RUN_TEST(test_buzzer_api_reset_fails_if_hardware_fails);
+    RUN_TEST(test_buzzer_api_reset_stops_playing);
+    /*! \} */
+
     return UNITY_END();
 }

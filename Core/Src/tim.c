@@ -139,7 +139,7 @@ void HAL_TIM_Base_MspDeInit(TIM_HandleTypeDef *tim_baseHandle) {
 
 /* USER CODE BEGIN 1 */
 enum BuzzerReturnCode tim_buzzer_on(uint32_t frequency, float amplitude) {
-    //NOTE: because the buzzer characteristics are still not known
+    // TODO: because the buzzer characteristics are still not known
     // there is no check about the requested frequency and amplitude
 
     // calculate ARR based on target frequency
@@ -171,5 +171,14 @@ enum BuzzerReturnCode tim_buzzer_off() {
         return BUZZER_RC_ERROR;
     }
     return BUZZER_RC_OK;
+}
+
+enum BuzzerReturnCode tim_buzzer_play_sync(uint32_t frequency, float amplitude, uint32_t duration) {
+    if (tim_buzzer_on(frequency, amplitude) == BUZZER_RC_ERROR)
+        return BUZZER_RC_ERROR;
+
+    HAL_Delay(duration);
+
+    return tim_buzzer_off();
 }
 /* USER CODE END 1 */

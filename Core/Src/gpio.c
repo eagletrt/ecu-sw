@@ -78,13 +78,22 @@ enum BuzzerReturnCode gpio_buzzer_on(uint32_t frequency, float amplitude) {
     EAGLETRT_API_UNUSED(amplitude);
 
     HAL_GPIO_WritePin(RTD_BUZZER_GPIO_Port, RTD_BUZZER_Pin, GPIO_PIN_SET);
-    //GPIO doesn't return any code
+    // GPIO doesn't return any code
     return BUZZER_RC_OK;
 }
 
 enum BuzzerReturnCode gpio_buzzer_off() {
     HAL_GPIO_WritePin(RTD_BUZZER_GPIO_Port, RTD_BUZZER_Pin, GPIO_PIN_RESET);
-    //GPIO doesn't return any code
+    // GPIO doesn't return any code
     return BUZZER_RC_OK;
+}
+
+enum BuzzerReturnCode gpio_buzzer_play_sync(uint32_t frequency, float amplitude, uint32_t duration) {
+    if (gpio_buzzer_on(frequency, amplitude) == BUZZER_RC_ERROR)
+        return BUZZER_RC_ERROR;
+
+    HAL_Delay(duration);
+
+    return gpio_buzzer_off();
 }
 /* USER CODE END 2 */

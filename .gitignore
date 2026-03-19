@@ -375,9 +375,7 @@ CMakeUserPresets.json
 *-prefix/
 
 ### Doxygen ###
-Doxyfile
-html
-latex
+docs
 
 # End of GITIGNORE.IO
 

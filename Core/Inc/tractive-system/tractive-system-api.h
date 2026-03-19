@@ -16,10 +16,9 @@
 /*!
  * \brief Initializes the TS handler and internal variables.
  * \param send_ts_command Hardware-level callback for issuing TS commands.
- * \param ts_status Hardware-level callback for retrieving the TS current status.
  * \return TS_RC_OK if initialization succeeded, TS_RC_ERROR if the callback is NULL.
  */
-enum TSReturnCode ts_api_init(ts_command_callback send_ts_command, ts_feedback_callback ts_status);
+enum TSReturnCode ts_api_init(ts_command_callback send_ts_command);
 
 /*!
  * \brief Sends a physical command to the hardware.
@@ -30,15 +29,9 @@ enum TSReturnCode ts_api_init(ts_command_callback send_ts_command, ts_feedback_c
 enum TSReturnCode ts_api_request_command(enum TSCommand command);
 
 /*!
- * \brief Returns the current status of the Tractive System.
- * \return The current status of the TS
- */
-enum TsStatus ts_api_get_status();
-
-/*!
  * \brief Resets the handler's callback to NULL.
  * \return TS_RC_OK after the callbacks are set to NULL.
  */
-enum TSReturnCode ts_api_reset();
+enum TSReturnCode ts_api_deinit();
 
 #endif

@@ -29,6 +29,23 @@ enum BuzzerReturnCode {
     BUZZER_RC_PLAYING /*!< The buzzer is currently active in async mode */
 };
 
+/*!
+ * \brief Selection of the buzzer to be used to play the sound.
+ * This enum serves as the index for the internal handler array. 
+ * \warning BUZZER_TYPE_COUNT must always remain the final element in this enum. 
+ * It is used by the compiler to automatically size the internal handler array 
+ * and by the module to perform boundary checks.
+ * \note Each entry in this list allocates a dedicated `BuzzerHandler` structure 
+ * in memory. To optimize memory usage, ensure that any unused buzzer types are 
+ * commented out or removed so that BUZZER_TYPE_COUNT correctly reflects 
+ * only the active buzzer instances.
+ */
+enum BuzzerType {
+    BUZZER_TYPE_R2D,  /*!< Buzzer used for R2D sound generation */
+    BUZZER_TYPE_ASSI, /*!< Buzzer used for ASSI sound generation */
+    BUZZER_TYPE_COUNT /*!< Sentinel value: total number of supported buzzers */
+};
+
 /*! 
  * \brief Signature for enabling the buzzer with specific characteristics.
  * \param frequency The target frequency in Hz.
@@ -45,10 +62,14 @@ typedef enum BuzzerReturnCode (*buzzer_on_callback)(uint32_t frequency, float am
 typedef enum BuzzerReturnCode (*buzzer_off_callback)(void);
 
 /*!
- * \brief Signature for blocking delay functions (e.g., HAL_Delay).
+ * \brief Signature for playing the buzzer in blocking way.
+ * \param frequency The target frequency in Hz.
+ * \param amplitude The amplitude (volume) value between 0 and 1.
  * \param duration_ms Time to stall execution in milliseconds.
+ * \note Regardless of the peripheral used, the two parameters have to be defined in the
+ * callback signature but in the function implementation these can be ignored (e.g. GPIO).
  */
-typedef void (*buzzer_delay_callback)(uint32_t duration_ms);
+typedef enum BuzzerReturnCode (*buzzer_delay_callback)(uint32_t frequency, float amplitude, uint32_t duration_ms);
 
 /*!
  * \brief Signature for fetching system uptime (e.g., HAL_GetTick).
@@ -62,13 +83,11 @@ typedef uint32_t (*buzzer_tick_callback)(void);
  * It stores the function pointers used to bridge the logic to the physical hardware.
  */
 struct BuzzerHandler {
-    // callbacks
     buzzer_on_callback buzzer_on;           /*!< Callback to enable the buzzer pin */
     buzzer_off_callback buzzer_off;         /*!< Callback to disable the buzzer pin */
-    buzzer_delay_callback buzzer_play_sync; /*!< Callback for synchronous blocking delays */
+    buzzer_delay_callback buzzer_play_sync; /*!< Callback for synchronous blocking playing */
     buzzer_tick_callback buzzer_get_tick;   /*!< Callback to retrieve elapsed time for async logic */
 
-    // attributes
     uint32_t frequency;  /*!< Desired buzzer frequency in Hz */
     float amplitude;     /*!< Desired volume as a percentage (0-1) */
     uint32_t duration;   /*!< Target sound duration in milliseconds */

@@ -54,6 +54,14 @@ enum BuzzerReturnCode tim_buzzer_on(uint32_t frequency, float amplitude);
  * \brief Direct hardware access to switch off the buzzer.
  */
 enum BuzzerReturnCode tim_buzzer_off();
+
+/*!
+ * \brief Direct hardware access to activate the buzzer and play it in sync mode.
+ * \param frequency The target frequency in Hz.
+ * \param amplitude The amplitude (volume) value between 0 and 1.
+ * \param duration The total duration of the play before stopping the buzzer.
+ */
+enum BuzzerReturnCode tim_buzzer_play_sync(uint32_t frequency, float amplitude, uint32_t duration);
 /* USER CODE END Prototypes */
 
 #ifdef __cplusplus
