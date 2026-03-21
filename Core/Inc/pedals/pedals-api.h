@@ -1,8 +1,9 @@
 /*!
  * \file pedals-api.h
  * \author Dorijan Di Zepp
- * \date 26-02-2026
- * \brief This file defines the pedals module's API.
+ * \date 2026-03-21
+ * \brief This module provides the APIs for the pedals module
+ * \note All percentages are normalized (0.0f to 1.0f). 
  */
 
 #ifndef PEDALS_API_H
@@ -11,92 +12,78 @@
 #include "pedals.h"
 
 /*!
- * \brief Initializes the pedals internal handler.
+ * \brief Initializes the pedals internal handler and resets all percentages to zero.
+ * \return PEDALS_RC_OK on successful initialization.
  */
 enum PedalsReturnCode pedals_api_init();
 
 /*!
- * \brief Allows the setting of the throttle percentage.
- * \note The function checks if the throttle is in a valid range;
- * otherwise, the percentage will be left unchanged.
- * \note If the pedal system is marked as unavailable (is_available == false), 
- * the value will not be updated.
- * \param throttle The throttle position in percentage (0.0f to 1.0f).
- * \return PEDALS_RC_OK on success, PEDALS_RC_ERROR in case of any error.
+ * \brief Sets the current throttle percentage.
+ * \note The value will remain unchanged if the input is out of range (0.0f to 1.0f).
+ * \param[in] throttle The throttle position in percentage (0.0f to 1.0f).
+ * \retval PEDALS_RC_OK on success.
+ * \retval PEDALS_RC_ERROR if the value is out of range or system is unavailable.
  */
 enum PedalsReturnCode pedals_api_set_throttle(float throttle);
 
 /*!
- * \brief Allows the setting of the brake percentage.
- * \note The function checks if the brake is in a valid range;
- * otherwise, the percentage will be left unchanged.
- * \note If the pedal system is marked as unavailable (is_available == false), 
- * the value will not be updated.
- * \param brake The brake position in percentage (0.0f to 1.0f).
- * \return PEDALS_RC_OK on success, PEDALS_RC_ERROR in case of any error.
+ * \brief Sets the current brake percentage.
+ * \note The value will remain unchanged if the input is out of range (0.0f to 1.0f).
+ * \param[in] brake The brake position in percentage (0.0f to 1.0f).
+ * \retval PEDALS_RC_OK on success.
+ * \retval PEDALS_RC_ERROR if the value is out of range or system is unavailable.
  */
 enum PedalsReturnCode pedals_api_set_brake(float brake);
 
 /*!
- * \brief Allows the setting of the brake pressure.
- * \note The function checks if the pressure is in a valid range;
- * otherwise, the value will be left unchanged.
- * \note If the pedal system is marked as unavailable (is_available == false), 
- * the value will not be updated.
- * \param brake_pressure The physical brake pressure value.
- * \return PEDALS_RC_OK on success, PEDALS_RC_ERROR in case of any error.
+ * \brief Sets the physical brake pressure.
+ * \note The value will remain unchanged if the input is negative.
+ * \param[in] brake_pressure The physical brake pressure value in bars.
+ * \retval PEDALS_RC_OK on success.
+ * \retval PEDALS_RC_ERROR if the value is invalid or system is unavailable.
  */
 enum PedalsReturnCode pedals_api_set_brake_pressure(float brake_pressure);
 
 /*!
- * \brief Allows to modify the availability state of the pedals.
- * \param is_available Health status of the pedal board connection.
- * \return PEDALS_RC_OK on success, PEDALS_RC_ERROR in case of any error.
+ * \brief Calculates the driver's requested motor torque based on throttle position.
+ * \details Maps throttle (0.0 to 1.0) to torque (0 to PEDALS_MAX_TORQUE).
+ * \param[out] out Pointer to the float variable where the calculated torque (Nm) will be stored.
+ * \retval PEDALS_RC_OK on success.
+ * \retval PEDALS_RC_ERROR if the 'out' pointer is NULL.
  */
-enum PedalsReturnCode pedals_api_set_is_available(bool is_available);
+enum PedalsReturnCode pedals_api_get_requested_throttle_torque(float *out);
 
 /*!
- * \brief Maps current throttle percentage to the driver's requested motor torque.
- * \details This calculates the raw torque request based on the throttle position 
- * and the maximum motor torque (PEDALS_MAX_TORQUE). 
- * \note Safety limits (e.g., 80kW power limit) must be applied by 
- * the inverter control.
- * \return float Desired torque in Nm. Returns 0.0f if the pedals are unavailable.
+ * \brief Determines if the brake pedal is sufficiently pressed for stationary holding.
+ * \details Compares current brake values against a predefined safety threshold.
+ * \param[out] out Pointer to the boolean variable where the result will be stored.
+ * \retval PEDALS_RC_OK on success.
+ * \retval PEDALS_RC_ERROR if the 'out' pointer is NULL.
  */
-float pedals_api_get_requested_throttle_torque();
+enum PedalsReturnCode pedals_api_is_brake_pressed(bool *out);
 
 /*!
- * \brief Checks if the brake pedal is sufficiently pressed.
- * \details Uses a predefined threshold to determine if the 
- * driver is holding the car stationary.
- * \return true if the brake is pressed and the module is available.
- * \note Returns false if the system is unavailable to prevent accidental 
- * R2D activation in the event of a communication loss.
+ * \brief Retrieves the latest valid throttle percentage.
+ * \param[out] out Pointer to the variable where the throttle percentage (0.0f - 1.0f) will be stored.
+ * \retval PEDALS_RC_OK on success.
+ * \retval PEDALS_RC_ERROR if the 'out' pointer is NULL.
  */
-bool pedals_api_is_brake_pressed();
+enum PedalsReturnCode pedals_api_get_throttle(float *out);
 
 /*!
- * \brief Return the latest throttle percentage received.
- * \return float value indicating the position of the throttle pedal in percentage
+ * \brief Retrieves the latest valid brake percentage.
+ * \param[out] out Pointer to the variable where the brake percentage (0.0f - 1.0f) will be stored.
+ * \retval PEDALS_RC_OK on success.
+ * \retval PEDALS_RC_ERROR if the 'out' pointer is NULL.
  */
-float pedals_api_get_throttle();
+enum PedalsReturnCode pedals_api_get_brake(float *out);
 
 /*!
- * \brief Return the latest brake percentage received.
- * \return float value indicating the position of the brake pedal in percentage
+ * \brief Retrieves the latest valid brake pressure.
+ * \param[out] out Pointer to the variable where the pressure (in bars) will be stored.
+ * \retval PEDALS_RC_OK on success.
+ * \retval PEDALS_RC_ERROR if the 'out' pointer is NULL.
  */
-float pedals_api_get_brake();
-
-/*!
- * \brief Return the latest brake pressure received.
- * \return float value indicating the pressure generated by the brake pedal in bars.
- */
-float pedals_api_get_brake_pressure();
-
-/*!
- * \brief Function to determine the availability of the pedals
- * \return true if the pedals are availabele, false otherwise
- */
-bool pedals_api_get_is_available();
+enum PedalsReturnCode pedals_api_get_brake_pressure(float *out);
 
 #endif

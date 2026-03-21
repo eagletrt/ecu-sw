@@ -1,12 +1,11 @@
 /*!
  * \file buzzer-api.c
  * \author Dorijan Di Zepp
- * \date 26-02-2026
+ * \date 2026-03-20
  * \brief Hardware-agnostic module for buzzer timing logic.
  *
  * This module manages synchronous and asynchronous timing by implementing the 
  * module's API defined in buzzer-api.h.
- * \note To switch hardware behaviors (e.g., from GPIO to PWM), re-initialize the module with new callbacks.
  */
 
 #include "buzzer-api.h"
@@ -31,7 +30,8 @@ EAGLETRT_STATIC struct BuzzerHandler buzzer_handlers[BUZZER_TYPE_COUNT];
  */
 bool prv_is_buzzer_type_valid(enum BuzzerType buzzer_type) {
     // verify that the buzzer type is valid and it doesn't exceed the handler size
-    return (buzzer_type < BUZZER_TYPE_COUNT);
+    // casting to uint32_t makes negative values wrap to huge positive values
+    return ((uint32_t)buzzer_type < (uint32_t)BUZZER_TYPE_COUNT);
 }
 
 enum BuzzerReturnCode buzzer_api_init(

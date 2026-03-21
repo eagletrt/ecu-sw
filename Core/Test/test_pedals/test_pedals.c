@@ -1,5 +1,17 @@
+/**
+ * \file test_pedals.c
+ * \author Dorijan Di Zepp
+ * \date 2026-03-21
+ * \brief Unit tests for the pedals module
+ * \note Even if the module itself is pretty simple, it is important to make sure
+ * that the handler correctly updates the internal state within defined physical limits (e.g. max pressure),
+ * out-of-range values are rejected adn the last valid state is preserved.
+ */
+
 #include <unity.h>
+#include <stdbool.h>
 #include "pedals-api.h"
+#include "eagletrt-api.h"
 
 void setUp(void) {
     pedals_api_init();
@@ -11,142 +23,274 @@ void tearDown(void) {
 /* --- Test Cases --- */
 
 /*!
- * \brief Verify that after initialization, the pedals availability is set to false
+ * \defgroup pedals_api_init Tests for pedals_api_init function
+ * \{
  */
-void test_pedals_init(void) {
-    TEST_ASSERT_FALSE_MESSAGE(pedals_api_get_is_available(), "Pedals should be unavailable after initialization");
+
+void test_pedals_api_init_initial_state(void) {
+    float throttle, brake, brake_pressure;
+
+    pedals_api_get_throttle(&throttle);
+    pedals_api_get_brake(&brake);
+    pedals_api_get_brake_pressure(&brake_pressure);
+
+    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(0.0f, throttle, "Throttle should be set to zero after initialization");
+    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(0.0f, brake, "Brake should be set to zero after initialization");
+    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(0.0f, brake_pressure, "Brake pressure should be set to zero after initialization");
 }
 
+/*! \} */
+
 /*!
- * \brief Verify that the throttle setting is successfull only if value is in valid range
+ * \defgroup pedals_api_set_throttle Tests for pedals_api_set_throttle function
+ * \{
  */
-void test_pedals_set_throttle(void) {
-    // if pedals are unavailable, no change can be done
-    pedals_api_set_throttle(0.1f);
-    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(0.0f, pedals_api_get_throttle(), "Throttle should be set to 0.0");
 
-    pedals_api_set_is_available(true);
+void test_pedals_api_set_throttle_in_range(void) {
+    enum PedalsReturnCode rc;
 
-    pedals_api_set_throttle(0.5f);
-    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(0.5f, pedals_api_get_throttle(), "Throttle should be set to 0.5");
+    rc = pedals_api_set_throttle(0.4f);
+    TEST_ASSERT_EQUAL_MESSAGE(PEDALS_RC_OK, rc, "It should be possible to set a new throttle value if in range");
 
-    pedals_api_set_throttle(1.5f);
-    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(0.5f, pedals_api_get_throttle(), "Throttle should be set to 0.5 as 1.5 is over the limit");
+    rc = pedals_api_set_throttle(0.0f);
+    TEST_ASSERT_EQUAL_MESSAGE(PEDALS_RC_OK, rc, "It should be possible to set the throttle to 0.0f");
 
-    pedals_api_set_throttle(-0.5f);
-    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(0.5f, pedals_api_get_throttle(), "Throttle should be set to 0.5 as negative values are not valid");
-
-    //test limit cases
-    pedals_api_set_throttle(1.0f);
-    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(1.0f, pedals_api_get_throttle(), "Throttle should be set to 1");
-
-    pedals_api_set_throttle(0.0f);
-    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(0.0f, pedals_api_get_throttle(), "Throttle should be set to 0");
+    rc = pedals_api_set_throttle(1.0f);
+    TEST_ASSERT_EQUAL_MESSAGE(PEDALS_RC_OK, rc, "It should be possible to set the throttle to 1.0f");
 }
 
-/*!
- * \brief Verify that the brake setting is successfull only if value is in valid range
- */
-void test_pedals_set_brake(void) {
-    // if pedals are unavailable, no change can be done
-    pedals_api_set_brake(0.1f);
-    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(0.0f, pedals_api_get_brake(), "Brake should be set to 0.0");
+void test_pedals_api_set_throttle_out_range(void) {
+    enum PedalsReturnCode rc;
 
-    pedals_api_set_is_available(true);
+    rc = pedals_api_set_throttle(1.1f);
+    TEST_ASSERT_EQUAL_MESSAGE(PEDALS_RC_ERROR, rc, "It should not be possible to set the throttle with a value greater than 1.0f");
 
-    pedals_api_set_brake(0.5f);
-    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(0.5f, pedals_api_get_brake(), "Brake should be set to 0.5");
-
-    pedals_api_set_brake(1.5f);
-    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(0.5f, pedals_api_get_brake(), "Brake should be set to 0.5 as 1.5 is over the limit");
-
-    pedals_api_set_brake(-0.5f);
-    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(0.5f, pedals_api_get_brake(), "Brake should be set to 0.5 as negative values are not valid");
-
-    //test limit cases
-    pedals_api_set_brake(1.0f);
-    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(1.0f, pedals_api_get_brake(), "Brake should be set to 1");
-
-    pedals_api_set_brake(0.0f);
-    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(0.0f, pedals_api_get_brake(), "Brake should be set to 0");
+    rc = pedals_api_set_throttle(-0.1f);
+    TEST_ASSERT_EQUAL_MESSAGE(PEDALS_RC_ERROR, rc, "It should not be possible to set the throttle to a negative value");
 }
 
+/*! \} */
+
 /*!
- * \brief Verify that the brake pressure setting is successfull only if value is in valid range
+ * \defgroup pedals_api_set_brake Tests for pedals_api_set_brake function
+ * \{
  */
-void test_pedals_set_brake_pressure(void) {
-    // if pedals are unavailable, no change can be done
-    pedals_api_set_brake_pressure(0.1f);
-    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(0.0f, pedals_api_get_brake_pressure(), "Brake pressure should be set to 0.0");
 
-    pedals_api_set_is_available(true);
+void test_pedals_api_set_brake_in_range(void) {
+    enum PedalsReturnCode rc;
 
-    pedals_api_set_brake_pressure(40.0f);
-    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(40.0f, pedals_api_get_brake_pressure(), "Brake pressure should be set to 40.0");
+    rc = pedals_api_set_brake(0.4f);
+    TEST_ASSERT_EQUAL_MESSAGE(PEDALS_RC_OK, rc, "It should be possible to set a new brake value if in range");
 
-    pedals_api_set_brake_pressure(PEDALS_MAX_BRAKE_PRESSURE_BAR + 1);
-    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(40.0f, pedals_api_get_brake_pressure(), "Brake pressure should be set to 40.0 as PEDALS_MAX_BRAKE_PRESSURE_BAR + 1 is over the limit");
+    rc = pedals_api_set_brake(0.0f);
+    TEST_ASSERT_EQUAL_MESSAGE(PEDALS_RC_OK, rc, "It should be possible to set the brake to 0.0f");
 
-    pedals_api_set_brake_pressure(-0.5f);
-    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(40.0f, pedals_api_get_brake_pressure(), "Brake pressure should be set to 40.0 as negative values are not valid");
+    rc = pedals_api_set_brake(1.0f);
+    TEST_ASSERT_EQUAL_MESSAGE(PEDALS_RC_OK, rc, "It should be possible to set the brake to 1.0f");
+}
 
-    //test limit cases
+void test_pedals_api_set_brake_out_range(void) {
+    enum PedalsReturnCode rc;
+
+    rc = pedals_api_set_brake(1.1f);
+    TEST_ASSERT_EQUAL_MESSAGE(PEDALS_RC_ERROR, rc, "It should not be possible to set the brake with a value greater than 1.0f");
+
+    rc = pedals_api_set_brake(-0.1f);
+    TEST_ASSERT_EQUAL_MESSAGE(PEDALS_RC_ERROR, rc, "It should not be possible to set the brake to a negative value");
+}
+
+/*! \} */
+
+/*!
+ * \defgroup pedals_api_set_brake_pressure Tests for pedals_api_set_brake_pressure function
+ * \{
+ */
+
+void test_pedals_api_set_brake_pressure_in_range(void) {
+    enum PedalsReturnCode rc;
+
+    rc = pedals_api_set_brake_pressure((PEDALS_BRAKE_THRESHOLD_PERCENTAGE / 2));
+    TEST_ASSERT_EQUAL_MESSAGE(PEDALS_RC_OK, rc, "It should be possible to set a new brake pressure value if in range");
+
+    rc = pedals_api_set_brake_pressure(0.0f);
+    TEST_ASSERT_EQUAL_MESSAGE(PEDALS_RC_OK, rc, "It should be possible to set the brake pressure to 0.0f");
+
+    rc = pedals_api_set_brake_pressure(PEDALS_MAX_BRAKE_PRESSURE_BAR);
+    TEST_ASSERT_EQUAL_MESSAGE(PEDALS_RC_OK, rc, "It should be possible to set the brake pressure to the max value");
+}
+
+void test_pedals_api_set_brake_pressure_out_range(void) {
+    enum PedalsReturnCode rc;
+
+    rc = pedals_api_set_brake_pressure(PEDALS_MAX_BRAKE_PRESSURE_BAR + 1.5f);
+    TEST_ASSERT_EQUAL_MESSAGE(PEDALS_RC_ERROR, rc, "It should not be possible to exceed the maximum brake pressure");
+
+    rc = pedals_api_set_brake_pressure(-0.1f);
+    TEST_ASSERT_EQUAL_MESSAGE(PEDALS_RC_ERROR, rc, "It should not be possible to set the brake pressure to a negative value");
+}
+
+/*! \} */
+
+/*!
+ * \defgroup pedals_api_getters Tests for pedals_api_get_throttle, pedals_api_get_brake
+    and pedals_api_get_brake_pressure functions
+ * \{
+ */
+
+void test_pedals_api_get_throttle(void) {
+    float out;
+    TEST_ASSERT_EQUAL_MESSAGE(PEDALS_RC_ERROR, pedals_api_get_throttle(NULL), "Getter should return error when passed a NULL pointer");
+
+    pedals_api_set_throttle(0.75f);
+    enum PedalsReturnCode rc = pedals_api_get_throttle(&out);
+
+    TEST_ASSERT_EQUAL(PEDALS_RC_OK, rc);
+    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(0.75f, out, "Getter did not return the expected throttle value");
+}
+
+void test_pedals_api_get_brake(void) {
+    float out;
+    TEST_ASSERT_EQUAL_MESSAGE(PEDALS_RC_ERROR, pedals_api_get_brake(NULL), "Getter should return error when passed a NULL pointer");
+
+    pedals_api_set_brake(0.75f);
+    enum PedalsReturnCode rc = pedals_api_get_brake(&out);
+
+    TEST_ASSERT_EQUAL(PEDALS_RC_OK, rc);
+    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(0.75f, out, "Getter did not return the expected brake value");
+}
+
+void test_pedals_api_get_brake_pressure(void) {
+    float out;
+    TEST_ASSERT_EQUAL_MESSAGE(PEDALS_RC_ERROR, pedals_api_get_brake_pressure(NULL), "Getter should return error when passed a NULL pointer");
+
     pedals_api_set_brake_pressure(PEDALS_MAX_BRAKE_PRESSURE_BAR);
-    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(PEDALS_MAX_BRAKE_PRESSURE_BAR, pedals_api_get_brake_pressure(), "Brake pressure should be set to PEDALS_MAX_BRAKE_PRESSURE_BAR");
+    enum PedalsReturnCode rc = pedals_api_get_brake_pressure(&out);
 
-    pedals_api_set_brake_pressure(0.0f);
-    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(0.0f, pedals_api_get_brake_pressure(), "Brake pressure should be set to 0");
+    TEST_ASSERT_EQUAL(PEDALS_RC_OK, rc);
+    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(PEDALS_MAX_BRAKE_PRESSURE_BAR, out, "Getter did not return the expected brake pressure value");
 }
 
+/*! \} */
+
 /*!
- * \brief Verify that the torque value is fetched correctly even in the case the pedals are unavailable
+ * \defgroup pedals_api_get_requested_throttle_torque Tests for pedals_api_get_requested_throttle_torque function
+ * \{
  */
-void test_pedals_get_requested_throttle_torque(void) {
-    // pedals unavailable by default, torque should be zero
-    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(0.0f, pedals_api_get_requested_throttle_torque(), "Torque should be zero as pedals are NOT available");
 
-    pedals_api_set_is_available(true);
-
-    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(0.0f, pedals_api_get_requested_throttle_torque(), "Torque should be zero as throttle is set to zero");
-
-    // torque = PEDALS_MAX_TORQUE_NM (91.0f) * throttle
-    pedals_api_set_throttle(0.5f);
-    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(PEDALS_MAX_TORQUE_NM * 0.5f, pedals_api_get_requested_throttle_torque(), "Torque should be 5% of the max torque");
-
-    // check that even if throttle is different from zero, if pedals unavailable torque is set to zero
-    pedals_api_set_is_available(false);
-    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(0.0f, pedals_api_get_requested_throttle_torque(), "Torque should be zero as pedals are NOT available and throttle is greater than zero");
+void test_pedals_api_get_requested_throttle_torque_null_pointer(void) {
+    enum PedalsReturnCode rc = pedals_api_get_requested_throttle_torque(NULL);
+    TEST_ASSERT_EQUAL_MESSAGE(PEDALS_RC_ERROR, rc, "Getter should return an error if the output pointer is NULL.");
 }
 
+void test_pedals_api_get_requested_throttle_torque_return_value(void) {
+    float out;
+    enum PedalsReturnCode rc = pedals_api_get_requested_throttle_torque(&out);
+    TEST_ASSERT_EQUAL_MESSAGE(PEDALS_RC_OK, rc, "Getter should return correctly if the output pointer is not NULL.");
+    // after init, throttle is set to 0.0f and so the requested torque
+    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(0.0f, out, "Requested throttle torque should be zero if current throttle percentage is zero");
+
+    // the computation is a simple product [PEDALS_MAX_TORQUE_NM * throttle]
+    // by setting the throttle percentage to the max value, we expect the max torque available
+    pedals_api_set_throttle(1.0f);
+    pedals_api_get_requested_throttle_torque(&out);
+    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(PEDALS_MAX_TORQUE_NM, out, "Requested throttle torque should be the max available if the throttle percentage is 1.0f");
+}
+
+/*! \} */
+
 /*!
- * \brief Verify that the brake is considered pressed only if over the threshold
+ * \defgroup pedals_api_is_brake_pressed Tests for pedals_api_is_brake_pressed function
+ * \{
  */
-void test_pedals_is_brake_pressed(void) {
-    TEST_ASSERT_FALSE_MESSAGE(pedals_api_is_brake_pressed(), "Brake is NOT pressed if pedals are unavailable");
 
-    pedals_api_set_is_available(true);
+void test_pedals_api_is_brake_pressed_null_pointer(void) {
+    enum PedalsReturnCode rc = pedals_api_is_brake_pressed(NULL);
+    TEST_ASSERT_EQUAL_MESSAGE(PEDALS_RC_ERROR, rc, "Getter should return an error if the output pointer is NULL.");
+}
 
-    TEST_ASSERT_FALSE_MESSAGE(pedals_api_is_brake_pressed(), "Brake is NOT pressed if brake percentage is set to 0");
+void test_pedals_api_is_brake_pressed_threshold(void) {
+    bool out;
+    enum PedalsReturnCode rc = pedals_api_is_brake_pressed(&out);
+    TEST_ASSERT_EQUAL_MESSAGE(PEDALS_RC_OK, rc, "Getter should return correctly if the output pointer is not NULL.");
+    // after init, brake is set to 0.0f
+    TEST_ASSERT_EQUAL_MESSAGE(false, out, "Brake should not be pressed if current brake percentage is zero");
 
+    // verify just below the threshold
     pedals_api_set_brake(PEDALS_BRAKE_THRESHOLD_PERCENTAGE - 0.01f);
-    TEST_ASSERT_FALSE_MESSAGE(pedals_api_is_brake_pressed(), "Brake is NOT pressed if brake percentage is below the threshold");
+    pedals_api_is_brake_pressed(&out);
+    TEST_ASSERT_EQUAL_MESSAGE(false, out, "Brake should not be pressed if under threshold");
 
+    // verify exactly as the threshold
     pedals_api_set_brake(PEDALS_BRAKE_THRESHOLD_PERCENTAGE);
-    TEST_ASSERT_TRUE_MESSAGE(pedals_api_is_brake_pressed(), "Brake is pressed if brake percentage is the same as the threshold value");
+    pedals_api_is_brake_pressed(&out);
+    TEST_ASSERT_EQUAL_MESSAGE(true, out, "Brake should be pressed if exactly as the threshold");
 
-    pedals_api_set_brake(0.8f);
-    TEST_ASSERT_TRUE_MESSAGE(pedals_api_is_brake_pressed(), "Brake is pressed if brake percentage is above the threshold");
+    // verify just above the threshold
+    pedals_api_set_brake(PEDALS_BRAKE_THRESHOLD_PERCENTAGE + 0.01f);
+    pedals_api_is_brake_pressed(&out);
+    TEST_ASSERT_EQUAL_MESSAGE(true, out, "Brake should be pressed if above threshold");
 }
 
-// -------------------------------
+/*! \} */
 
 int main(void) {
     UNITY_BEGIN();
-    RUN_TEST(test_pedals_init);
-    RUN_TEST(test_pedals_set_throttle);
-    RUN_TEST(test_pedals_set_brake);
-    RUN_TEST(test_pedals_set_brake_pressure);
-    RUN_TEST(test_pedals_get_requested_throttle_torque);
-    RUN_TEST(test_pedals_is_brake_pressed);
+
+    /*!
+     * \addtogroup pedals_api_init
+     * \{
+     */
+    RUN_TEST(test_pedals_api_init_initial_state);
+    /*! \} */
+
+    /*!
+     * \addtogroup pedals_api_set_throttle
+     * \{
+     */
+    RUN_TEST(test_pedals_api_set_throttle_in_range);
+    RUN_TEST(test_pedals_api_set_throttle_out_range);
+    /*! \} */
+
+    /*!
+     * \addtogroup pedals_api_set_brake
+     * \{
+     */
+    RUN_TEST(test_pedals_api_set_brake_in_range);
+    RUN_TEST(test_pedals_api_set_brake_out_range);
+    /*! \} */
+
+    /*!
+     * \addtogroup pedals_api_set_brake_pressure
+     * \{
+     */
+    RUN_TEST(test_pedals_api_set_brake_pressure_in_range);
+    RUN_TEST(test_pedals_api_set_brake_pressure_out_range);
+    /*! \} */
+
+    /*!
+     * \addtogroup pedals_api_getters
+     * \{
+     */
+    RUN_TEST(test_pedals_api_get_throttle);
+    RUN_TEST(test_pedals_api_get_brake);
+    RUN_TEST(test_pedals_api_get_brake_pressure);
+    /*! \} */
+
+    /*!
+     * \addtogroup pedals_api_get_requested_throttle_torque
+     * \{
+     */
+    RUN_TEST(test_pedals_api_get_requested_throttle_torque_null_pointer);
+    RUN_TEST(test_pedals_api_get_requested_throttle_torque_return_value);
+    /*! \} */
+
+    /*!
+     * \addtogroup pedals_api_is_brake_pressed
+     * \{
+     */
+    RUN_TEST(test_pedals_api_is_brake_pressed_null_pointer);
+    RUN_TEST(test_pedals_api_is_brake_pressed_threshold);
+    /*! \} */
+
     return UNITY_END();
 }

@@ -1,12 +1,12 @@
 /**
  * \file test_buzzer.c
  * \author Dorijan Di Zepp
- * \date 2026-03-19
- * \brief Unit tests using CMock for the buzzer module
+ * \date 2026-03-20
+ * \brief Unit tests using FFF for testing the buzzer module
  * \note Exhaustive testing of every buzzer instance (e.g R2D vs. ASSI) is 
- * unnecessary for most logic tests, as the API uses the buzzer type as a 
- * direct index into a common handler array; testing one instance validates 
- * the shared logic.
+ * unnecessary for most logic tests (e.g getters and setters), as the API 
+ * uses the buzzer type as a direct index into a common handler array; 
+ * testing one instance validates the shared logic.
  */
 
 #include <unity.h>
@@ -234,7 +234,7 @@ void test_buzzer_api_set_amplitude_in_range(void) {
     TEST_ASSERT_EQUAL_MESSAGE(BUZZER_RC_OK, buzzer_api_set_amplitude(BUZZER_TYPE_R2D, valid_amplitude), "Amplitudes between 0.0 and 1.0 should be accepted.");
 
     TEST_ASSERT_EQUAL(BUZZER_RC_OK, buzzer_api_get_amplitude(BUZZER_TYPE_R2D, &actual_amplitude));
-    TEST_ASSERT_FLOAT_WITHIN_MESSAGE(0.001f, valid_amplitude, actual_amplitude, "The stored amplitude should match the valid value passed.");
+    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(valid_amplitude, actual_amplitude, "The stored amplitude should match the valid value passed.");
 }
 
 void test_buzzer_api_set_amplitude_boundary_cases(void) {
@@ -244,13 +244,13 @@ void test_buzzer_api_set_amplitude_boundary_cases(void) {
     TEST_ASSERT_EQUAL_MESSAGE(BUZZER_RC_OK, buzzer_api_set_amplitude(BUZZER_TYPE_R2D, 0.0f), "The boundary value 0.0 should be accepted.");
 
     TEST_ASSERT_EQUAL(BUZZER_RC_OK, buzzer_api_get_amplitude(BUZZER_TYPE_R2D, &actual_amplitude));
-    TEST_ASSERT_FLOAT_WITHIN(0.001f, 0.0f, actual_amplitude);
+    TEST_ASSERT_EQUAL_FLOAT(0.0f, actual_amplitude);
 
     // Testing the upper limit (1.0)
     TEST_ASSERT_EQUAL_MESSAGE(BUZZER_RC_OK, buzzer_api_set_amplitude(BUZZER_TYPE_R2D, 1.0f), "The boundary value 1.0 should be accepted.");
 
     TEST_ASSERT_EQUAL(BUZZER_RC_OK, buzzer_api_get_amplitude(BUZZER_TYPE_R2D, &actual_amplitude));
-    TEST_ASSERT_FLOAT_WITHIN(0.001f, 1.0f, actual_amplitude);
+    TEST_ASSERT_EQUAL_FLOAT(1.0f, actual_amplitude);
 }
 
 void test_buzzer_api_set_amplitude_out_of_range(void) {
@@ -322,7 +322,7 @@ void test_buzzer_api_play_sync_verifies_hardware_call(void) {
 
     // Verify parameters passed to the callback match what we set
     TEST_ASSERT_EQUAL_UINT32(test_freq, buzzer_sync_r2d_fake.arg0_val);
-    TEST_ASSERT_FLOAT_WITHIN(0.001f, test_amp, buzzer_sync_r2d_fake.arg1_val);
+    TEST_ASSERT_EQUAL_FLOAT(test_amp, buzzer_sync_r2d_fake.arg1_val);
     TEST_ASSERT_EQUAL_UINT32(test_duration, buzzer_sync_r2d_fake.arg2_val);
 }
 
@@ -420,7 +420,7 @@ void test_buzzer_api_play_async_params_unchanged_during_playback(void) {
     // Call count is still 1 (no re-trigger) and args are still the OLD ones
     TEST_ASSERT_EQUAL(1, buzzer_on_assi_fake.call_count);
     TEST_ASSERT_EQUAL_UINT32(1000, buzzer_on_assi_fake.arg0_val);
-    TEST_ASSERT_FLOAT_WITHIN(0.001f, 0.5f, buzzer_on_assi_fake.arg1_val);
+    TEST_ASSERT_EQUAL_FLOAT(0.5f, buzzer_on_assi_fake.arg1_val);
 }
 
 /*! \} */
@@ -470,7 +470,7 @@ void test_buzzer_api_reset_stops_playing(void) {
 
     TEST_ASSERT_EQUAL(0, freq);
     TEST_ASSERT_EQUAL(0, dur);
-    TEST_ASSERT_FLOAT_WITHIN(0.001f, 0.0f, amp);
+    TEST_ASSERT_EQUAL_FLOAT(0.0f, amp);
     TEST_ASSERT_FALSE(is_playing);
 }
 
@@ -480,9 +480,9 @@ int main(void) {
     UNITY_BEGIN();
 
     /*!
-    * \addtogroup buzzer_api_init
-    * \{
-    */
+     * \addtogroup buzzer_api_init
+     * \{
+     */
     RUN_TEST(test_buzzer_api_init_unknown_type);
     RUN_TEST(test_buzzer_api_init_null_callbacks);
     RUN_TEST(test_buzzer_api_init_failed_reset);
@@ -490,51 +490,51 @@ int main(void) {
     /*! \} */
 
     /*!
-    * \addtogroup buzzer_api_get_duration
-    * \{
-    */
+     * \addtogroup buzzer_api_get_duration
+     * \{
+     */
     RUN_TEST(test_buzzer_api_get_duration_unknown_type);
     RUN_TEST(test_buzzer_api_get_duration_null_pointer);
     /*! \} */
 
     /*!
-    * \addtogroup buzzer_api_get_frequency
-    * \{
-    */
+     * \addtogroup buzzer_api_get_frequency
+     * \{
+     */
     RUN_TEST(test_buzzer_api_get_frequency_unknown_type);
     RUN_TEST(test_buzzer_api_get_frequency_null_pointer);
     /*! \} */
 
     /*!
-    * \addtogroup buzzer_api_get_amplitude
-    * \{
-    */
+     * \addtogroup buzzer_api_get_amplitude
+     * \{
+     */
     RUN_TEST(test_buzzer_api_get_amplitude_unknown_type);
     RUN_TEST(test_buzzer_api_get_amplitude_null_pointer);
     /*! \} */
 
     /*!
-    * \addtogroup buzzer_api_set_duration
-    * \{
-    */
+     * \addtogroup buzzer_api_set_duration
+     * \{
+     */
     RUN_TEST(test_buzzer_api_set_duration_unknown_type);
     RUN_TEST(test_buzzer_api_set_duration_positive_duration);
     RUN_TEST(test_buzzer_api_set_duration_negative_duration);
     /*! \} */
 
     /*!
-    * \addtogroup buzzer_api_set_frequency
-    * \{
-    */
+     * \addtogroup buzzer_api_set_frequency
+     * \{
+     */
     RUN_TEST(test_buzzer_api_set_frequency_unknown_type);
     RUN_TEST(test_buzzer_api_set_frequency_positive_value);
     RUN_TEST(test_buzzer_api_set_frequency_negative_wrap_behavior);
     /*! \} */
 
     /*!
-    * \addtogroup buzzer_api_set_amplitude
-    * \{
-    */
+     * \addtogroup buzzer_api_set_amplitude
+     * \{
+     */
     RUN_TEST(test_buzzer_api_set_amplitude_unknown_type);
     RUN_TEST(test_buzzer_api_set_amplitude_in_range);
     RUN_TEST(test_buzzer_api_set_amplitude_boundary_cases);
@@ -542,17 +542,17 @@ int main(void) {
     /*! \} */
 
     /*!
-    * \addtogroup buzzer_api_is_playing
-    * \{
-    */
+     * \addtogroup buzzer_api_is_playing
+     * \{
+     */
     RUN_TEST(test_buzzer_api_is_playing_null_pointer);
     RUN_TEST(test_buzzer_api_is_playing_unknown_type);
     /*! \} */
 
     /*!
-    * \addtogroup buzzer_api_play_sync
-    * \{
-    */
+     * \addtogroup buzzer_api_play_sync
+     * \{
+     */
     RUN_TEST(test_buzzer_api_play_sync_unknown_type);
     RUN_TEST(test_buzzer_api_play_sync_is_playing_flag_reset_on_callback_error);
     RUN_TEST(test_buzzer_api_play_sync_verifies_hardware_call);
@@ -560,9 +560,9 @@ int main(void) {
     /*! \} */
 
     /*!
-    * \defgroup buzzer_api_play_async
-    * \{
-    */
+     * \defgroup buzzer_api_play_async
+     * \{
+     */
     RUN_TEST(test_buzzer_api_play_async_unknown_type);
     RUN_TEST(test_buzzer_api_play_async_handles_timer_overflow);
     RUN_TEST(test_buzzer_api_play_async_update);
@@ -570,9 +570,9 @@ int main(void) {
     /*! \} */
 
     /*!
-    * \defgroup buzzer_api_reset Test for buzzer_api_reset function
-    * \{
-    */
+     * \defgroup buzzer_api_reset Test for buzzer_api_reset function
+     * \{
+     */
     RUN_TEST(test_buzzer_api_reset_unknown_type);
     RUN_TEST(test_buzzer_api_reset_fails_if_hardware_fails);
     RUN_TEST(test_buzzer_api_reset_stops_playing);

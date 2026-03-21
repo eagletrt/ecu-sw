@@ -1,8 +1,8 @@
 /*!
  * \file pedals.h
  * \author Dorijan Di Zepp
- * \date 26-02-2026
- * \brief Module for managing the pedals states.
+ * \date 2026-03-21
+ * \brief Module for managing the pedals states and physical constraints.
  */
 
 #ifndef PEDALS_H
@@ -30,7 +30,6 @@ struct PedalsHandler {
     float throttle;       /*!< The throttle position in percentage from 0.0 to 1.0 */
     float brake;          /*!< The brake position in percentage from 0.0 to 1.0 */
     float brake_pressure; /*!< Brake pressure in bars */
-    bool is_available;    /*!< Health status of the pedal board connection */
 };
 
 #endif

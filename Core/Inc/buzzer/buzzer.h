@@ -1,7 +1,7 @@
 /*!
  * \file buzzer.h
  * \author Dorijan Di Zepp
- * \date 26-02-2026
+ * \date 2026-03-20
  * \brief Hardware-agnostic module for buzzer timing logic.
  *
  * This module defines the buzzer handler, the return codes and the callbacks signatures
@@ -57,7 +57,7 @@ typedef enum BuzzerReturnCode (*buzzer_on_callback)(uint32_t frequency, float am
 
 /*!
  * \brief Signature for disabling the buzzer. 
- * No parameters needed for the 'Off' callback.
+ * \note No parameters needed for the 'Off' callback.
  */
 typedef enum BuzzerReturnCode (*buzzer_off_callback)(void);
 
@@ -79,7 +79,6 @@ typedef uint32_t (*buzzer_tick_callback)(void);
 
 /*!
  * \brief Internal state and hardware interface for the buzzer.
-
  * It stores the function pointers used to bridge the logic to the physical hardware.
  */
 struct BuzzerHandler {
