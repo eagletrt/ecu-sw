@@ -8,6 +8,10 @@
 #include "pedals-api.h"
 #include "eagletrt-api.h"
 
+/*!
+ * \brief Internal module handler.
+ * \details Hidden from external linkage to enforce API-only access.
+ */
 EAGLETRT_STATIC struct PedalsHandler pedals_handler;
 
 enum PedalsReturnCode pedals_api_init() {

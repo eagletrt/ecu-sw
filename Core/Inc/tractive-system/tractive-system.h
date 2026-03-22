@@ -1,8 +1,10 @@
 /*!
  * \file tractive-system.h
  * \author Dorijan Di Zepp
- * \date 01-03-2026
- * \brief Logic module for managing the Tractive System (TS) handler
+ * \date 2026-03-22
+ * \brief Logic module for managing the Tractive System (TS)
+ * \note It decouples the logical state machine (Precharge, Discharge, R2D) 
+ * from the physical hardware implementation via a callback mechanism.
  */
 
 #ifndef TRACTIVE_SYSTEM_H
@@ -26,8 +28,9 @@ enum TSCommand {
 
 /*!
  * \brief Signature for the hardware command callback.
- * \param command The logical command (ON/OFF) to be executed by the hardware.
- * \return TS_RC_OK if the hardware command was sent successfully, TS_RC_ERROR otherwise.
+ * \param[in] command The logical command (ON/OFF) to be executed by the hardware.
+ * \retval TS_RC_OK if the hardware command was sent successfully
+ * \retval TS_RC_ERROR if it was not possible to send the hardware command.
  */
 typedef enum TSReturnCode (*ts_command_callback)(enum TSCommand);
 
@@ -35,10 +38,7 @@ typedef enum TSReturnCode (*ts_command_callback)(enum TSCommand);
  * \brief Internal state of the tractive system module.
  */
 struct TsHandler {
-    /*!
-     * \brief Hardware callback to trigger physical state changes 
-     */
-    ts_command_callback send_ts_command;
+    ts_command_callback send_ts_command; /*!< Hardware callback to trigger physical state changes */
 };
 
 #endif
