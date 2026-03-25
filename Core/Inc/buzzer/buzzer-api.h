@@ -1,7 +1,7 @@
 /*!
  * \file buzzer-api.h
  * \author Dorijan Di Zepp
- * \date 2026-03-20
+ * \date 2026-03-25
  * \brief Hardware-agnostic module for buzzer timing logic.
  * This file defines the buzzer module's API to operate on the buzzer.
  */
@@ -12,7 +12,8 @@
 #include "buzzer.h"
 
 /*!
- * \brief Links the logic to hardware and sets initial duration.
+ * \brief Links the logic to hardware. All playing "characteristics" (duration, frequency
+  and aamplitude) can be set through the public api.
  * \note Re-calling this function while a buzzer is playing will stop the 
  * previous hardware action before linking the new ones.
  * \note Frequency and amplitude are not required during initialization as 
@@ -23,7 +24,6 @@
  * \param[in] buzzer_off Function to turn hardware OFF.
  * \param[in] buzzer_play_sync Pointer to blocking delay function (required for sync mode).
  * \param[in] buzzer_get_tick Pointer to get system uptime (required for async mode).
- * \param[in] duration Sound duration in milliseconds.
  * \retval BUZZER_RC_OK on correct initialization.
  * \retval BUZZER_RC_ERROR if its was not possible to initialize the handler.
  */
@@ -32,8 +32,7 @@ enum BuzzerReturnCode buzzer_api_init(
     buzzer_on_callback buzzer_on,
     buzzer_off_callback buzzer_off,
     buzzer_delay_callback buzzer_play_sync,
-    buzzer_tick_callback buzzer_get_tick,
-    uint32_t duration);
+    buzzer_tick_callback buzzer_get_tick);
 
 /*!
  * \brief Plays the buzzer and blocks the CPU until duration elapses.
@@ -61,7 +60,7 @@ enum BuzzerReturnCode buzzer_api_play_async(enum BuzzerType buzzer_type);
  * \brief Forces the buzzer OFF and resets the buzzer state.
  * \param[in] buzzer_type The buzzer type on which to operate
  * \retval BUZZER_RC_OK if the handler has been reset and the buzzer stopped.
- * \retval BUZZER_RC_ERROR if a reset could not be achieved.
+ * \retval BUZZER_RC_ERROR if a reset could not be achieved or \c buzzer_type is unknown.
  */
 enum BuzzerReturnCode buzzer_api_reset(enum BuzzerType buzzer_type);
 
@@ -69,8 +68,8 @@ enum BuzzerReturnCode buzzer_api_reset(enum BuzzerType buzzer_type);
  * \brief Updates the duration for the next play command.
  * \param[in] buzzer_type The buzzer type on which to operate
  * \param[in] duration Time in milliseconds.
- * \retval BUZZER_RC_OK if duration has been changed.
- * \retval BUZZER_RC_ERROR if buzzer type is unknownw
+ * \retval BUZZER_RC_OK if \c duration has been changed.
+ * \retval BUZZER_RC_ERROR if \c buzzer_type is unknownw
  */
 enum BuzzerReturnCode buzzer_api_set_duration(enum BuzzerType buzzer_type, uint32_t duration);
 
@@ -78,8 +77,8 @@ enum BuzzerReturnCode buzzer_api_set_duration(enum BuzzerType buzzer_type, uint3
  * \brief Sets the buzzer frequency.
  * \param[in] buzzer_type The buzzer type on which to operate
  * \param[in] frequency Frequency in Hz.
- * \retval BUZZER_RC_OK if frequency has been changed.
- * \retval BUZZER_RC_ERROR if buzzer type is unknownw
+ * \retval BUZZER_RC_OK if \c frequency has been changed.
+ * \retval BUZZER_RC_ERROR if \c buzzer_type is unknownw
  */
 enum BuzzerReturnCode buzzer_api_set_frequency(enum BuzzerType buzzer_type, uint32_t frequency);
 
@@ -87,46 +86,42 @@ enum BuzzerReturnCode buzzer_api_set_frequency(enum BuzzerType buzzer_type, uint
  * \brief Sets the buzzer amplitude.
  * \param[in] buzzer_type The buzzer type on which to operate
  * \param[in] amplitude Amplitude as a percentage (0-1).
- * \retval BUZZER_RC_OK if amplitude has been changed.
- * \retval BUZZER_RC_ERROR if buzzer type is unknownw or the amplitude value was out of range.
+ * \retval BUZZER_RC_OK if \c amplitude has been changed.
+ * \retval BUZZER_RC_ERROR if \c buzzer_type is unknownw or the \c amplitude value was out of range.
  */
 enum BuzzerReturnCode buzzer_api_set_amplitude(enum BuzzerType buzzer_type, float amplitude);
 
 /*!
  * \brief Retrieves the current configured duration.
  * \param[in] buzzer_type The buzzer type on which to operate
- * \param[out] out Pointer to the variable where the result will be stored
- * \retval BUZZER_RC_OK if the value has been retrieved correctly
- * \retval BUZZER_RC_ERROR if \c out is NULL or the \c buzzer_type is unknown
+ * \return The play duration in milliseconds. 
+ * \note Returns 0 if \c buzzer_type is invalid.
  */
-enum BuzzerReturnCode buzzer_api_get_duration(enum BuzzerType buzzer_type, uint32_t *out);
+uint32_t buzzer_api_get_duration(enum BuzzerType buzzer_type);
 
 /*!
  * \brief Gets the currently set buzzer frequency.
  * \param[in] buzzer_type The buzzer type on which to operate
- * \param[out] out Pointer to the variable where the result will be stored
- * \retval BUZZER_RC_OK if the value has been retrieved correctly
- * \retval BUZZER_RC_ERROR if \c out is NULL or the \c buzzer_type is unknown
+ * \return The frequency in Hz. 
+ * \note Returns 0 if \c buzzer_type is invalid.
  */
-enum BuzzerReturnCode buzzer_api_get_frequency(enum BuzzerType buzzer_type, uint32_t *out);
+uint32_t buzzer_api_get_frequency(enum BuzzerType buzzer_type);
 
 /*!
  * \brief Gets the currently set buzzer amplitude.
  * \param[in] buzzer_type The buzzer type on which to operate
- * \param[out] out Pointer to the variable where the result will be stored
- * \retval BUZZER_RC_OK if the value has been retrieved correctly
- * \retval BUZZER_RC_ERROR if \c out is NULL or the \c buzzer_type is unknown
+ * \return The amplitude percentage between 0.0 and 1.0. 
+ * \note Returns 0 if \c buzzer_type is invalid.
  */
-enum BuzzerReturnCode buzzer_api_get_amplitude(enum BuzzerType buzzer_type, float *out);
+float buzzer_api_get_amplitude(enum BuzzerType buzzer_type);
 
 /*!
  * \brief Check if the buzzer is playing a sound.
  * \param[in] buzzer_type The buzzer type on which to operate
- * \param[out] out Pointer to the variable where the result will be stored
- * \retval BUZZER_RC_OK if the value has been retrieved correctly
- * \retval BUZZER_RC_ERROR if \c out is NULL or the \c buzzer_type is unknown
+ * \retval \c true The buzzer is currently active/playing.
+ * \retval \c false The buzzer is idle, or the \c buzzer_type is invalid.
  * 
  */
-enum BuzzerReturnCode buzzer_api_is_playing(enum BuzzerType buzzer_type, bool *out);
+bool buzzer_api_is_playing(enum BuzzerType buzzer_type);
 
 #endif

@@ -1,7 +1,7 @@
 /*!
  * \file pedals-api.h
  * \author Dorijan Di Zepp
- * \date 2026-03-21
+ * \date 2026-03-25
  * \brief This module provides the APIs for the pedals module
  * \note All percentages are normalized (0.0f to 1.0f). 
  */
@@ -46,44 +46,35 @@ enum PedalsReturnCode pedals_api_set_brake_pressure(float brake_pressure);
 
 /*!
  * \brief Calculates the driver's requested motor torque based on throttle position.
- * \details Maps throttle (0.0 to 1.0) to torque (0 to PEDALS_MAX_TORQUE).
- * \param[out] out Pointer to the float variable where the calculated torque (Nm) will be stored.
- * \retval PEDALS_RC_OK on success.
- * \retval PEDALS_RC_ERROR if the 'out' pointer is NULL.
+ * \details Maps throttle (0.0 to 1.0) to torque (0 to \c PEDALS_MAX_TORQUE).
+ * \return The calculated torque in Nm. 
+ * \note Returns 0.0 if the pedals module is uninitialized.
  */
-enum PedalsReturnCode pedals_api_get_requested_throttle_torque(float *out);
+float pedals_api_get_requested_throttle_torque();
 
 /*!
  * \brief Determines if the brake pedal is sufficiently pressed for stationary holding.
- * \details Compares current brake values against a predefined safety threshold.
- * \param[out] out Pointer to the boolean variable where the result will be stored.
- * \retval PEDALS_RC_OK on success.
- * \retval PEDALS_RC_ERROR if the 'out' pointer is NULL.
+ * \details Compares current brake values against the predefined safety threshold.
+ * \return \c true if the brake pressure is above the safety threshold, \c false otherwise.
  */
-enum PedalsReturnCode pedals_api_is_brake_pressed(bool *out);
+bool pedals_api_is_brake_pressed();
 
 /*!
  * \brief Retrieves the latest valid throttle percentage.
- * \param[out] out Pointer to the variable where the throttle percentage (0.0f - 1.0f) will be stored.
- * \retval PEDALS_RC_OK on success.
- * \retval PEDALS_RC_ERROR if the 'out' pointer is NULL.
+ * \return The throttle percentage (0.0 - 1.0).
  */
-enum PedalsReturnCode pedals_api_get_throttle(float *out);
+float pedals_api_get_throttle();
 
 /*!
  * \brief Retrieves the latest valid brake percentage.
- * \param[out] out Pointer to the variable where the brake percentage (0.0f - 1.0f) will be stored.
- * \retval PEDALS_RC_OK on success.
- * \retval PEDALS_RC_ERROR if the 'out' pointer is NULL.
+ * \return The brake percentage (0.0 - 1.0).
  */
-enum PedalsReturnCode pedals_api_get_brake(float *out);
+float pedals_api_get_brake();
 
 /*!
  * \brief Retrieves the latest valid brake pressure.
- * \param[out] out Pointer to the variable where the pressure (in bars) will be stored.
- * \retval PEDALS_RC_OK on success.
- * \retval PEDALS_RC_ERROR if the 'out' pointer is NULL.
+ * \return The pressure in bars (0.0f - \c PEDALS_MAX_BRAKE_PRESSURE_BAR).
  */
-enum PedalsReturnCode pedals_api_get_brake_pressure(float *out);
+float pedals_api_get_brake_pressure();
 
 #endif
