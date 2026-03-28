@@ -1,7 +1,7 @@
 /**
  * \file test_tractive_system.c
  * \author Dorijan Di Zepp
- * \date 2026-03-25
+ * \date 2026-03-28
  * \brief Unit tests using FFF for testing the TS module
  */
 
@@ -53,16 +53,16 @@ void test_ts_request_command_successful_call(void) {
     // test success call
     send_ts_command_fake.return_val = TS_RC_OK;
     TEST_ASSERT_EQUAL_MESSAGE(TS_RC_OK, ts_api_request_command(TS_COMMAND_ON), "A correct initialization should allow a correct sending of a command");
-    TEST_ASSERT_EQUAL(TS_COMMAND_ON, send_ts_command_fake.arg0_val);
-    TEST_ASSERT_EQUAL(1, send_ts_command_fake.call_count);
+    TEST_ASSERT_EQUAL_MESSAGE(TS_COMMAND_ON, send_ts_command_fake.arg0_val, "The command passed should be COMMAND ON");
+    TEST_ASSERT_EQUAL_MESSAGE(1, send_ts_command_fake.call_count, "The callback should have been called exactly once");
 }
 
 void test_ts_request_command_failed_call(void) {
     // test failed call
     send_ts_command_fake.return_val = TS_RC_ERROR;
     TEST_ASSERT_EQUAL_MESSAGE(TS_RC_ERROR, ts_api_request_command(TS_COMMAND_OFF), "In case the callback fails, the return code should be forwarded to the caller");
-    TEST_ASSERT_EQUAL(TS_COMMAND_OFF, send_ts_command_fake.arg0_val);
-    TEST_ASSERT_EQUAL(1, send_ts_command_fake.call_count);
+    TEST_ASSERT_EQUAL_MESSAGE(TS_COMMAND_OFF, send_ts_command_fake.arg0_val, "The command passed should be COMMAND OFF");
+    TEST_ASSERT_EQUAL_MESSAGE(1, send_ts_command_fake.call_count, "The callback should have been called exactly once");
 }
 
 /*! \} */

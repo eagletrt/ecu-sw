@@ -1,7 +1,7 @@
 /**
  * \file test_buzzer.c
  * \author Dorijan Di Zepp
- * \date 2026-03-25
+ * \date 2026-03-28
  * \brief Unit tests using FFF for testing the buzzer module
  * \note Exhaustive testing of every buzzer instance (e.g R2D vs. ASSI) is 
  * unnecessary for most logic tests (e.g getters and setters), as the API 
@@ -308,7 +308,7 @@ void test_buzzer_api_play_sync_callback_error(void) {
     buzzer_sync_r2d_fake.return_val = BUZZER_RC_ERROR;
 
     // We expect the function to return the error code from the callback
-    TEST_ASSERT_EQUAL(BUZZER_RC_ERROR, buzzer_api_play_sync(BUZZER_TYPE_R2D));
+    TEST_ASSERT_EQUAL_MESSAGE(BUZZER_RC_ERROR, buzzer_api_play_sync(BUZZER_TYPE_R2D), "The return code should be ERROR as the callback returned an error itself");
 }
 
 void test_buzzer_api_play_sync_reset_flag_on_callback_error(void) {
@@ -334,13 +334,13 @@ void test_buzzer_api_play_sync_verifies_hardware_call(void) {
 
     enum BuzzerReturnCode rc = buzzer_api_play_sync(BUZZER_TYPE_R2D);
 
-    TEST_ASSERT_EQUAL(BUZZER_RC_OK, rc);
+    TEST_ASSERT_EQUAL_MESSAGE(BUZZER_RC_OK, rc, "Return code do not match. It should return OK");
     TEST_ASSERT_EQUAL_MESSAGE(1, buzzer_sync_r2d_fake.call_count, "The sync callback should be called exactly once.");
 
     // Verify parameters passed to the callback match what we set
-    TEST_ASSERT_EQUAL_UINT32(test_freq, buzzer_sync_r2d_fake.arg0_val);
-    TEST_ASSERT_EQUAL_FLOAT(test_amp, buzzer_sync_r2d_fake.arg1_val);
-    TEST_ASSERT_EQUAL_UINT32(test_duration, buzzer_sync_r2d_fake.arg2_val);
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(test_freq, buzzer_sync_r2d_fake.arg0_val, "The passed frequency is not the correct one");
+    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(test_amp, buzzer_sync_r2d_fake.arg1_val, "The passed amplitude is not the correct one");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(test_duration, buzzer_sync_r2d_fake.arg2_val, "The passed duration is not the correct one");
 }
 
 /*! \} */
@@ -366,7 +366,7 @@ void test_buzzer_api_play_async_handles_timer_overflow(void) {
     get_tick_assi_fake.return_val = 0x00000022;
 
     // (0x22 - 0xFFFFFFF0) as uint32_t correctly equals 50
-    TEST_ASSERT_EQUAL(BUZZER_RC_PLAYING, buzzer_api_play_async(BUZZER_TYPE_ASSI));
+    TEST_ASSERT_EQUAL_MESSAGE(BUZZER_RC_PLAYING, buzzer_api_play_async(BUZZER_TYPE_ASSI), "The buzzer should still play even in the case of a time overflow");
 }
 
 void test_buzzer_api_play_async_first_call(void) {
@@ -378,9 +378,9 @@ void test_buzzer_api_play_async_first_call(void) {
     enum BuzzerReturnCode rc = buzzer_api_play_async(BUZZER_TYPE_ASSI);
 
     // Verify the buzzer is playing and that buzzer on has been called once
-    TEST_ASSERT_EQUAL(BUZZER_RC_PLAYING, rc);
-    TEST_ASSERT_EQUAL(1, buzzer_on_assi_fake.call_count);
-    TEST_ASSERT_TRUE(buzzer_api_is_playing(BUZZER_TYPE_ASSI));
+    TEST_ASSERT_EQUAL_MESSAGE(BUZZER_RC_PLAYING, rc, "Return code do not match. It should return OK");
+    TEST_ASSERT_EQUAL_MESSAGE(1, buzzer_on_assi_fake.call_count, "Callback on should have been called exactly one time");
+    TEST_ASSERT_TRUE_MESSAGE(buzzer_api_is_playing(BUZZER_TYPE_ASSI), "The flag playing should be set to true");
 }
 
 void test_buzzer_api_play_async_playing_status(void) {
@@ -396,8 +396,8 @@ void test_buzzer_api_play_async_playing_status(void) {
 
     enum BuzzerReturnCode rc = buzzer_api_play_async(BUZZER_TYPE_ASSI);
 
-    TEST_ASSERT_EQUAL(BUZZER_RC_PLAYING, rc);
-    TEST_ASSERT_EQUAL(1, buzzer_on_assi_fake.call_count); // Should NOT call 'on' again
+    TEST_ASSERT_EQUAL_MESSAGE(BUZZER_RC_PLAYING, rc, "Return code do not match. It should return PLAYING");
+    TEST_ASSERT_EQUAL_MESSAGE(1, buzzer_on_assi_fake.call_count, "Callback on shouldn't be called again if buzzer is already playing"); // Should NOT call 'on' again
 }
 
 void test_buzzer_api_play_async_buzzer_stops(void) {
@@ -412,9 +412,9 @@ void test_buzzer_api_play_async_buzzer_stops(void) {
 
     enum BuzzerReturnCode rc = buzzer_api_play_async(BUZZER_TYPE_ASSI);
 
-    TEST_ASSERT_EQUAL(BUZZER_RC_OK, rc);
-    TEST_ASSERT_EQUAL(1, buzzer_off_assi_fake.call_count);
-    TEST_ASSERT_FALSE(buzzer_api_is_playing(BUZZER_TYPE_ASSI));
+    TEST_ASSERT_EQUAL_MESSAGE(BUZZER_RC_OK, rc, "Return code do not match");
+    TEST_ASSERT_EQUAL_MESSAGE(1, buzzer_off_assi_fake.call_count, "Callback off should be called once when elapsed time is greater than the play duration");
+    TEST_ASSERT_FALSE_MESSAGE(buzzer_api_is_playing(BUZZER_TYPE_ASSI), "If the buzzer stopped, the flag should be false");
 }
 
 void test_buzzer_api_play_async_params_unchanged_during_playback(void) {
@@ -435,9 +435,9 @@ void test_buzzer_api_play_async_params_unchanged_during_playback(void) {
     buzzer_api_play_async(BUZZER_TYPE_ASSI);
 
     // Call count is still 1 (no re-trigger) and args are still the OLD ones
-    TEST_ASSERT_EQUAL(1, buzzer_on_assi_fake.call_count);
-    TEST_ASSERT_EQUAL_UINT32(1000, buzzer_on_assi_fake.arg0_val);
-    TEST_ASSERT_EQUAL_FLOAT(0.5f, buzzer_on_assi_fake.arg1_val);
+    TEST_ASSERT_EQUAL_MESSAGE(1, buzzer_on_assi_fake.call_count, "Callback one should be called once");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(1000, buzzer_on_assi_fake.arg0_val, "Frequency should be left unchanged if buzzer is already playing");
+    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(0.5f, buzzer_on_assi_fake.arg1_val, "Amplitude should be left unchanged if buzzer is already playing");
 }
 
 /*! \} */
@@ -471,14 +471,14 @@ void test_buzzer_api_reset_stops_playing(void) {
     enum BuzzerReturnCode rc = buzzer_api_reset(BUZZER_TYPE_ASSI);
 
     // Verify hardware was turned off
-    TEST_ASSERT_EQUAL(BUZZER_RC_OK, rc);
+    TEST_ASSERT_EQUAL_MESSAGE(BUZZER_RC_OK, rc, "Return code do not match. It should return OK");
     TEST_ASSERT_EQUAL_MESSAGE(1, buzzer_off_assi_fake.call_count, "Hardware should be silenced during reset.");
 
     // Verify internal state was zeroed
-    TEST_ASSERT_EQUAL_UINT32(0, buzzer_api_get_frequency(BUZZER_TYPE_ASSI));
-    TEST_ASSERT_EQUAL_UINT32(0, buzzer_api_get_duration(BUZZER_TYPE_ASSI));
-    TEST_ASSERT_EQUAL_FLOAT(0.0f, buzzer_api_get_amplitude(BUZZER_TYPE_ASSI));
-    TEST_ASSERT_FALSE(buzzer_api_is_playing(BUZZER_TYPE_ASSI));
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(0, buzzer_api_get_frequency(BUZZER_TYPE_ASSI), "After reset, frequency should be zero");
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(0, buzzer_api_get_duration(BUZZER_TYPE_ASSI), "After reset, duration should be zero");
+    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(0.0f, buzzer_api_get_amplitude(BUZZER_TYPE_ASSI), "After reset, amplitude should be zero");
+    TEST_ASSERT_FALSE_MESSAGE(buzzer_api_is_playing(BUZZER_TYPE_ASSI), "After reset, playing flag should be false");
 }
 
 /*! \} */

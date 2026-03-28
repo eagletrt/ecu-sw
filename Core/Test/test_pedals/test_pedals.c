@@ -1,7 +1,7 @@
 /**
  * \file test_pedals.c
  * \author Dorijan Di Zepp
- * \date 2026-03-25
+ * \date 2026-03-28
  * \brief Unit tests for the pedals module
  * \note Even if the module itself is pretty simple, it is important to make sure
  * that the handler correctly updates the internal state within defined physical limits (e.g. max pressure),
@@ -26,14 +26,12 @@ void setUp(void) {
 
 void test_pedals_api_init_initial_state(void) {
     struct PedalsHandler expected_handler = { 0 };
+    extern struct PedalsHandler pedals_handler;
 
     enum PedalsReturnCode rc = pedals_api_init();
 
     TEST_ASSERT_EQUAL_MESSAGE(PEDALS_RC_OK, rc, "Return code do not match. It should return OK");
-    // verify that all values are zeroed
-    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(0.0f, pedals_api_get_throttle(), "Initial throttle should be 0.0");
-    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(0.0f, pedals_api_get_brake(), "Initial brake should be 0.0");
-    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(0.0f, pedals_api_get_brake_pressure(), "Initial pressure should be 0.0");
+    TEST_ASSERT_EQUAL_MEMORY_MESSAGE(&expected_handler, &pedals_handler, sizeof(expected_handler), "Structure handler data do not match");
 }
 
 /*! \} */
