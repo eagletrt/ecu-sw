@@ -1,7 +1,7 @@
 /**
  * \file test_buzzer.c
  * \author Dorijan Di Zepp
- * \date 2026-03-28
+ * \date 2026-03-30
  * \brief Unit tests using FFF for testing the buzzer module
  * \note Exhaustive testing of every buzzer instance (e.g R2D vs. ASSI) is 
  * unnecessary for most logic tests (e.g getters and setters), as the API 
@@ -14,6 +14,8 @@
 #include "buzzer-api.h"
 #include "fff.h"
 #include "eagletrt-api.h"
+
+extern struct BuzzerHandler buzzer_handlers[];
 
 DEFINE_FFF_GLOBALS;
 
@@ -130,10 +132,15 @@ void test_buzzer_api_init_failed_reset(void) {
 
 void test_buzzer_api_init_initial_state(void) {
     // verify that after the initialization the state "values" are all set to zero
-    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(0.0f, buzzer_api_get_amplitude(BUZZER_TYPE_R2D), "Amplitude should be 0 after init");
-    TEST_ASSERT_EQUAL_UINT32_MESSAGE(0U, buzzer_api_get_frequency(BUZZER_TYPE_R2D), "Frequency should be 0 after init");
-    TEST_ASSERT_EQUAL_UINT32_MESSAGE(0U, buzzer_api_get_duration(BUZZER_TYPE_R2D), "Duration should be 0 after init");
-    TEST_ASSERT_FALSE_MESSAGE(buzzer_api_is_playing(BUZZER_TYPE_R2D), "Buzzer should not be playing after init");
+    struct BuzzerHandler expected_r2d;
+    // zero out the mem to avoid garbage values
+    memset(&expected_r2d, 0, sizeof(struct BuzzerHandler));
+    expected_r2d.buzzer_on = buzzer_on_r2d;
+    expected_r2d.buzzer_off = buzzer_off_r2d;
+    expected_r2d.buzzer_play_sync = buzzer_sync_r2d;
+    expected_r2d.buzzer_get_tick = get_tick_r2d;
+
+    TEST_ASSERT_EQUAL_MEMORY_MESSAGE(&expected_r2d, &buzzer_handlers[BUZZER_TYPE_R2D], sizeof(struct BuzzerHandler), "Buzzer state memory does not match expected initialization");
 }
 
 /*! \} */
@@ -151,7 +158,8 @@ void test_buzzer_api_get_duration_unknown_type(void) {
 
 void test_buzzer_api_get_duration_known_type(void) {
     uint32_t expected_duration = 1000;
-    buzzer_api_set_duration(BUZZER_TYPE_R2D, expected_duration);
+    buzzer_handlers[BUZZER_TYPE_R2D].duration = expected_duration;
+
     uint32_t duration = buzzer_api_get_duration(BUZZER_TYPE_R2D);
 
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(expected_duration, duration, "Getter should return the latest duration of the given buzzer type.");
@@ -171,7 +179,8 @@ void test_buzzer_api_get_frequency_unknown_type(void) {
 
 void test_buzzer_api_get_frequency_known_type(void) {
     uint32_t expected_frequency = 500;
-    buzzer_api_set_frequency(BUZZER_TYPE_R2D, expected_frequency);
+    buzzer_handlers[BUZZER_TYPE_R2D].frequency = expected_frequency;
+
     uint32_t frequency = buzzer_api_get_frequency(BUZZER_TYPE_R2D);
 
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(expected_frequency, frequency, "Getter should return the latest frequency of the given buzzer type.");
@@ -191,7 +200,8 @@ void test_buzzer_api_get_amplitude_unknown_type(void) {
 
 void test_buzzer_api_get_amplitude_known_type(void) {
     float expected_amplitude = 0.5f;
-    buzzer_api_set_amplitude(BUZZER_TYPE_R2D, expected_amplitude);
+    buzzer_handlers[BUZZER_TYPE_R2D].amplitude = 0.5f;
+
     float amplitude = buzzer_api_get_amplitude(BUZZER_TYPE_R2D);
 
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(expected_amplitude, amplitude, "Getter should return the latest amplitude of the given buzzer type.");
@@ -206,16 +216,19 @@ void test_buzzer_api_get_amplitude_known_type(void) {
 
 void test_buzzer_api_set_duration_unknown_type(void) {
     TEST_ASSERT_EQUAL_MESSAGE(BUZZER_RC_ERROR, buzzer_api_set_duration(99, 2000), "It is not possible to set a duration for an unknown buzzer type.");
+    TEST_ASSERT_EQUAL_MESSAGE(0U, buzzer_handlers[BUZZER_TYPE_R2D].duration, "Duration should be left unchanged if previous call fails.");
 }
 
 void test_buzzer_api_set_duration_positive_duration(void) {
     uint32_t duration_ms = 4750;
     TEST_ASSERT_EQUAL_MESSAGE(BUZZER_RC_OK, buzzer_api_set_duration(BUZZER_TYPE_R2D, duration_ms), "If the buzzer type is known, it should be possible to change the duration.");
+    TEST_ASSERT_EQUAL_MESSAGE(duration_ms, buzzer_handlers[BUZZER_TYPE_R2D].duration, "The duration should be exactly the one specified");
 }
 
 void test_buzzer_api_set_duration_negative_duration(void) {
     int32_t negative_duration = -1;
     TEST_ASSERT_EQUAL_MESSAGE(BUZZER_RC_OK, buzzer_api_set_duration(BUZZER_TYPE_R2D, (uint32_t)negative_duration), "The API should accept a value casted to the expected type.");
+    TEST_ASSERT_EQUAL_MESSAGE((uint32_t)negative_duration, buzzer_handlers[BUZZER_TYPE_R2D].duration, "The duration should be exactly the one specified casted");
 }
 
 /*! \} */
@@ -227,16 +240,19 @@ void test_buzzer_api_set_duration_negative_duration(void) {
 
 void test_buzzer_api_set_frequency_unknown_type(void) {
     TEST_ASSERT_EQUAL_MESSAGE(BUZZER_RC_ERROR, buzzer_api_set_frequency(99, 1000), "It should not be possible to set a frequency for an unknown buzzer type.");
+    TEST_ASSERT_EQUAL_MESSAGE(0U, buzzer_handlers[BUZZER_TYPE_R2D].frequency, "Frequency should be left unchanged if previous call fails.");
 }
 
 void test_buzzer_api_set_frequency_positive_frequency(void) {
     uint32_t frequency_hz = 2500;
     TEST_ASSERT_EQUAL_MESSAGE(BUZZER_RC_OK, buzzer_api_set_frequency(BUZZER_TYPE_R2D, frequency_hz), "If the buzzer type is known, it should be possible to change the frequency.");
+    TEST_ASSERT_EQUAL_MESSAGE(frequency_hz, buzzer_handlers[BUZZER_TYPE_R2D].frequency, "The frequency should be exactly the one specified");
 }
 
 void test_buzzer_api_set_frequency_negative_frequency(void) {
     int32_t negative_freq = -440;
     TEST_ASSERT_EQUAL_MESSAGE(BUZZER_RC_OK, buzzer_api_set_frequency(BUZZER_TYPE_R2D, (uint32_t)negative_freq), "The API should accept a value casted to the expected type.");
+    TEST_ASSERT_EQUAL_MESSAGE((uint32_t)negative_freq, buzzer_handlers[BUZZER_TYPE_R2D].frequency, "The frequency should be exactly the one specified casted");
 }
 
 /*! \} */
@@ -248,27 +264,33 @@ void test_buzzer_api_set_frequency_negative_frequency(void) {
 
 void test_buzzer_api_set_amplitude_unknown_type(void) {
     TEST_ASSERT_EQUAL_MESSAGE(BUZZER_RC_ERROR, buzzer_api_set_amplitude(99, 0.5f), "It should not be possible to set an amplitude for an unknown buzzer type.");
+    TEST_ASSERT_EQUAL_MESSAGE(0.0f, buzzer_handlers[BUZZER_TYPE_R2D].amplitude, "Amplitude should be left unchanged if previous call fails.");
 }
 
 void test_buzzer_api_set_amplitude_in_range(void) {
     float amplitude = 0.75f;
     TEST_ASSERT_EQUAL_MESSAGE(BUZZER_RC_OK, buzzer_api_set_amplitude(BUZZER_TYPE_R2D, amplitude), "Amplitudes between 0.0 and 1.0 should be accepted.");
+    TEST_ASSERT_EQUAL_MESSAGE(amplitude, buzzer_handlers[BUZZER_TYPE_R2D].amplitude, "Amplitude should be changed to the indicated value if previous call completes.");
 }
 
 void test_buzzer_api_set_amplitude_lower_value(void) {
     TEST_ASSERT_EQUAL_MESSAGE(BUZZER_RC_OK, buzzer_api_set_amplitude(BUZZER_TYPE_R2D, 0.0f), "The boundary value 0.0 should be accepted.");
+    TEST_ASSERT_EQUAL_MESSAGE(0.0f, buzzer_handlers[BUZZER_TYPE_R2D].amplitude, "Amplitude should be changed to the indicated value if previous call completes.");
 }
 
 void test_buzzer_api_set_amplitude_upper_value(void) {
     TEST_ASSERT_EQUAL_MESSAGE(BUZZER_RC_OK, buzzer_api_set_amplitude(BUZZER_TYPE_R2D, 1.0f), "The boundary value 1.0 should be accepted.");
+    TEST_ASSERT_EQUAL_MESSAGE(1.0f, buzzer_handlers[BUZZER_TYPE_R2D].amplitude, "Amplitude should be changed to the indicated value if previous call completes.");
 }
 
 void test_buzzer_api_set_amplitude_lower_value_out_of_range(void) {
     TEST_ASSERT_EQUAL_MESSAGE(BUZZER_RC_ERROR, buzzer_api_set_amplitude(BUZZER_TYPE_R2D, -0.01f), "Values greater than 1.0 should return an error.");
+    TEST_ASSERT_EQUAL_MESSAGE(0.0f, buzzer_handlers[BUZZER_TYPE_R2D].amplitude, "Amplitude should be changed to the indicated value if previous call completes.");
 }
 
 void test_buzzer_api_set_amplitude_upper_value_out_of_range(void) {
     TEST_ASSERT_EQUAL_MESSAGE(BUZZER_RC_ERROR, buzzer_api_set_amplitude(BUZZER_TYPE_R2D, 1.01f), "Negative values should return an error.");
+    TEST_ASSERT_EQUAL_MESSAGE(0.0f, buzzer_handlers[BUZZER_TYPE_R2D].amplitude, "Amplitude should be changed to the indicated value if previous call completes.");
 }
 
 /*! \} */
@@ -283,12 +305,12 @@ void test_buzzer_api_is_playing_unknown_type(void) {
 }
 
 void test_buzzer_api_is_playing_known_type_idle(void) {
+    buzzer_handlers[BUZZER_TYPE_R2D].is_playing = false;
     TEST_ASSERT_EQUAL_MESSAGE(false, buzzer_api_is_playing(BUZZER_TYPE_R2D), "Should return false if the buzzer is not playing.");
 }
 
 void test_buzzer_api_is_playing_known_type_playing(void) {
-    buzzer_api_set_duration(BUZZER_TYPE_R2D, 5000);
-    buzzer_api_play_async(BUZZER_TYPE_R2D);
+    buzzer_handlers[BUZZER_TYPE_R2D].is_playing = true;
     TEST_ASSERT_EQUAL_MESSAGE(true, buzzer_api_is_playing(BUZZER_TYPE_R2D), "Should return true if the buzzer is playing.");
 }
 

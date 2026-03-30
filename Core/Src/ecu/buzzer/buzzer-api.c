@@ -1,7 +1,7 @@
 /*!
  * \file buzzer-api.c
  * \author Dorijan Di Zepp
- * \date 2026-03-25
+ * \date 2026-03-30
  * \brief Hardware-agnostic module for buzzer timing logic.
  *
  * This module manages synchronous and asynchronous timing by implementing the 
@@ -53,16 +53,14 @@ enum BuzzerReturnCode buzzer_api_init(
     if (buzzer_api_reset(buzzer_type) != BUZZER_RC_OK)
         return BUZZER_RC_ERROR;
 
+    // only set the callbacks; everything else becomes 0/0.0f/false automatically.
     struct BuzzerHandler *buzzer_handler = &buzzer_handlers[buzzer_type];
-    buzzer_handler->buzzer_on = buzzer_on;
-    buzzer_handler->buzzer_off = buzzer_off;
-    buzzer_handler->buzzer_play_sync = buzzer_play_sync;
-    buzzer_handler->buzzer_get_tick = buzzer_get_tick;
-
-    buzzer_handler->amplitude = 0.0f;
-    buzzer_handler->frequency = 0U;
-    buzzer_handler->duration = 0U;
-    buzzer_handler->start_time = 0U;
+    *buzzer_handler = (struct BuzzerHandler){
+        .buzzer_on = buzzer_on,
+        .buzzer_off = buzzer_off,
+        .buzzer_play_sync = buzzer_play_sync,
+        .buzzer_get_tick = buzzer_get_tick
+    };
 
     return BUZZER_RC_OK;
 }
@@ -104,10 +102,8 @@ enum BuzzerReturnCode buzzer_api_play_async(enum BuzzerType buzzer_type) {
         buzzer_handler->start_time = current_time;
         buzzer_handler->is_playing = true;
         return BUZZER_RC_PLAYING;
-    }
-
-    // buzzer is currently playing
-    if ((current_time - buzzer_handler->start_time) >= buzzer_handler->duration) {
+    } else if ((current_time - buzzer_handler->start_time) >= buzzer_handler->duration) {
+        // buzzer is currently playing
         if (buzzer_handler->buzzer_off() != BUZZER_RC_OK)
             return BUZZER_RC_ERROR;
 

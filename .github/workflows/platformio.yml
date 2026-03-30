@@ -39,4 +39,4 @@ jobs:
 
       - name: Static Code Analysis
         if: github.ref == 'refs/heads/dev'
-        run: pio check --src-filters="+<Core/Src/*>" --src-filters="+<Core/Inc/*>" --src-filters="+<Core/Test/*>" --src-filters="-<Drivers/*>" || true
+        run: pio check  || true

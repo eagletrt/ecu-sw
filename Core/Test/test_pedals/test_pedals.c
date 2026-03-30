@@ -1,7 +1,7 @@
 /**
  * \file test_pedals.c
  * \author Dorijan Di Zepp
- * \date 2026-03-28
+ * \date 2026-03-30
  * \brief Unit tests for the pedals module
  * \note Even if the module itself is pretty simple, it is important to make sure
  * that the handler correctly updates the internal state within defined physical limits (e.g. max pressure),
@@ -12,6 +12,8 @@
 #include <stdbool.h>
 #include "pedals-api.h"
 #include "eagletrt-api.h"
+
+extern struct PedalsHandler pedals_handler;
 
 void setUp(void) {
     pedals_api_init();
@@ -26,7 +28,6 @@ void setUp(void) {
 
 void test_pedals_api_init_initial_state(void) {
     struct PedalsHandler expected_handler = { 0 };
-    extern struct PedalsHandler pedals_handler;
 
     enum PedalsReturnCode rc = pedals_api_init();
 
@@ -45,7 +46,7 @@ void test_pedals_api_set_throttle_in_range(void) {
     float expected_throttle = 0.4f;
 
     enum PedalsReturnCode rc = pedals_api_set_throttle(expected_throttle);
-    float throttle = pedals_api_get_throttle();
+    float throttle = pedals_handler.throttle;
 
     TEST_ASSERT_EQUAL_MESSAGE(PEDALS_RC_OK, rc, "It should be possible to set a new throttle value if in range");
     TEST_ASSERT_EQUAL_FLOAT_MESSAGE(expected_throttle, throttle, "The latest throttle value stored should correspond to the latest value passed");
@@ -55,7 +56,7 @@ void test_pedals_api_set_throttle_lower_range(void) {
     float expected_throttle = 0.0f;
 
     enum PedalsReturnCode rc = pedals_api_set_throttle(expected_throttle);
-    float throttle = pedals_api_get_throttle();
+    float throttle = pedals_handler.throttle;
 
     TEST_ASSERT_EQUAL_MESSAGE(PEDALS_RC_OK, rc, "It should be possible to set the throttle to zero");
     TEST_ASSERT_EQUAL_FLOAT_MESSAGE(expected_throttle, throttle, "The latest throttle value stored should correspond to the latest value passed");
@@ -67,7 +68,7 @@ void test_pedals_api_set_throttle_lower_out_of_range(void) {
     float under_limit_throttle = -0.1f;
 
     enum PedalsReturnCode rc = pedals_api_set_throttle(under_limit_throttle);
-    float throttle = pedals_api_get_throttle();
+    float throttle = pedals_handler.throttle;
 
     TEST_ASSERT_EQUAL_MESSAGE(PEDALS_RC_ERROR, rc, "It should not be possible to set the throttle below zero");
     TEST_ASSERT_EQUAL_FLOAT_MESSAGE(expected_throttle, throttle, "The latest throttle value stored should correspond to the last valid value");
@@ -77,7 +78,7 @@ void test_pedals_api_set_throttle_upper_range(void) {
     float expected_throttle = 1.0f;
 
     enum PedalsReturnCode rc = pedals_api_set_throttle(expected_throttle);
-    float throttle = pedals_api_get_throttle();
+    float throttle = pedals_handler.throttle;
 
     TEST_ASSERT_EQUAL_MESSAGE(PEDALS_RC_OK, rc, "It should be possible to set the throttle to one");
     TEST_ASSERT_EQUAL_FLOAT_MESSAGE(expected_throttle, throttle, "The latest throttle value stored should correspond to the latest value passed");
@@ -89,7 +90,7 @@ void test_pedals_api_set_throttle_upper_out_of_range(void) {
     float over_limit_throttle = 1.1f;
 
     enum PedalsReturnCode rc = pedals_api_set_throttle(over_limit_throttle);
-    float throttle = pedals_api_get_throttle();
+    float throttle = pedals_handler.throttle;
 
     TEST_ASSERT_EQUAL_MESSAGE(PEDALS_RC_ERROR, rc, "It should not be possible to set the throttle above one");
     TEST_ASSERT_EQUAL_FLOAT_MESSAGE(expected_throttle, throttle, "The latest throttle value stored should correspond to the last valid value");
@@ -106,7 +107,7 @@ void test_pedals_api_set_brake_in_range(void) {
     float expected_brake = 0.4f;
 
     enum PedalsReturnCode rc = pedals_api_set_brake(expected_brake);
-    float brake = pedals_api_get_brake();
+    float brake = pedals_handler.brake;
 
     TEST_ASSERT_EQUAL_MESSAGE(PEDALS_RC_OK, rc, "It should be possible to set a new brake value if in range");
     TEST_ASSERT_EQUAL_FLOAT_MESSAGE(expected_brake, brake, "The latest brale value stored should correspond to the latest value passed");
@@ -116,7 +117,7 @@ void test_pedals_api_set_brake_lower_range(void) {
     float expected_brake = 0.0f;
 
     enum PedalsReturnCode rc = pedals_api_set_brake(expected_brake);
-    float brake = pedals_api_get_brake();
+    float brake = pedals_handler.brake;
 
     TEST_ASSERT_EQUAL_MESSAGE(PEDALS_RC_OK, rc, "It should be possible to set the brake to zero");
     TEST_ASSERT_EQUAL_FLOAT_MESSAGE(expected_brake, brake, "The latest brake value stored should correspond to the latest value passed");
@@ -128,7 +129,7 @@ void test_pedals_api_set_brake_lower_out_of_range(void) {
     float under_limit_brake = -0.1f;
 
     enum PedalsReturnCode rc = pedals_api_set_brake(under_limit_brake);
-    float brake = pedals_api_get_brake();
+    float brake = pedals_handler.brake;
 
     TEST_ASSERT_EQUAL_MESSAGE(PEDALS_RC_ERROR, rc, "It should not be possible to set the brake below zero");
     TEST_ASSERT_EQUAL_FLOAT_MESSAGE(expected_brake, brake, "The latest brake value stored should correspond to the last valid value");
@@ -138,7 +139,7 @@ void test_pedals_api_set_brake_upper_range(void) {
     float expected_brake = 1.0f;
 
     enum PedalsReturnCode rc = pedals_api_set_brake(expected_brake);
-    float brake = pedals_api_get_brake();
+    float brake = pedals_handler.brake;
 
     TEST_ASSERT_EQUAL_MESSAGE(PEDALS_RC_OK, rc, "It should be possible to set the brake to one");
     TEST_ASSERT_EQUAL_FLOAT_MESSAGE(expected_brake, brake, "The latest brake value stored should correspond to the latest value passed");
@@ -150,7 +151,7 @@ void test_pedals_api_set_brake_upper_out_of_range(void) {
     float over_limit_brake = 1.1f;
 
     enum PedalsReturnCode rc = pedals_api_set_brake(over_limit_brake);
-    float brake = pedals_api_get_brake();
+    float brake = pedals_handler.brake;
 
     TEST_ASSERT_EQUAL_MESSAGE(PEDALS_RC_ERROR, rc, "It should not be possible to set the brake above pne");
     TEST_ASSERT_EQUAL_FLOAT_MESSAGE(expected_brake, brake, "The latest brake value stored should correspond to the last valid value");
@@ -167,7 +168,7 @@ void test_pedals_api_set_brake_pressure_in_range(void) {
     float expected_brake_pressure = PEDALS_BRAKE_THRESHOLD_PERCENTAGE / 2;
 
     enum PedalsReturnCode rc = pedals_api_set_brake_pressure(expected_brake_pressure);
-    float brake_pressure = pedals_api_get_brake_pressure();
+    float brake_pressure = pedals_handler.brake_pressure;
 
     TEST_ASSERT_EQUAL_MESSAGE(PEDALS_RC_OK, rc, "It should be possible to set a new brake pressure value if in range");
     TEST_ASSERT_EQUAL_FLOAT_MESSAGE(expected_brake_pressure, brake_pressure, "The latest brake pressure value stored should correspond to the latest value passed");
@@ -177,7 +178,7 @@ void test_pedals_api_set_brake_pressure_lower_range(void) {
     float expected_brake_pressure = 0.0f;
 
     enum PedalsReturnCode rc = pedals_api_set_brake_pressure(expected_brake_pressure);
-    float brake_pressure = pedals_api_get_brake_pressure();
+    float brake_pressure = pedals_handler.brake_pressure;
 
     TEST_ASSERT_EQUAL_MESSAGE(PEDALS_RC_OK, rc, "It should be possible to set the brake pressure to zero");
     TEST_ASSERT_EQUAL_FLOAT_MESSAGE(expected_brake_pressure, brake_pressure, "The latest brake pressure value stored should correspond to the latest value passed");
@@ -189,7 +190,7 @@ void test_pedals_api_set_brake_pressure_lower_out_of_range(void) {
     float under_limit_brake_pressure = -0.1f;
 
     enum PedalsReturnCode rc = pedals_api_set_brake_pressure(under_limit_brake_pressure);
-    float brake_pressure = pedals_api_get_brake_pressure();
+    float brake_pressure = pedals_handler.brake_pressure;
 
     TEST_ASSERT_EQUAL_MESSAGE(PEDALS_RC_ERROR, rc, "It should not be possible to set the brake pressure below zero");
     TEST_ASSERT_EQUAL_FLOAT_MESSAGE(expected_brake_pressure, brake_pressure, "The latest brake pressure value stored should correspond to the last valid value");
@@ -199,7 +200,7 @@ void test_pedals_api_set_brake_pressure_upper_range(void) {
     float expected_brake_pressure = PEDALS_MAX_BRAKE_PRESSURE_BAR;
 
     enum PedalsReturnCode rc = pedals_api_set_brake_pressure(expected_brake_pressure);
-    float brake_pressure = pedals_api_get_brake_pressure();
+    float brake_pressure = pedals_handler.brake_pressure;
 
     TEST_ASSERT_EQUAL_MESSAGE(PEDALS_RC_OK, rc, "It should be possible to set the brake pressure to PEDALS_MAX_BRAKE_PRESSURE_BAR");
     TEST_ASSERT_EQUAL_FLOAT_MESSAGE(expected_brake_pressure, brake_pressure, "The latest brake pressure value stored should correspond to the latest value passed");
@@ -211,7 +212,7 @@ void test_pedals_api_set_brake_pressure_upper_out_of_range(void) {
     float over_limit_brake_pressure = PEDALS_MAX_BRAKE_PRESSURE_BAR + 0.1f;
 
     enum PedalsReturnCode rc = pedals_api_set_brake_pressure(over_limit_brake_pressure);
-    float brake_pressure = pedals_api_get_brake_pressure();
+    float brake_pressure = pedals_handler.brake_pressure;
 
     TEST_ASSERT_EQUAL_MESSAGE(PEDALS_RC_ERROR, rc, "It should not be possible to set the brake pressure above PEDALS_MAX_BRAKE_PRESSURE_BAR");
     TEST_ASSERT_EQUAL_FLOAT_MESSAGE(expected_brake_pressure, brake_pressure, "The latest brake pressure value stored should correspond to the last valid value");
@@ -227,7 +228,7 @@ void test_pedals_api_set_brake_pressure_upper_out_of_range(void) {
 
 void test_pedals_api_get_throttle(void) {
     float expected_throttle = 0.75f;
-    pedals_api_set_throttle(expected_throttle);
+    pedals_handler.throttle = expected_throttle;
 
     float throttle = pedals_api_get_throttle();
 
@@ -236,7 +237,7 @@ void test_pedals_api_get_throttle(void) {
 
 void test_pedals_api_get_brake(void) {
     float expected_brake = 0.75f;
-    pedals_api_set_brake(expected_brake);
+    pedals_handler.brake = expected_brake;
 
     float brake = pedals_api_get_brake();
 
@@ -245,7 +246,7 @@ void test_pedals_api_get_brake(void) {
 
 void test_pedals_api_get_brake_pressure(void) {
     float expected_brake_pressure = PEDALS_MAX_BRAKE_PRESSURE_BAR;
-    pedals_api_set_brake_pressure(expected_brake_pressure);
+    pedals_handler.brake_pressure = expected_brake_pressure;
 
     float brake_pressure = pedals_api_get_brake_pressure();
 
@@ -269,7 +270,7 @@ void test_pedals_api_get_requested_throttle_torque_after_init(void) {
 void test_pedals_api_get_requested_throttle_torque_max_value(void) {
     // the computation is a simple product [PEDALS_MAX_TORQUE_NM * throttle]
     // by setting the throttle percentage to the max value, we expect the max torque available
-    pedals_api_set_throttle(1.0f);
+    pedals_handler.throttle = 1.0f;
     float throttle_torque = pedals_api_get_requested_throttle_torque();
 
     TEST_ASSERT_EQUAL_FLOAT_MESSAGE(PEDALS_MAX_TORQUE_NM, throttle_torque, "Requested throttle torque should be the max available if the throttle percentage is 1.0f");
@@ -283,7 +284,7 @@ void test_pedals_api_get_requested_throttle_torque_max_value(void) {
  */
 
 void test_pedals_api_is_brake_pressed_under_threshold(void) {
-    pedals_api_set_brake(PEDALS_BRAKE_THRESHOLD_PERCENTAGE / 2);
+    pedals_handler.brake = PEDALS_BRAKE_THRESHOLD_PERCENTAGE / 2;
 
     bool brake_pressed = pedals_api_is_brake_pressed();
 
@@ -291,7 +292,7 @@ void test_pedals_api_is_brake_pressed_under_threshold(void) {
 }
 
 void test_pedals_api_is_brake_pressed_same_as_threshold(void) {
-    pedals_api_set_brake(PEDALS_BRAKE_THRESHOLD_PERCENTAGE);
+    pedals_handler.brake = PEDALS_BRAKE_THRESHOLD_PERCENTAGE;
 
     bool brake_pressed = pedals_api_is_brake_pressed();
 
@@ -299,7 +300,7 @@ void test_pedals_api_is_brake_pressed_same_as_threshold(void) {
 }
 
 void test_pedals_api_is_brake_pressed_above_threshold(void) {
-    pedals_api_set_brake(PEDALS_BRAKE_THRESHOLD_PERCENTAGE + 0.1f);
+    pedals_handler.brake = PEDALS_BRAKE_THRESHOLD_PERCENTAGE + 0.1f;
 
     bool brake_pressed = pedals_api_is_brake_pressed();
 
