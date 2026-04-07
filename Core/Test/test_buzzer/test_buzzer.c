@@ -1,7 +1,7 @@
 /**
  * \file test_buzzer.c
  * \author Dorijan Di Zepp
- * \date 2026-03-30
+ * \date 2026-04-07
  * \brief Unit tests using FFF for testing the buzzer module
  * \note Exhaustive testing of every buzzer instance (e.g R2D vs. ASSI) is 
  * unnecessary for most logic tests (e.g getters and setters), as the API 
@@ -32,9 +32,15 @@ FAKE_VALUE_FUNC(enum BuzzerReturnCode, buzzer_sync_assi, uint32_t, float, uint32
 FAKE_VALUE_FUNC(uint32_t, get_tick_assi);
 
 void setUp(void) {
-    // initialize the API for both types
-    buzzer_api_init(BUZZER_TYPE_R2D, buzzer_on_r2d, buzzer_off_r2d, buzzer_sync_r2d, get_tick_r2d);
-    buzzer_api_init(BUZZER_TYPE_ASSI, buzzer_on_assi, buzzer_off_assi, buzzer_sync_assi, get_tick_assi);
+    // prepare the callbacks array for bulk initialization
+    // the order should correspond to the BuzzerType enum indices
+    buzzer_on_callback ons[BUZZER_TYPE_COUNT] = { buzzer_on_r2d, buzzer_on_assi };
+    buzzer_off_callback offs[BUZZER_TYPE_COUNT] = { buzzer_off_r2d, buzzer_off_assi };
+    buzzer_delay_callback syncs[BUZZER_TYPE_COUNT] = { buzzer_sync_r2d, buzzer_sync_assi };
+    buzzer_tick_callback ticks[BUZZER_TYPE_COUNT] = { get_tick_r2d, get_tick_assi };
+
+    // initialize the API once for all buzzers
+    buzzer_api_init(ons, offs, syncs, ticks);
 
     // reset mocks state
     RESET_FAKE(buzzer_on_r2d);
@@ -62,87 +68,162 @@ void tearDown(void) {
  * \{
  */
 
-void test_buzzer_api_init_unknown_type(void) {
-    enum BuzzerReturnCode rc = buzzer_api_init(99, buzzer_on_r2d, buzzer_off_r2d, buzzer_sync_r2d, get_tick_r2d);
+// void test_buzzer_api_init_null_buzzer_on_callback(void) {
+//     enum BuzzerReturnCode rc = buzzer_api_init(BUZZER_TYPE_R2D, NULL, buzzer_off_r2d, buzzer_sync_r2d, get_tick_r2d);
 
-    TEST_ASSERT_EQUAL_MESSAGE(
-        BUZZER_RC_ERROR,
-        rc,
-        "Initialization should fail when passing an unknown buzzer type");
+//     TEST_ASSERT_EQUAL_MESSAGE(
+//         BUZZER_RC_ERROR,
+//         rc,
+//         "Init should fail when 'buzzer on' callback is NULL");
 
-    // check that buzzer off hasn't been called
-    TEST_ASSERT_EQUAL_MESSAGE(0, buzzer_off_r2d_fake.call_count, "Buzzer off should not be called when an unknown type is used");
-}
+//     // check that buzzer off hasn't been called
+//     TEST_ASSERT_EQUAL_MESSAGE(0, buzzer_off_r2d_fake.call_count, "Buzzer off should not be called when an unknown type is used");
+// }
 
 void test_buzzer_api_init_null_buzzer_on_callback(void) {
-    enum BuzzerReturnCode rc = buzzer_api_init(BUZZER_TYPE_R2D, NULL, buzzer_off_r2d, buzzer_sync_r2d, get_tick_r2d);
+    // provide a NULL only in the 'on' array for one of the buzzers
+    buzzer_on_callback ons[BUZZER_TYPE_COUNT] = { NULL, buzzer_on_assi };
+    buzzer_off_callback offs[BUZZER_TYPE_COUNT] = { buzzer_off_r2d, buzzer_off_assi };
+    buzzer_delay_callback syncs[BUZZER_TYPE_COUNT] = { buzzer_sync_r2d, buzzer_sync_assi };
+    buzzer_tick_callback ticks[BUZZER_TYPE_COUNT] = { get_tick_r2d, get_tick_assi };
+
+    enum BuzzerReturnCode rc = buzzer_api_init(ons, offs, syncs, ticks);
 
     TEST_ASSERT_EQUAL_MESSAGE(
         BUZZER_RC_ERROR,
         rc,
-        "Init should fail when 'buzzer on' callback is NULL");
+        "Init should fail when a 'buzzer on' callback in the array is NULL");
 
-    // check that buzzer off hasn't been called
-    TEST_ASSERT_EQUAL_MESSAGE(0, buzzer_off_r2d_fake.call_count, "Buzzer off should not be called when an unknown type is used");
+    // ensure that buzzer off has never been called by anyone
+    TEST_ASSERT_EQUAL_MESSAGE(0, buzzer_off_r2d_fake.call_count, "R2D buzzer off should not be called if any 'on' pointer is NULL");
+    TEST_ASSERT_EQUAL_MESSAGE(0, buzzer_off_assi_fake.call_count, "ASSI buzzer off should not be called if any 'on' pointer is NULL");
 }
 
 void test_buzzer_api_init_null_buzzer_off_callback(void) {
-    enum BuzzerReturnCode rc = buzzer_api_init(BUZZER_TYPE_R2D, buzzer_on_r2d, NULL, buzzer_sync_r2d, get_tick_r2d);
+    // provide a NULL only in the 'off' array for one of the buzzers
+    buzzer_on_callback ons[BUZZER_TYPE_COUNT] = { buzzer_on_r2d, buzzer_on_assi };
+    buzzer_off_callback offs[BUZZER_TYPE_COUNT] = { buzzer_off_r2d, NULL };
+    buzzer_delay_callback syncs[BUZZER_TYPE_COUNT] = { buzzer_sync_r2d, buzzer_sync_assi };
+    buzzer_tick_callback ticks[BUZZER_TYPE_COUNT] = { get_tick_r2d, get_tick_assi };
+
+    enum BuzzerReturnCode rc = buzzer_api_init(ons, offs, syncs, ticks);
 
     TEST_ASSERT_EQUAL_MESSAGE(
         BUZZER_RC_ERROR,
         rc,
-        "Init should fail when 'buzzer off' callback is NULL");
+        "Init should fail when a 'buzzer off' callback in the array is NULL");
 
-    // check that buzzer off hasn't been called
-    TEST_ASSERT_EQUAL_MESSAGE(0, buzzer_off_r2d_fake.call_count, "Buzzer off should not be called when an unknown type is used");
+    // ensure that buzzer off has never been called by anyone
+    TEST_ASSERT_EQUAL_MESSAGE(0, buzzer_off_r2d_fake.call_count, "R2D buzzer off should not be called if any 'off' pointer is NULL");
+    TEST_ASSERT_EQUAL_MESSAGE(0, buzzer_off_assi_fake.call_count, "ASSI buzzer off should not be called if any 'off' pointer is NULL");
 }
 
 void test_buzzer_api_init_null_buzzer_play_sync_callback(void) {
-    enum BuzzerReturnCode rc = buzzer_api_init(BUZZER_TYPE_R2D, buzzer_on_r2d, buzzer_off_r2d, NULL, get_tick_r2d);
+    // provide a NULL only in the 'play sync' array for one of the buzzers
+    buzzer_on_callback ons[BUZZER_TYPE_COUNT] = { buzzer_on_r2d, buzzer_on_assi };
+    buzzer_off_callback offs[BUZZER_TYPE_COUNT] = { buzzer_off_r2d, buzzer_off_assi };
+    buzzer_delay_callback syncs[BUZZER_TYPE_COUNT] = { buzzer_sync_r2d, NULL };
+    buzzer_tick_callback ticks[BUZZER_TYPE_COUNT] = { get_tick_r2d, get_tick_assi };
+
+    enum BuzzerReturnCode rc = buzzer_api_init(ons, offs, syncs, ticks);
 
     TEST_ASSERT_EQUAL_MESSAGE(
         BUZZER_RC_ERROR,
         rc,
-        "Init should fail when 'buzzer play sync' callback is NULL");
+        "Init should fail when a 'buzzer sync' callback in the array is NULL");
 
-    // check that buzzer off hasn't been called
-    TEST_ASSERT_EQUAL_MESSAGE(0, buzzer_off_r2d_fake.call_count, "Buzzer off should not be called when an unknown type is used");
+    // ensure that buzzer off has never been called by anyone
+    TEST_ASSERT_EQUAL_MESSAGE(0, buzzer_off_r2d_fake.call_count, "R2D buzzer off should not be called if any 'sync' pointer is NULL");
+    TEST_ASSERT_EQUAL_MESSAGE(0, buzzer_off_assi_fake.call_count, "ASSI buzzer off should not be called if any 'sync' pointer is NULL");
 }
 
 void test_buzzer_api_init_null_buzzer_get_tick_callback(void) {
-    enum BuzzerReturnCode rc = buzzer_api_init(BUZZER_TYPE_R2D, buzzer_on_r2d, buzzer_off_r2d, buzzer_sync_r2d, NULL);
+    // provide a NULL only in the 'off' array for one of the buzzers
+    buzzer_on_callback ons[BUZZER_TYPE_COUNT] = { buzzer_on_r2d, buzzer_on_assi };
+    buzzer_off_callback offs[BUZZER_TYPE_COUNT] = { buzzer_off_r2d, buzzer_off_assi };
+    buzzer_delay_callback syncs[BUZZER_TYPE_COUNT] = { buzzer_sync_r2d, buzzer_sync_assi };
+    buzzer_tick_callback ticks[BUZZER_TYPE_COUNT] = { NULL, get_tick_assi };
+
+    enum BuzzerReturnCode rc = buzzer_api_init(ons, offs, syncs, ticks);
 
     TEST_ASSERT_EQUAL_MESSAGE(
         BUZZER_RC_ERROR,
         rc,
-        "Init should fail when 'get tick' callback is NULL");
+        "Init should fail when a 'buzzer get tick' callback in the array is NULL");
 
-    // check that buzzer off hasn't been called
-    TEST_ASSERT_EQUAL_MESSAGE(0, buzzer_off_r2d_fake.call_count, "Buzzer off should not be called when an unknown type is used");
+    // ensure that buzzer off has never been called by anyone
+    TEST_ASSERT_EQUAL_MESSAGE(0, buzzer_off_r2d_fake.call_count, "R2D buzzer off should not be called if any 'get tick' pointer is NULL");
+    TEST_ASSERT_EQUAL_MESSAGE(0, buzzer_off_assi_fake.call_count, "ASSI buzzer off should not be called if any 'get tick' pointer is NULL");
 }
 
 void test_buzzer_api_init_failed_reset(void) {
+    // only R2D fails buzzer off
     buzzer_off_r2d_fake.return_val = BUZZER_RC_ERROR;
-    TEST_ASSERT_EQUAL_MESSAGE(BUZZER_RC_ERROR, buzzer_api_init(BUZZER_TYPE_R2D, buzzer_on_r2d, buzzer_off_r2d, buzzer_sync_r2d, get_tick_r2d), "Initialization should fail if R2D off fails.");
+    buzzer_off_assi_fake.return_val = BUZZER_RC_OK;
 
-    // check that buzzer off has been called even if failed
-    TEST_ASSERT_EQUAL_MESSAGE(1, buzzer_off_r2d_fake.call_count, "Buzzer off should have been called in order to return error");
+    buzzer_on_callback ons[BUZZER_TYPE_COUNT] = { buzzer_on_r2d, buzzer_on_assi };
+    buzzer_off_callback offs[BUZZER_TYPE_COUNT] = { buzzer_off_r2d, buzzer_off_assi };
+    buzzer_delay_callback syncs[BUZZER_TYPE_COUNT] = { buzzer_sync_r2d, buzzer_sync_assi };
+    buzzer_tick_callback ticks[BUZZER_TYPE_COUNT] = { get_tick_r2d, get_tick_assi };
+
+    enum BuzzerReturnCode rc = buzzer_api_init(ons, offs, syncs, ticks);
+
+    // overall init must return error becasue r2d failed to turn off the buzzer
+    TEST_ASSERT_EQUAL_MESSAGE(
+        BUZZER_RC_ERROR,
+        rc,
+        "Initialization should report ERROR if at least one hardware off call fails");
+
+    // verify assi buzzer off was still called despite r2d failing
+    TEST_ASSERT_EQUAL_MESSAGE(
+        1,
+        buzzer_off_r2d_fake.call_count,
+        "Buzzer R2D off should have been attempted");
+
+    TEST_ASSERT_EQUAL_MESSAGE(
+        1,
+        buzzer_off_assi_fake.call_count,
+        "Buzzer ASSI off MUST be attempted even if R2D fails");
 }
 
 void test_buzzer_api_init_initial_state(void) {
-    // verify that after the initialization the state "values" are all set to zero
-    struct BuzzerHandler expected_r2d;
-    // zero out the mem to avoid garbage values
-    memset(&expected_r2d, 0, sizeof(struct BuzzerHandler));
-    expected_r2d.buzzer_on = buzzer_on_r2d;
-    expected_r2d.buzzer_off = buzzer_off_r2d;
-    expected_r2d.buzzer_play_sync = buzzer_sync_r2d;
-    expected_r2d.buzzer_get_tick = get_tick_r2d;
+    buzzer_on_callback ons[BUZZER_TYPE_COUNT] = { buzzer_on_r2d, buzzer_on_assi };
+    buzzer_off_callback offs[BUZZER_TYPE_COUNT] = { buzzer_off_r2d, buzzer_off_assi };
+    buzzer_delay_callback syncs[BUZZER_TYPE_COUNT] = { buzzer_sync_r2d, buzzer_sync_assi };
+    buzzer_tick_callback ticks[BUZZER_TYPE_COUNT] = { get_tick_r2d, get_tick_assi };
 
-    TEST_ASSERT_EQUAL_MEMORY_MESSAGE(&expected_r2d, &buzzer_handlers[BUZZER_TYPE_R2D], sizeof(struct BuzzerHandler), "Buzzer state memory does not match expected initialization");
+    buzzer_api_init(ons, offs, syncs, ticks);
+
+    // check all buzzer handlers
+    // R2D
+    struct BuzzerHandler expected_r2d = {
+        .buzzer_on = buzzer_on_r2d,
+        .buzzer_off = buzzer_off_r2d,
+        .buzzer_play_sync = buzzer_sync_r2d,
+        .buzzer_get_tick = get_tick_r2d
+        // other fields like .amplitude, .is_playing are implicitly 0
+    };
+
+    TEST_ASSERT_EQUAL_MEMORY_MESSAGE(
+        &expected_r2d,
+        &buzzer_handlers[0],
+        sizeof(struct BuzzerHandler),
+        "R2D handler memory state is incorrect");
+
+    // ASSI
+    struct BuzzerHandler expected_assi = {
+        .buzzer_on = buzzer_on_assi,
+        .buzzer_off = buzzer_off_assi,
+        .buzzer_play_sync = buzzer_sync_assi,
+        .buzzer_get_tick = get_tick_assi
+    };
+
+    TEST_ASSERT_EQUAL_MEMORY_MESSAGE(
+        &expected_assi,
+        &buzzer_handlers[1],
+        sizeof(struct BuzzerHandler),
+        "ASSI handler memory state is incorrect");
 }
-
 /*! \} */
 
 /*!
@@ -512,7 +593,6 @@ int main(void) {
      * \addtogroup buzzer_api_init
      * \{
      */
-    RUN_TEST(test_buzzer_api_init_unknown_type);
     RUN_TEST(test_buzzer_api_init_null_buzzer_on_callback);
     RUN_TEST(test_buzzer_api_init_null_buzzer_off_callback);
     RUN_TEST(test_buzzer_api_init_null_buzzer_play_sync_callback);

@@ -1,7 +1,7 @@
 /*!
  * \file buzzer-api.h
  * \author Dorijan Di Zepp
- * \date 2026-03-25
+ * \date 2026-04-07
  * \brief Hardware-agnostic module for buzzer timing logic.
  * This file defines the buzzer module's API to operate on the buzzer.
  */
@@ -12,27 +12,35 @@
 #include "buzzer.h"
 
 /*!
- * \brief Links the logic to hardware. All playing "characteristics" (duration, frequency
-  and aamplitude) can be set through the public api.
- * \note Re-calling this function while a buzzer is playing will stop the 
- * previous hardware action before linking the new ones.
- * \note Frequency and amplitude are not required during initialization as 
- * they are hardware-dependent. For simple implementations (e.g. GPIO), 
- * they can be ignored, while for PWM they can be configured via the specific APIs.
- * \param[in] buzzer_type The buzzer type on which to operate
- * \param[in] buzzer_on Function to turn hardware ON.
- * \param[in] buzzer_off Function to turn hardware OFF.
- * \param[in] buzzer_play_sync Pointer to blocking delay function (required for sync mode).
- * \param[in] buzzer_get_tick Pointer to get system uptime (required for async mode).
- * \retval BUZZER_RC_OK on correct initialization.
- * \retval BUZZER_RC_ERROR if its was not possible to initialize the handler.
+ * \brief Bulk initializes the entire buzzer subsystem and links logic to hardware.
+ * This function performs an "all-or-nothing" initialization. It first validates that
+ * all provided callback arrays contain non-NULL pointers for every buzzer defined
+ * by \c BUZZER_TYPE_COUNT. If valid, it initializes the internal handlers and attempts to
+ * put all hardware into a safe (OFF) state.
+ *
+ * \note The order of callbacks in each array MUST correspond to the integer values 
+ * of the \ref BuzzerType enum (e.g. index 0 must be the callback for the 
+ * buzzer type with value 0).
+ * 
+ * \note If any hardware "off" call fails, the function will still attempt to 
+ * initialize the remaining buzzers but will return \c BUZZER_RC_ERROR to 
+ * indicate a hardware safe-state failure.
+ * 
+ * \note Re-calling this function will reset all internal states (duration, 
+ * frequency, etc.) to zero for all buzzers.
+ *
+ * \param[in] on_ptrs Array of functions to turn hardware ON (size \c BUZZER_TYPE_COUNT).
+ * \param[in] off_ptrs Array of functions to turn hardware OFF (size \c BUZZER_TYPE_COUNT).
+ * \param[in] play_sync_ptrs Array of blocking delay functions for sync mode (size \c BUZZER_TYPE_COUNT).
+ * @param[in] get_tick_ptrs Array of system uptime functions for async mode (size \c BUZZER_TYPE_COUNT).
+ * \retval BUZZER_RC_OK All handlers initialized and hardware successfully put to OFF state.
+ * \retval BUZZER_RC_ERROR If any pointer was NULL or if at least one hardware OFF command failed.
  */
 enum BuzzerReturnCode buzzer_api_init(
-    enum BuzzerType buzzer_type,
-    buzzer_on_callback buzzer_on,
-    buzzer_off_callback buzzer_off,
-    buzzer_delay_callback buzzer_play_sync,
-    buzzer_tick_callback buzzer_get_tick);
+    buzzer_on_callback on_ptrs[BUZZER_TYPE_COUNT],
+    buzzer_off_callback off_ptrs[BUZZER_TYPE_COUNT],
+    buzzer_delay_callback play_sync_ptrs[BUZZER_TYPE_COUNT],
+    buzzer_tick_callback get_tick_ptrs[BUZZER_TYPE_COUNT]);
 
 /*!
  * \brief Plays the buzzer and blocks the CPU until duration elapses.

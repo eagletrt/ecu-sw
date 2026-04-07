@@ -1,7 +1,7 @@
 /*!
  * \file buzzer-api.c
  * \author Dorijan Di Zepp
- * \date 2026-03-30
+ * \date 2026-04-07
  * \brief Hardware-agnostic module for buzzer timing logic.
  *
  * This module manages synchronous and asynchronous timing by implementing the 
@@ -9,6 +9,7 @@
  */
 
 #include "buzzer-api.h"
+#include "string.h"
 #include "eagletrt-api.h"
 
 /**
@@ -35,34 +36,45 @@ EAGLETRT_STATIC_INLINE bool prv_is_buzzer_type_valid(enum BuzzerType buzzer_type
 }
 
 enum BuzzerReturnCode buzzer_api_init(
-    enum BuzzerType buzzer_type,
-    buzzer_on_callback buzzer_on,
-    buzzer_off_callback buzzer_off,
-    buzzer_delay_callback buzzer_play_sync,
-    buzzer_tick_callback buzzer_get_tick) {
+    buzzer_on_callback on_ptrs[BUZZER_TYPE_COUNT],
+    buzzer_off_callback off_ptrs[BUZZER_TYPE_COUNT],
+    buzzer_delay_callback play_sync_ptrs[BUZZER_TYPE_COUNT],
+    buzzer_tick_callback get_tick_ptrs[BUZZER_TYPE_COUNT]) {
 
-    // validate mode
-    if (!prv_is_buzzer_type_valid(buzzer_type))
-        return BUZZER_RC_ERROR;
+    // check EVERY array before touching a single byte of buzzer_handlers
+    for (int i = 0; i < BUZZER_TYPE_COUNT; i++) {
+        if (on_ptrs[i] == NULL ||
+            off_ptrs[i] == NULL ||
+            play_sync_ptrs[i] == NULL ||
+            get_tick_ptrs[i] == NULL) {
 
-    // validate pointers
-    if (buzzer_on == NULL || buzzer_off == NULL || buzzer_play_sync == NULL || buzzer_get_tick == NULL)
-        return BUZZER_RC_ERROR;
+            /* if even ONE pointer is missing, abort completely.
+            No handlers are modified, and the system stays in its 
+            previous state */
+            return BUZZER_RC_ERROR;
+        }
+    }
 
-    // stop and clear the buzzer handler
-    if (buzzer_api_reset(buzzer_type) != BUZZER_RC_OK)
-        return BUZZER_RC_ERROR;
+    // If here, we know all BUZZER_TYPE_COUNT sets are valid
+    bool hardware_error_occurred = false;
 
-    // only set the callbacks; everything else becomes 0/0.0f/false automatically.
-    struct BuzzerHandler *buzzer_handler = &buzzer_handlers[buzzer_type];
-    *buzzer_handler = (struct BuzzerHandler){
-        .buzzer_on = buzzer_on,
-        .buzzer_off = buzzer_off,
-        .buzzer_play_sync = buzzer_play_sync,
-        .buzzer_get_tick = buzzer_get_tick
-    };
+    for (int i = 0; i < BUZZER_TYPE_COUNT; i++) {
+        // reset handler and set new handlers
+        buzzer_handlers[i] = (struct BuzzerHandler){
+            .buzzer_on = on_ptrs[i],
+            .buzzer_off = off_ptrs[i],
+            .buzzer_play_sync = play_sync_ptrs[i],
+            .buzzer_get_tick = get_tick_ptrs[i]
+        };
 
-    return BUZZER_RC_OK;
+        // ensure hardware is off
+        if (buzzer_handlers[i].buzzer_off() != BUZZER_RC_OK) {
+            hardware_error_occurred = true;
+        }
+    }
+
+    // if at least one off() call failed, we report it
+    return (hardware_error_occurred) ? BUZZER_RC_ERROR : BUZZER_RC_OK;
 }
 
 enum BuzzerReturnCode buzzer_api_play_sync(enum BuzzerType buzzer_type) {
@@ -121,12 +133,12 @@ enum BuzzerReturnCode buzzer_api_reset(enum BuzzerType buzzer_type) {
 
     struct BuzzerHandler *buzzer_handler = &buzzer_handlers[buzzer_type];
 
+    // stop buzzer and clear state
     if (buzzer_handler->buzzer_off != NULL) {
         if (buzzer_handler->buzzer_off() != BUZZER_RC_OK)
             return BUZZER_RC_ERROR;
     }
 
-    // stop buzzer and clear state
     buzzer_handler->is_playing = false;
     buzzer_handler->duration = 0;
     buzzer_handler->frequency = 0;
