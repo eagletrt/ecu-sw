@@ -1,15 +1,15 @@
 /*!
  * \file buzzer-api.c
  * \author Dorijan Di Zepp
- * \date 2026-04-07
+ * \date 2026-04-08
  * \brief Hardware-agnostic module for buzzer timing logic.
  *
  * This module manages synchronous and asynchronous timing by implementing the 
  * module's API defined in buzzer-api.h.
  */
 
+#include <string.h>
 #include "buzzer-api.h"
-#include "string.h"
 #include "eagletrt-api.h"
 
 /**
@@ -42,6 +42,13 @@ enum BuzzerReturnCode buzzer_api_init(
     buzzer_tick_callback get_tick_ptrs[BUZZER_TYPE_COUNT]) {
 
     // check EVERY array before touching a single byte of buzzer_handlers
+    // check array itself
+    if (on_ptrs == NULL || off_ptrs == NULL ||
+        play_sync_ptrs == NULL || get_tick_ptrs == NULL) {
+        return BUZZER_RC_ERROR;
+    }
+
+    // check arrays content
     for (int i = 0; i < BUZZER_TYPE_COUNT; i++) {
         if (on_ptrs[i] == NULL ||
             off_ptrs[i] == NULL ||

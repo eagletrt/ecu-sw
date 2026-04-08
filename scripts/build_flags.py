@@ -1,37 +1,26 @@
-from SCons.Script import Import
-
 Import("env")
 
-# Adapted for Kraken Nucleo-F767ZI
-DRIVER_PATHS = [
-    "Drivers/STM32F7xx_HAL_Driver",
-    "Drivers/CMSIS",
+# The strict flags you only want for Core/ code
+STRICT_WARNINGS = [
+    "-Wall",
+    "-Wextra",
+    "-Wpedantic"
 ]
 
-def is_driver(node):
-    path = str(node)
-    return any(p in path for p in DRIVER_PATHS)
 
-def before_compile(source, target, env_):
-    src = source[0]
-    if is_driver(src):
-        # backup the current CCFLAGS
-        env_["_saved_ccflags"] = list(env_.get("CCFLAGS", []))
+def apply_core_warnings(env, node):
+    # Replace backslashes to ensure cross-platform compatibility (Windows vs Unix).
+    path = node.get_path().replace("\\", "/")
 
-        # create a new list of flags
-        env_["CCFLAGS"] = [
-            f for f in env_["_saved_ccflags"]
-            if not str(f).startswith("-W")
-        ]
-        
-        # add -w to completely silence this specific driver file
-        env_.Append(CCFLAGS=["-w"])
+    # Check if the source file is inside the Core/ directory
+    if "Core/" in path:
+        return env.Object(
+            node,
+            CCFLAGS=env.get("CCFLAGS", []) + STRICT_WARNINGS
+        )
 
-def after_compile(source, target, env_):
-    # restore the original flags
-    if "_saved_ccflags" in env_:
-        env_["CCFLAGS"] = env_.pop("_saved_ccflags")
+    # Return the unmodified node (no warnings) for Drivers, CMSIS, etc.
+    return node
 
-# Register the actions for all object files
-env.AddPreAction("$BUILD_DIR/*.o", before_compile)
-env.AddPostAction("$BUILD_DIR/*.o", after_compile)
+
+env.AddBuildMiddleware(apply_core_warnings)

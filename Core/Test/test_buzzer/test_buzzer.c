@@ -1,7 +1,7 @@
 /**
  * \file test_buzzer.c
  * \author Dorijan Di Zepp
- * \date 2026-04-07
+ * \date 2026-04-08
  * \brief Unit tests using FFF for testing the buzzer module
  * \note Exhaustive testing of every buzzer instance (e.g R2D vs. ASSI) is 
  * unnecessary for most logic tests (e.g getters and setters), as the API 
@@ -68,17 +68,59 @@ void tearDown(void) {
  * \{
  */
 
-// void test_buzzer_api_init_null_buzzer_on_callback(void) {
-//     enum BuzzerReturnCode rc = buzzer_api_init(BUZZER_TYPE_R2D, NULL, buzzer_off_r2d, buzzer_sync_r2d, get_tick_r2d);
+void test_buzzer_api_init_null_on_array(void) {
+    buzzer_off_callback offs[BUZZER_TYPE_COUNT] = { buzzer_off_r2d, buzzer_off_assi };
+    buzzer_delay_callback syncs[BUZZER_TYPE_COUNT] = { buzzer_sync_r2d, buzzer_sync_assi };
+    buzzer_tick_callback ticks[BUZZER_TYPE_COUNT] = { get_tick_r2d, get_tick_assi };
 
-//     TEST_ASSERT_EQUAL_MESSAGE(
-//         BUZZER_RC_ERROR,
-//         rc,
-//         "Init should fail when 'buzzer on' callback is NULL");
+    enum BuzzerReturnCode rc = buzzer_api_init(NULL, offs, syncs, ticks);
 
-//     // check that buzzer off hasn't been called
-//     TEST_ASSERT_EQUAL_MESSAGE(0, buzzer_off_r2d_fake.call_count, "Buzzer off should not be called when an unknown type is used");
-// }
+    TEST_ASSERT_EQUAL_MESSAGE(BUZZER_RC_ERROR, rc, "Init should fail if on_ptrs array is NULL");
+    TEST_ASSERT_EQUAL(0, buzzer_off_r2d_fake.call_count);
+}
+
+void test_buzzer_api_init_null_off_array(void) {
+    buzzer_on_callback ons[BUZZER_TYPE_COUNT] = { buzzer_on_r2d, buzzer_on_assi };
+    buzzer_delay_callback syncs[BUZZER_TYPE_COUNT] = { buzzer_sync_r2d, buzzer_sync_assi };
+    buzzer_tick_callback ticks[BUZZER_TYPE_COUNT] = { get_tick_r2d, get_tick_assi };
+
+    enum BuzzerReturnCode rc = buzzer_api_init(ons, NULL, syncs, ticks);
+
+    TEST_ASSERT_EQUAL_MESSAGE(BUZZER_RC_ERROR, rc, "Init should fail if off_ptrs array is NULL");
+    TEST_ASSERT_EQUAL(0, buzzer_off_r2d_fake.call_count);
+}
+
+void test_buzzer_api_init_null_sync_array(void) {
+    buzzer_on_callback ons[BUZZER_TYPE_COUNT] = { buzzer_on_r2d, buzzer_on_assi };
+    buzzer_off_callback offs[BUZZER_TYPE_COUNT] = { buzzer_off_r2d, buzzer_off_assi };
+    buzzer_tick_callback ticks[BUZZER_TYPE_COUNT] = { get_tick_r2d, get_tick_assi };
+
+    enum BuzzerReturnCode rc = buzzer_api_init(ons, offs, NULL, ticks);
+
+    TEST_ASSERT_EQUAL_MESSAGE(BUZZER_RC_ERROR, rc, "Init should fail if play_sync_ptrs array is NULL");
+    TEST_ASSERT_EQUAL(0, buzzer_off_r2d_fake.call_count);
+}
+
+void test_buzzer_api_init_null_tick_array(void) {
+    buzzer_on_callback ons[BUZZER_TYPE_COUNT] = { buzzer_on_r2d, buzzer_on_assi };
+    buzzer_off_callback offs[BUZZER_TYPE_COUNT] = { buzzer_off_r2d, buzzer_off_assi };
+    buzzer_delay_callback syncs[BUZZER_TYPE_COUNT] = { buzzer_sync_r2d, buzzer_sync_assi };
+
+    enum BuzzerReturnCode rc = buzzer_api_init(ons, offs, syncs, NULL);
+
+    TEST_ASSERT_EQUAL_MESSAGE(BUZZER_RC_ERROR, rc, "Init should fail if get_tick_ptrs array is NULL");
+    TEST_ASSERT_EQUAL(0, buzzer_off_r2d_fake.call_count);
+}
+
+void test_buzzer_api_init_all_params_null(void) {
+    enum BuzzerReturnCode rc = buzzer_api_init(NULL, NULL, NULL, NULL);
+
+    TEST_ASSERT_EQUAL_MESSAGE(BUZZER_RC_ERROR, rc, "Init must fail if all array pointers are NULL");
+
+    // verify no hardware was touched
+    TEST_ASSERT_EQUAL(0, buzzer_off_r2d_fake.call_count);
+    TEST_ASSERT_EQUAL(0, buzzer_off_assi_fake.call_count);
+}
 
 void test_buzzer_api_init_null_buzzer_on_callback(void) {
     // provide a NULL only in the 'on' array for one of the buzzers
@@ -593,6 +635,11 @@ int main(void) {
      * \addtogroup buzzer_api_init
      * \{
      */
+    RUN_TEST(test_buzzer_api_init_null_on_array);
+    RUN_TEST(test_buzzer_api_init_null_off_array);
+    RUN_TEST(test_buzzer_api_init_null_sync_array);
+    RUN_TEST(test_buzzer_api_init_null_tick_array);
+    RUN_TEST(test_buzzer_api_init_all_params_null);
     RUN_TEST(test_buzzer_api_init_null_buzzer_on_callback);
     RUN_TEST(test_buzzer_api_init_null_buzzer_off_callback);
     RUN_TEST(test_buzzer_api_init_null_buzzer_play_sync_callback);
