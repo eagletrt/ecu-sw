@@ -29,7 +29,7 @@ extern "C" {
 #include "main.h"
 
 /* USER CODE BEGIN Includes */
-
+#include "buzzer.h"
 /* USER CODE END Includes */
 
 /* USER CODE BEGIN Private defines */
@@ -39,11 +39,32 @@ extern "C" {
 void MX_GPIO_Init(void);
 
 /* USER CODE BEGIN Prototypes */
+/*!
+ * \brief Direct hardware access to activate the buzzer.
+ * \param frequency The target frequency in Hz.
+ * \param amplitude The amplitude (volume) value between 0 and 1.
+ * \note GPIO doesn't require such parameters but the function signature has to define them
+ * in order to be compliant with the callback signature of the buzzer module
+ */
+enum BuzzerReturnCode gpio_buzzer_on(uint32_t frequency, float amplitude);
 
+/*!
+ * \brief Direct hardware access to switch off the buzzer.
+ */
+enum BuzzerReturnCode gpio_buzzer_off();
+
+/*!
+ * \brief Direct hardware access to activate the buzzer and play it in sync mode.
+ * \param frequency The target frequency in Hz.
+ * \param amplitude The amplitude (volume) value between 0 and 1.
+ * \param duration The total duration of the play before stopping the buzzer.
+ * \note GPIO doesn't require such parameters but the function signature has to define them
+ * in order to be compliant with the callback signature of the buzzer module
+ */
+enum BuzzerReturnCode gpio_buzzer_play_sync(uint32_t frequency, float amplitude, uint32_t duration);
 /* USER CODE END Prototypes */
 
 #ifdef __cplusplus
 }
 #endif
 #endif /*__ GPIO_H__ */
-

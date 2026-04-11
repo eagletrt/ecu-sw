@@ -374,6 +374,9 @@ CMakeUserPresets.json
 # External projects
 *-prefix/
 
+### Doxygen ###
+docs
+
 # End of GITIGNORE.IO
 
 ## ---------------- MANUALLY ADDED ---------------- ##
@@ -418,5 +421,7 @@ STM32Make.make
 ### LOCAL IGNORE ###
 #in case git exclude is not used
 .local_gitignore
+
+docs/
 
 ## ---------------- END MANUALLY ADDED ---------------- ##

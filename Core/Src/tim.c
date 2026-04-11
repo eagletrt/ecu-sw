@@ -21,7 +21,11 @@
 #include "tim.h"
 
 /* USER CODE BEGIN 0 */
+#include "eagletrt-api.h"
 
+// ASSI tim peripheral
+#define ASSI_BUZZER_TIM htim2
+#define ASSI_BUZZER_CHANNEL TIM_CHANNEL_2
 /* USER CODE END 0 */
 
 TIM_HandleTypeDef htim2;
@@ -134,5 +138,47 @@ void HAL_TIM_Base_MspDeInit(TIM_HandleTypeDef *tim_baseHandle) {
 }
 
 /* USER CODE BEGIN 1 */
+enum BuzzerReturnCode tim_buzzer_on(uint32_t frequency, float amplitude) {
+    // TODO: because the buzzer characteristics are still not known
+    // there is no check about the requested frequency and amplitude
 
+    // calculate ARR based on target frequency
+    // ARR = (f_clk / (f_pwm * (PSC + 1))) - 1
+    uint32_t timer_clk = HAL_RCC_GetPCLK1Freq();
+    uint32_t psc = ASSI_BUZZER_TIM.Instance->PSC;
+
+    // ensure no division by zero
+    uint32_t arr = (timer_clk / (frequency * (psc + 1))) - 1;
+    __HAL_TIM_SET_AUTORELOAD(&ASSI_BUZZER_TIM, arr);
+
+    // calculate pulse (CCR) for Duty Cycle
+    // since amplitude is [0, 1], pulse = ARR * amplitude
+    uint32_t pulse = (uint32_t)((float)arr * amplitude);
+    __HAL_TIM_SET_COMPARE(&ASSI_BUZZER_TIM, ASSI_BUZZER_CHANNEL, pulse);
+
+    // "flush" ARR and CCR registers
+    ASSI_BUZZER_TIM.Instance->EGR = TIM_EGR_UG;
+
+    if (HAL_TIM_PWM_Start(&ASSI_BUZZER_TIM, ASSI_BUZZER_CHANNEL) != HAL_OK) {
+        return BUZZER_RC_ERROR;
+    }
+
+    return BUZZER_RC_OK;
+}
+
+enum BuzzerReturnCode tim_buzzer_off() {
+    if (HAL_TIM_PWM_Stop(&ASSI_BUZZER_TIM, ASSI_BUZZER_CHANNEL) != HAL_OK) {
+        return BUZZER_RC_ERROR;
+    }
+    return BUZZER_RC_OK;
+}
+
+enum BuzzerReturnCode tim_buzzer_play_sync(uint32_t frequency, float amplitude, uint32_t duration) {
+    if (tim_buzzer_on(frequency, amplitude) == BUZZER_RC_ERROR)
+        return BUZZER_RC_ERROR;
+
+    HAL_Delay(duration);
+
+    return tim_buzzer_off();
+}
 /* USER CODE END 1 */
