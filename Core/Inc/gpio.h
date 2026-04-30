@@ -30,6 +30,7 @@ extern "C" {
 
 /* USER CODE BEGIN Includes */
 #include "buzzer.h"
+#include "rasp.h"
 /* USER CODE END Includes */
 
 /* USER CODE BEGIN Private defines */
@@ -62,6 +63,14 @@ enum BuzzerReturnCode gpio_buzzer_off();
  * in order to be compliant with the callback signature of the buzzer module
  */
 enum BuzzerReturnCode gpio_buzzer_play_sync(uint32_t frequency, float amplitude, uint32_t duration);
+
+/*!
+ * \brief Hardware-level implementation to control the raspberry signaling pin
+ * \param[in] pin_state The desired logical state (ON/OFF).
+ * \retval RASP_RC_OK if the GPIO was successfully toggled via the HAL.
+ * \retval RASP_RC_ERROR if an undefined or UNKNOWN state was requested.
+ */
+enum RaspReturnCode gpio_rasp_set_pin(enum RaspControlPinState pin_state);
 /* USER CODE END Prototypes */
 
 #ifdef __cplusplus
