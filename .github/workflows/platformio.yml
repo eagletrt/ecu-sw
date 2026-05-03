@@ -35,7 +35,7 @@ jobs:
         run: pio run
 
       - name: Run Unit Tests
-        run: pio test -e native # leave native so that we can test without the stm32 libraries
+        run: pio test -e tests # leave tests so that we can test without the stm32 libraries
 
       - name: Static Code Analysis
         if: github.ref == 'refs/heads/dev'
