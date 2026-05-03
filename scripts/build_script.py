@@ -9,7 +9,7 @@ STRICT_WARNINGS = [
 
 
 def apply_core_warnings(env, node):
-    # Replace backslashes to ensure cross-platform compatibility (Windows vs Unix).
+    # Replace backslashes to ensure compatibility (Windows = bad)
     path = node.get_path().replace("\\", "/")
 
     # Check if the source file is inside the Core/ directory
@@ -19,7 +19,6 @@ def apply_core_warnings(env, node):
             CCFLAGS=env.get("CCFLAGS", []) + STRICT_WARNINGS
         )
 
-    # Return the unmodified node (no warnings) for Drivers, CMSIS, etc.
     return node
 
 
