@@ -96,4 +96,22 @@ enum BuzzerReturnCode gpio_buzzer_play_sync(uint32_t frequency, float amplitude,
 
     return gpio_buzzer_off();
 }
+
+enum RaspberryReturnCode gpio_raspberry_set_pin(enum RaspberryControlPinState pin_state) {
+    switch (pin_state) {
+        case RASPBERRY_CONTROL_PIN_STATE_ON:
+            HAL_GPIO_WritePin(ENABLE_GPIO_Port, ENABLE_Pin, GPIO_PIN_SET);
+            break;
+
+        case RASPBERRY_CONTROL_PIN_STATE_OFF:
+            HAL_GPIO_WritePin(ENABLE_GPIO_Port, ENABLE_Pin, GPIO_PIN_RESET);
+            break;
+
+        default:
+            // unknown state requested, return an error
+            return RASPBERRY_RC_ERROR;
+    }
+
+    return RASPBERRY_RC_OK;
+}
 /* USER CODE END 2 */

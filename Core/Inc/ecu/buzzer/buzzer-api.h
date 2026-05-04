@@ -32,7 +32,7 @@
  * \param[in] on_ptrs Array of functions to turn hardware ON (size \c BUZZER_TYPE_COUNT).
  * \param[in] off_ptrs Array of functions to turn hardware OFF (size \c BUZZER_TYPE_COUNT).
  * \param[in] play_sync_ptrs Array of blocking delay functions for sync mode (size \c BUZZER_TYPE_COUNT).
- * @param[in] get_tick_ptrs Array of system uptime functions for async mode (size \c BUZZER_TYPE_COUNT).
+ * \param[in] get_tick_ptrs Array of system uptime functions for async mode (size \c BUZZER_TYPE_COUNT).
  * \retval BUZZER_RC_OK All handlers initialized and hardware successfully put to OFF state.
  * \retval BUZZER_RC_ERROR If any pointer was NULL or if at least one hardware OFF command failed.
  */
