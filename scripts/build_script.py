@@ -9,7 +9,7 @@ STRICT_WARNINGS = [
 
 
 def apply_core_warnings(env, node):
-    # Replace backslashes to ensure compatibility (Windows = bad)
+    # Replace backslashes to ensure cross-platform compatibility
     path = node.get_path().replace("\\", "/")
 
     # Check if the source file is inside the Core/ directory

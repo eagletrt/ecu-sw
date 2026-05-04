@@ -97,7 +97,7 @@ enum BuzzerReturnCode gpio_buzzer_play_sync(uint32_t frequency, float amplitude,
     return gpio_buzzer_off();
 }
 
-enum RaspberryReturnCode gpio_rasp_set_pin(enum RaspberryControlPinState pin_state) {
+enum RaspberryReturnCode gpio_raspberry_set_pin(enum RaspberryControlPinState pin_state) {
     switch (pin_state) {
         case RASPBERRY_CONTROL_PIN_STATE_ON:
             HAL_GPIO_WritePin(ENABLE_GPIO_Port, ENABLE_Pin, GPIO_PIN_SET);

@@ -1,7 +1,7 @@
 /*!
  * \file raspberry-api.c
  * \author Dorijan Di Zepp
- * \date 2026-05-03
+ * \date 2026-05-04
  * \brief Hardware-agnostic module for raspberry control logic.
  * 
  * This module mangaes both startup and shutdown of the raspberry board.
@@ -16,7 +16,10 @@
  */
 EAGLETRT_STATIC struct RaspberryHandler raspberry_handler;
 
-enum RaspberryReturnCode rasp_api_init(raspberry_pin_control_callback pin_control, enum RaspberryControlPinState initial_state) {
+enum RaspberryReturnCode raspberry_api_init(raspberry_pin_control_callback pin_control, enum RaspberryControlPinState initial_state) {
+    // memset to zero to avoid unexpected values
+    memset(&raspberry_handler, 0U, sizeof(struct RaspberryHandler));
+
     // default to an indeterminate state. we cannot assume hardware alignment
     // until the first successful callback execution
     raspberry_handler.current_pin_state = RASPBERRY_CONTROL_PIN_STATE_UNKNOWN;
@@ -26,12 +29,12 @@ enum RaspberryReturnCode rasp_api_init(raspberry_pin_control_callback pin_contro
     }
 
     raspberry_handler.pin_control = pin_control; // set the callback
-    return rasp_api_change_pin_state(initial_state);
+    return raspberry_api_change_pin_state(initial_state);
 }
 
-enum RaspberryReturnCode rasp_api_change_pin_state(enum RaspberryControlPinState pin_state) {
+enum RaspberryReturnCode raspberry_api_change_pin_state(enum RaspberryControlPinState pin_state) {
     if (raspberry_handler.pin_control == NULL ||
-        !(pin_state >= 0 && pin_state < RASPBERRY_CONTROL_PIN_STATE_COUNT)) {
+        (pin_state >= RASPBERRY_CONTROL_PIN_STATE_COUNT)) {
         // leave as it is the current pin state as the callback
         // has been "ignored"
         return RASPBERRY_RC_ERROR;
@@ -53,6 +56,6 @@ enum RaspberryReturnCode rasp_api_change_pin_state(enum RaspberryControlPinState
     return RASPBERRY_RC_OK;
 }
 
-enum RaspberryControlPinState rasp_api_get_pin_state() {
+enum RaspberryControlPinState raspberry_api_get_pin_state(void) {
     return raspberry_handler.current_pin_state;
 }

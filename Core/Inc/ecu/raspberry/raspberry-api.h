@@ -1,7 +1,7 @@
 /*!
  * \file raspberry-api.h
  * \author Dorijan Di Zepp
- * \date 2026-05-03
+ * \date 2026-05-04
  * \brief This file defines the raspberry module's API to operate on the control pin to control
  * both startup and shutdown procedures of the raspberry board.
  */
@@ -18,7 +18,7 @@
  * \retval RASP_RC_OK If the initialization and hardware setup were successful
  * \retval RASP_RC_ERROR If the callback is \c NULL or the hardware failed to respond
  */
-enum RaspberryReturnCode rasp_api_init(raspberry_pin_control_callback pin_control, enum RaspberryControlPinState initial_state);
+enum RaspberryReturnCode raspberry_api_init(raspberry_pin_control_callback pin_control, enum RaspberryControlPinState initial_state);
 
 /*!
  * \brief Requests a change in the control pin state to trigger a startup or shutdown sequence
@@ -32,12 +32,12 @@ enum RaspberryReturnCode rasp_api_init(raspberry_pin_control_callback pin_contro
  * or a fault. It is recommended to re-attempt the state change or perform a 
  * resynchronization to return the system to a deterministic state (ON or OFF).
  */
-enum RaspberryReturnCode rasp_api_change_pin_state(enum RaspberryControlPinState pin_state);
+enum RaspberryReturnCode raspberry_api_change_pin_state(enum RaspberryControlPinState pin_state);
 
 /*!
  * \brief Retrieves the current known state of the raspberry control pin
  * \return The current \ref RaspControlPinState value
  */
-enum RaspberryControlPinState rasp_api_get_pin_state();
+enum RaspberryControlPinState raspberry_api_get_pin_state(void);
 
 #endif
