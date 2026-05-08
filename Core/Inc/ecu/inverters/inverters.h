@@ -1,7 +1,7 @@
 /*!
  * \file inverters.h
  * \author Dorijan Di Zepp
- * \date 2026-05-07
+ * \date 2026-05-08
  * \brief Hardware-agnostic module for inverters control.
  *
  * This module defines the inverters handler, the return codes and the callbacks signatures
@@ -31,7 +31,7 @@
 /*
 TODO:
 the following constants require verification
-to see if the values associated are possible
+to see if the values associated are valid
 */
 #define MOTOR_TORQUE_NM_PEAK (21.0f) /* Maximum mechanical torque allowed per motor (Nm). */
 

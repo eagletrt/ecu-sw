@@ -1,7 +1,7 @@
 /*!
  * \file inverters-api.c
  * \author Dorijan Di Zepp
- * \date 2026-05-07
+ * \date 2026-05-08
  * \brief Implementation of inverters module.
  * \details Provides an interface for sending activation/deactivation 
  * commands and requested torque.
@@ -17,9 +17,9 @@
 EAGLETRT_STATIC struct InvertersHandler inverters_handler;
 
 /*!
- * \brief Calculates the peak phase current based on mechanical torque limits.
+ * \brief Calculates the peak current based on mechanical torque limits.
  * \details Maps the maximum allowable mechanical torque of the motor to the 
- * equivalent RMS phase current using the torque constant (Kt).
+ * equivalent RMS current using the torque constant.
  * \return The peak motor current in Amperes RMS (Arms).
  */
 EAGLETRT_STATIC_INLINE double inverters_prv_I_mot_peak(void) {
@@ -27,7 +27,7 @@ EAGLETRT_STATIC_INLINE double inverters_prv_I_mot_peak(void) {
 }
 
 /*!
- * \brief Calculates the maximum allowable phase current based on motor power limits.
+ * \brief Calculates the maximum allowable current based on motor power limits.
  * \details Derives the current limit from the maximum mechanical power rating 
  * of the motor, considering the current angular velocity (RPM).
  * \param[in] rpm The current rotational speed of the motor.
@@ -41,7 +41,7 @@ EAGLETRT_STATIC_INLINE double inverters_prv_I_mot_max(const double rpm) {
  * \brief Calculates the positive battery current limit for a specific motor.
  * \details Scales the global battery power and current limits based on the 
  * individual motor's torque ratio to ensure total consumption stays within 
- * the 80kW and BATTERY_I_MAX thresholds.
+ * the 80kW and \ref BATTERY_I_MAX thresholds.
  * \param[in] rpm The current rotational speed of the motor.
  * \param[in] torque_ratio The proportional share of total torque requested for this motor.
  * \return The maximum allowable positive current (Arms) from the battery perspective.
@@ -63,7 +63,7 @@ EAGLETRT_STATIC_INLINE double inverters_prv_I_batt_min_negative(const double rpm
 }
 
 /*!
- * \brief Sanitizes RPM values to prevent division-by-zero errors.
+ * \brief Sanitizes RPM values to prevent division by zero errors.
  * \details If the absolute value of the RPM is below the provided threshold, 
  * the function clamps the value to the threshold while preserving the sign.
  * \param[in] rpm The raw rotational speed value.
@@ -80,7 +80,7 @@ EAGLETRT_STATIC_INLINE double inverters_prv_avoid_zero_division(double rpm, doub
 /*!
  * \brief Computes the absolute maximum allowable positive current (traction).
  * \details Aggregates all upper-bound constraints including hardware peak limits, 
- * motor thermal/mechanical power limits and global battery power limits. 
+ * motor power limits and global battery power limits. 
  * The function returns the most restrictive (lowest) of these values.
  * \param[in] rpm The current rotational speed of the motor.
  * \param[in] torque_ratio The proportional weight of this motor relative to the total request.
@@ -110,10 +110,10 @@ EAGLETRT_STATIC_INLINE double inverters_prv_compute_current_negative_limit(doubl
 }
 
 /*!
- * \brief Converts phase current into mechanical torque.
- * \details Applies the motor torque constant (Kt) to convert the calculated 
+ * \brief Converts current into mechanical torque.
+ * \details Applies the motor torque constant to convert the calculated 
  * current limit back into a Newton-meter (Nm) value for the inverter command.
- * \param[in] current The phase current in Amperes RMS (Arms).
+ * \param[in] current The current in Amperes RMS (Arms).
  * \return The resulting mechanical torque in Newton-meters (Nm).
  */
 EAGLETRT_STATIC_INLINE double inverters_prv_current_to_torque(double current) {
@@ -122,10 +122,9 @@ EAGLETRT_STATIC_INLINE double inverters_prv_current_to_torque(double current) {
 
 /*!
  * \brief Limits the combined mechanical power of all four motors to a global threshold.
- * \details Calculates the total instantaneous mechanical power by summing (Torque * Angular Velocity) 
+ * \details Calculates the total instantaneous mechanical power by summing (torque * angular velocity) 
  * for all four wheels. If the sum exceeds \p power_max, a proportional reduction ratio is 
- * calculated and applied to all motors. This preservation of the torque ratio is critical 
- * for maintaining vehicle stability.
+ * calculated and applied to all motors.
  * \param[in] power_max The maximum allowable total mechanical power in Watts (W).
  * \param[in] w_front_left Angular velocity of the front-left motor (rad/s).
  * \param[in] w_front_right Angular velocity of the front-right motor (rad/s).
@@ -139,7 +138,7 @@ EAGLETRT_STATIC_INLINE double inverters_prv_current_to_torque(double current) {
 EAGLETRT_STATIC_INLINE void inverters_prv_limit_torque_by_power(
     double power_max, double w_front_left, double w_front_right, double w_rear_left, double w_rear_right, double *torque_front_left, double *torque_front_right, double *torque_rear_left, double *torque_rear_right) {
 
-    // Calculate total mechanical power: Sum of (Torque * Angular Velocity) for all 4 wheels
+    // Calculate total mechanical power: sum of (torque * angular velocity) for all 4 wheels
     double mechanical_power = (*torque_front_left * w_front_left) +
                               (*torque_front_right * w_front_right) +
                               (*torque_rear_left * w_rear_left) +
@@ -169,13 +168,11 @@ EAGLETRT_STATIC_INLINE void inverters_prv_limit_torque_by_power(
 /*!
  * \brief High-level wrapper to enforce the regulatory 80kW power limit.
  * \details Converts motor speeds from RPM to angular velocity (rad/s) and invokes 
- * the power limiting logic using the BATTERY_POWER_W_MAX threshold. This is the 
- * primary safeguard against disqualification for exceeding power limits during 
- * dynamic events.
- * \param[in] rpm_front_left Current speed of the Front-Left motor (RPM).
- * \param[in] rpm_front_right Current speed of the Front-Right motor (RPM).
- * \param[in] rpm_rear_left Current speed of the Rear-Left motor (RPM).
- * \param[in] rpm_rear_right Current speed of the Rear-Right motor (RPM).
+ * the power limiting logic using the \ref BATTERY_POWER_W_MAX threshold.
+ * \param[in] rpm_front_left Current speed of the front-left motor (RPM).
+ * \param[in] rpm_front_right Current speed of the front-right motor (RPM).
+ * \param[in] rpm_rear_left Current speed of the rear-left motor (RPM).
+ * \param[in] rpm_rear_right Current speed of the rear-right motor (RPM).
  * \param[in,out] torque_front_left Pointer to the FL torque request.
  * \param[in,out] torque_front_right Pointer to the FR torque request.
  * \param[in,out] torque_rear_left Pointer to the RL torque request.
@@ -194,13 +191,13 @@ EAGLETRT_STATIC_INLINE void inverters_prv_maximum_allowable_power(double rpm_fro
 
 /*!
  * \brief Protects the battery from under-voltage by scaling torque during voltage sag.
- * \details If the voltage approaches the absolute minimum threshold (HV_MIN_CELL_VOLTAGE * HV_CELL_COUNT), 
- * it should proportionally reduce torque across all motors to prevent a BMS-triggered 
- * shutdown. Current implementation is a NOP placeholder.
- * \param[in] rpm_front_left Current speed of the Front-Left motor (RPM).
- * \param[in] rpm_front_right Current speed of the Front-Right motor (RPM).
- * \param[in] rpm_rear_left Current speed of the Rear-Left motor (RPM).
- * \param[in] rpm_rear_right Current speed of the Rear-Right motor (RPM).
+ * \details If the voltage approaches the absolute minimum threshold ( \ref HV_MIN_CELL_VOLTAGE * \ref HV_CELL_COUNT), 
+ * it should proportionally reduce torque across all motors to prevent errors.
+ * Current implementation is a NOP placeholder.
+ * \param[in] rpm_front_left Current speed of the front-left motor (RPM).
+ * \param[in] rpm_front_right Current speed of the front-right motor (RPM).
+ * \param[in] rpm_rear_left Current speed of the rear-left motor (RPM).
+ * \param[in] rpm_rear_right Current speed of the rear-right motor (RPM).
  * \param[in,out] torque_front_left Pointer to the FL torque; to be scaled on low voltage.
  * \param[in,out] torque_front_right Pointer to the FR torque; to be scaled on low voltage.
  * \param[in,out] torque_rear_left Pointer to the RL torque; to be scaled on low voltage.
@@ -208,10 +205,10 @@ EAGLETRT_STATIC_INLINE void inverters_prv_maximum_allowable_power(double rpm_fro
  */
 EAGLETRT_STATIC_INLINE void inverters_prv_minimum_cell_voltage_limit(double rpm_front_left, double rpm_front_right, double rpm_rear_left, double rpm_rear_right, double *torque_front_left, double *torque_front_right, double *torque_rear_left, double *torque_rear_right) {
     /*
-        TODO:
-        required an implementation of this function to reduce requested torque
-        if battery voltage is too low
-        */
+    TODO:
+    required an implementation of this function to reduce requested torque
+    if battery voltage is too low
+    */
     EAGLETRT_API_UNUSED(rpm_front_left);
     EAGLETRT_API_UNUSED(rpm_front_right);
     EAGLETRT_API_UNUSED(rpm_rear_left);
@@ -232,11 +229,11 @@ EAGLETRT_STATIC_INLINE void inverters_prv_minimum_cell_voltage_limit(double rpm_
  * 3. Computes individual current limits (positive and negative) based on the motor 
  * ratio and hardware constraints.
  * 4. Clamps each wheel's torque request to its calculated safe threshold.
- * 5. Applies global battery protections (Voltage Sag and 80kW Power Limit).
- * \param[in,out] torque_front_left_nm Pointer to Front-Left torque request.
- * \param[in,out] torque_front_right_nm Pointer to Front-Right torque request.
- * \param[in,out] torque_rear_left_nm Pointer to Rear-Left torque request.
- * \param[in,out] torque_rear_right_nm Pointer to Rear-Right torque request.
+ * 5. Applies global battery protections (voltage sag and 80kW power limit).
+ * \param[in,out] torque_front_left_nm Pointer to front-left torque request.
+ * \param[in,out] torque_front_right_nm Pointer to front-right torque request.
+ * \param[in,out] torque_rear_left_nm Pointer to rear-left torque request.
+ * \param[in,out] torque_rear_right_nm Pointer to rear-right torque request.
  */
 EAGLETRT_STATIC_INLINE void inverters_prv_apply_cut_off(double *torque_front_left_nm, double *torque_front_right_nm, double *torque_rear_left_nm, double *torque_rear_right_nm) {
     // Calculate total absolute torque for the ratio
@@ -261,7 +258,7 @@ EAGLETRT_STATIC_INLINE void inverters_prv_apply_cut_off(double *torque_front_lef
     double rpm_rear_left = inverters_prv_avoid_zero_division(inverters_handler.get_rpm(INVERTERS_AXIS_REAR, INVERTERS_SIDE_LEFT), speed_threshold);
     double rpm_rear_right = inverters_prv_avoid_zero_division(inverters_handler.get_rpm(INVERTERS_AXIS_REAR, INVERTERS_SIDE_RIGHT), speed_threshold);
 
-    // --- FRONT LEFT PROCESS ---
+    // --- FRONT LEFT ---
     {
         double I_positive_limit = inverters_prv_compute_current_positive_limit(rpm_front_left, ratio_front_left);
         double I_negative_limit = inverters_prv_compute_current_negative_limit(rpm_front_left, ratio_front_left);
@@ -279,7 +276,7 @@ EAGLETRT_STATIC_INLINE void inverters_prv_apply_cut_off(double *torque_front_lef
         }
     }
 
-    // --- FRONT RIGHT PROCESS ---
+    // --- FRONT RIGHT ---
     {
         double I_positive_limit = inverters_prv_compute_current_positive_limit(rpm_front_right, ratio_front_right);
         double I_negative_limit = inverters_prv_compute_current_negative_limit(rpm_front_right, ratio_front_right);
@@ -297,7 +294,7 @@ EAGLETRT_STATIC_INLINE void inverters_prv_apply_cut_off(double *torque_front_lef
         }
     }
 
-    // --- REAR LEFT PROCESS ---
+    // --- REAR LEFT ---
     {
         double I_positive_limit = inverters_prv_compute_current_positive_limit(rpm_rear_left, ratio_rear_left);
         double I_negative_limit = inverters_prv_compute_current_negative_limit(rpm_rear_left, ratio_rear_left);
@@ -315,7 +312,7 @@ EAGLETRT_STATIC_INLINE void inverters_prv_apply_cut_off(double *torque_front_lef
         }
     }
 
-    // --- REAR RIGHT PROCESS ---
+    // --- REAR RIGHT ---
     {
         double I_positive_limit = inverters_prv_compute_current_positive_limit(rpm_rear_right, ratio_rear_right);
         double I_negative_limit = inverters_prv_compute_current_negative_limit(rpm_rear_right, ratio_rear_right);
@@ -382,7 +379,8 @@ enum InvertersReturnCode inverters_api_set_torque(double torque_front_left_nm, d
     // battery pack and/or doesn't exceed the maximum power allowed by rule
     inverters_prv_apply_cut_off(&torque_front_left_nm, &torque_front_right_nm, &torque_rear_left_nm, &torque_rear_right_nm);
 
-    /* Attempt to set torque for each inverter. 
+    /**
+     * Attempt to set torque for each inverter. 
      * If any single call fails, we stop and return an error to prevent 
      * asymmetric torque distribution across the axles.
      */
