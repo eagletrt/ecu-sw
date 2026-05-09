@@ -1,7 +1,7 @@
 /*!
  * \file inverters-api.h
  * \author Dorijan Di Zepp
- * \date 2026-05-08
+ * \date 2026-05-09
  * \brief Public API for the inverters control module.
  */
 
@@ -11,7 +11,7 @@
 #include "inverters.h"
 
 /*!
- * \brief Initializes the inverters handler and ensures all inverters are safely disabled.
+ * \brief Initializes the inverters handler and disable all inverters for safety.
  * \warning Initialization fails if hardware configuration is invalid or
  * inverters cannot be placed in a safe state.
  * \param[in] send_drive_command Pointer to callback for sending enable/disable commands.
@@ -29,7 +29,7 @@ enum InvertersReturnCode inverters_api_init(
  * \brief Sets the operational drive status for all inverters.
  * \param[in] drive_status The requested status.
  * \retval INVERTERS_RC_OK If the command was sent successfully.
- * \retval INVERTERS_RC_ERROR If the command failed.
+ * \retval INVERTERS_RC_ERROR If the command failed even for a single inverter.
  */
 enum InvertersReturnCode inverters_api_set_drive(enum InvertersDriveStatus drive_status);
 
@@ -46,6 +46,6 @@ enum InvertersReturnCode inverters_api_set_drive(enum InvertersDriveStatus drive
  * \retval INVERTERS_RC_OK Command validated, limited and transmitted.
  * \retval INVERTERS_RC_ERROR Error during communication.
  */
-enum InvertersReturnCode inverters_api_set_torque(double torque_front_left_nm, double torque_front_right_nm, double torque_rear_left_nm, double torque_rear_right_nm);
+enum InvertersReturnCode inverters_api_set_torque(float torque_front_left_nm, float torque_front_right_nm, float torque_rear_left_nm, float torque_rear_right_nm);
 
 #endif

@@ -1,53 +1,57 @@
 /*!
  * \file inverters.h
  * \author Dorijan Di Zepp
- * \date 2026-05-08
+ * \date 2026-05-09
  * \brief Hardware-agnostic module for inverters control.
  *
  * This module defines the inverters handler, the return codes and the callbacks signatures
+ * 
+ * \note The inverter-specific constants are derived from the "HV-Board_5" model
+ * <a href="https://drive.google.com/file/d/1tRlrvqwPYmyLJJesLxHMAl7y99A7nsL0/view?usp=sharing">datasheet</a>.
+ * 
+ * \note The motor constants defined are derived from the technical specifications of the Fischer TI085 series motors. 
+ * These motors are the manufacturer-recommended drive units for the HV-Board_5 inverter 
+ * system as specified in the "Recommended Motor" documentation.
  */
 
 #ifndef INVERTERS_H
-#define INVERTERS
+#define INVERTERS_H
 
+#define _USE_MATH_DEFINES
 #include <math.h>
 
-#ifndef M_PI
-#define M_PI 3.14159265358979323846f
-#endif
+#define BATTERY_MAX_POWER_W (80000.0f) /* Maximum battery power allowed by Formula Student rules (80kW). */
 
-#define BATTERY_POWER_W_MAX (80000.0f) /* Maximum battery power allowed by Formula Student rules (80kW). */
+#define RPM_TO_RAD_COEFF ((2 * M_PI) / 60.0f) /* Conversion factor: RPM to radians per second. */
 
-#define RPM_TO_RADS_COEFF ((2 * M_PI) / 60.0f) /* Conversion factor: RPM to radians per second. */
+#define RAD_TO_RPM_COEFF (60.0f / (2 * M_PI)) /* Conversion factor: Radians per second to RPM. */
 
-#define RADS_TO_RPM_COEFF (60.0f / (2 * M_PI)) /* Conversion factor: Radians per second to RPM. */
+#define INVERTER_MAX_CONTINUOUS_CURRENT_A (74.0f) /* Maximum continuous phase current (Arms). */
 
-#define INVERTER_I_MAX (74.0f) /* Maximum continuous phase current (Arms). */
+#define INVERTER_PEAK_CURRENT_A (90.0f) /* Absolute peak phase current (Arms). */
 
-#define INVERTER_I_PEAK (120.0f) /* Absolute peak phase current (Arms) before software trip. */
-
-#define V_DC_MAX (610.0f) /* Maximum safe operating DC-link voltage to protect capacitors. */
+#define DC_LINK_MAX_VOLTAGE_V (600.0f) /* Maximum safe operating DC-link voltage to protect inverter capacitors. */
 
 /*
 TODO:
 the following constants require verification
 to see if the values associated are valid
 */
-#define MOTOR_TORQUE_NM_PEAK (21.0f) /* Maximum mechanical torque allowed per motor (Nm). */
+#define MOTOR_PEAK_TORQUE_NM (21.0f) /* Maximum mechanical torque allowed per motor. */
 
-#define MOTOR_TORQUE_NM_ARMS_COEFF (0.25f) /* Torque constant: Ratio of torque produced per Ampere RMS (Nm/Arms). */
+#define MOTOR_TORQUE_PER_CURRENT_NM_A (0.25f) /* Torque constant (Kt) in Nm/Arms. */
 
-#define MOTOR_POWER_W_MAX (60000.0f) /* Maximum mechanical power allowed per motor (W). */
+#define MOTOR_MAX_MECHANICAL_POWER_W (20000.0f) /* Maximum mechanical power allowed per motor. */
 
-#define HV_MAX_REGEN_CURRENT (-24.0f) /* Maximum allowable regenerative current into the battery (A). */
+#define HV_MAX_REGEN_CURRENT_A (-24.0f) /* Maximum allowable regenerative current into the battery. */
 
-#define HV_MIN_CELL_VOLTAGE (2.8f) /* Minimum safe voltage for a single battery cell (V). */
+#define HV_MIN_CELL_VOLTAGE_V (2.8f) /* Minimum safe voltage for a single battery cell (V). */
 
 #define HV_CELL_COUNT (144) /* Total number of battery cells in series. */
 
-#define BATTERY_POWER_W_MIN (HV_MAX_REGEN_CURRENT * HV_MIN_CELL_VOLTAGE * HV_CELL_COUNT) /* Maximum regenerative power allowed into the battery (W). */
+#define BATTERY_MAX_REGEN_POWER_W (HV_MAX_REGEN_CURRENT_A * HV_MIN_CELL_VOLTAGE_V * HV_CELL_COUNT) /* Maximum regenerative power allowed into the battery. */
 
-#define BATTERY_I_MAX (140.0f) /* Maximum DC current allowed to be drawn from the battery (A). */
+#define BATTERY_MAX_CURRENT_A (140.0f) /* Maximum DC current allowed to be drawn from the battery. */
 
 /*!
  * \brief Return codes for the inverters module APIs.
@@ -66,56 +70,47 @@ enum InvertersDriveStatus {
 };
 
 /*!
- * \brief Axis definition for multi-axle traction control.
+ * \brief Physical mounting positions of the inverters within the vehicle.
  */
-enum InvertersAxis {
-    INVERTERS_AXIS_FRONT, /*!< Select the inverters of the front axis */
-    INVERTERS_AXIS_REAR,  /*!< Select the inverters of the rear axis */
-};
-
-/*!
- * \brief Side definition for multi-side traction control.
- */
-enum InvertersSide {
-    INVERTERS_SIDE_LEFT,  /*!< Select the inverters of the left side */
-    INVERTERS_SIDE_RIGHT, /*!< Select the inverters of the right side */
+enum InvertersPosition {
+    INVERTERS_POSITION_FRONT_LEFT,  /*!< Front axle, left hand side. */
+    INVERTERS_POSITION_FRONT_RIGHT, /*!< Front axle, right hand side. */
+    INVERTERS_POSITION_REAR_LEFT,   /*!< Rear axle, left hand side. */
+    INVERTERS_POSITION_REAR_RIGHT,  /*!< Rear axle, right hand side. */
 };
 
 /*!
  * \brief Callback to send operational drive commands.
  * \param[in] InvertersDriveStatus The desired operational status.
- * \param[in] InvertersAxis The axis to command.
- * \param[in] InvertersSide The side to command.
- * \retval INVERTERS_RC_OK
- * \retval INVERTERS_RC_ERROR
+ * \param[in] InvertersPosition The inverter to command.
+ * \retval INVERTERS_RC_OK The command has been sent.
+ * \retval INVERTERS_RC_ERROR A problem occurred where the command couldn't be forwarded.
  */
-typedef enum InvertersReturnCode (*inverters_send_drive_command_callback)(enum InvertersDriveStatus, enum InvertersAxis, enum InvertersSide);
+typedef enum InvertersReturnCode (*inverters_send_drive_command_callback)(enum InvertersDriveStatus, enum InvertersPosition);
 
 /*!
  * \brief Callback to set target torque.
  * \param[in] float Target torque in Newton-meters.
- * \param[in] InvertersAxis The axis to command.
- * \param[in] InvertersSide The side to command.
+ * \param[in] InvertersPosition The inverter to command.
  * \retval INVERTERS_RC_OK The requested torque has been set.
  * \retval INVERTERS_RC_ERROR It was not possible to change the torque because of an error
  */
-typedef enum InvertersReturnCode (*inverters_set_torque_callback)(double, enum InvertersAxis, enum InvertersSide);
+typedef enum InvertersReturnCode (*inverters_set_torque_callback)(float, enum InvertersPosition);
 
 /*!
  * \brief Callback to retrieve the current RPM from a specific axis.
- * \param[in] InvertersAxis The axis to query.
- * \param[in] InvertersSide The side to query.
- * \return float Current RPM
+ * \param[in] InvertersPosition The inverter to query.
+ * \return float Current RPM of the specified inverter
  */
-typedef float (*inverters_get_rpm_callback)(enum InvertersAxis, enum InvertersSide);
+typedef float (*inverters_get_rpm_callback)(enum InvertersPosition);
 
 /*!
  * \brief Handler structure for inverter operations.
  */
 struct InvertersHandler {
-    inverters_send_drive_command_callback send_drive_command; /*!< Pointer to the function that sends Drive/Disable commands to an inverter axis */
-    inverters_set_torque_callback set_torque;                 /*!< Pointer to the function that writes torque requests to an inverter axis */
-    inverters_get_rpm_callback get_rpm;                       /*!< Pointer to the function that retrieves current RPM telemetry from an inverter axis */
+    inverters_send_drive_command_callback send_drive_command; /*!< Pointer to the function that sends commands to a given inverter */
+    inverters_set_torque_callback set_torque;                 /*!< Pointer to the function that writes torque requests to a given inverter */
+    inverters_get_rpm_callback get_rpm;                       /*!< Pointer to the function that retrieves current RPM from an inverter */
 };
 
 #endif
