@@ -29,7 +29,7 @@ enum InvertersReturnCode inverters_api_init(
  * \brief Sets the operational drive status for all inverters.
  * \param[in] drive_status The requested status.
  * \retval INVERTERS_RC_OK If the command was sent successfully.
- * \retval INVERTERS_RC_ERROR If the command failed even for a single inverter.
+ * \retval INVERTERS_RC_ERROR If the command failed even for a single inverter or the \ref drive_status is not valid.
  */
 enum InvertersReturnCode inverters_api_set_drive(enum InvertersDriveStatus drive_status);
 

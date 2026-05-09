@@ -354,7 +354,8 @@ enum InvertersReturnCode inverters_api_init(
 }
 
 enum InvertersReturnCode inverters_api_set_drive(enum InvertersDriveStatus drive_status) {
-    if (inverters_handler.send_drive_command == NULL) {
+    if (inverters_handler.send_drive_command == NULL ||
+        (drive_status >= INVERTERS_DRIVE_STATUS_COUNT)) {
         return INVERTERS_RC_ERROR;
     }
 
@@ -391,7 +392,7 @@ enum InvertersReturnCode inverters_api_set_torque(float torque_front_left_nm, fl
     // battery pack and/or doesn't exceed the maximum power allowed by rule
     prv_inverters_apply_cut_off(&torque_front_left_nm, &torque_front_right_nm, &torque_rear_left_nm, &torque_rear_right_nm);
 
-    // Attempt to set torque for each inverter.
+    // Attempt to set torque for each inverter regardless of the individual return code
     inverters_handler.set_torque(torque_front_left_nm, INVERTERS_POSITION_FRONT_LEFT);
 
     inverters_handler.set_torque(torque_front_right_nm, INVERTERS_POSITION_FRONT_RIGHT);

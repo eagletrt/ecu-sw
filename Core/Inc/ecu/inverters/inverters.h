@@ -67,6 +67,7 @@ enum InvertersReturnCode {
 enum InvertersDriveStatus {
     INVERTERS_DRIVE_STATUS_ENABLE,  /*!< Request inverter activation */
     INVERTERS_DRIVE_STATUS_DISABLE, /*!< Request inverter deactivation */
+    INVERTERS_DRIVE_STATUS_COUNT,   /*!< Sentinel value used for input validation */
 };
 
 /*!
