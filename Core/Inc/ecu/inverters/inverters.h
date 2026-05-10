@@ -1,7 +1,7 @@
 /*!
  * \file inverters.h
  * \author Dorijan Di Zepp
- * \date 2026-05-09
+ * \date 2026-05-10
  * \brief Hardware-agnostic module for inverters control.
  *
  * This module defines the inverters handler, the return codes and the callbacks signatures
