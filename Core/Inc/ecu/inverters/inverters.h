@@ -1,7 +1,7 @@
 /*!
  * \file inverters.h
  * \author Dorijan Di Zepp
- * \date 2026-05-10
+ * \date 2026-05-11
  * \brief Hardware-agnostic module for inverters control.
  *
  * This module defines the inverters handler, the return codes and the callbacks signatures
@@ -52,6 +52,8 @@ to see if the values associated are valid
 #define BATTERY_MAX_REGEN_POWER_W (HV_MAX_REGEN_CURRENT_A * HV_MIN_CELL_VOLTAGE_V * HV_CELL_COUNT) /* Maximum regenerative power allowed into the battery. */
 
 #define BATTERY_MAX_CURRENT_A (140.0f) /* Maximum DC current allowed to be drawn from the battery. */
+
+#define BATTERY_PARALLELS (3) /* Number of individual battery cells connected in parallel */
 
 /*!
  * \brief Return codes for the inverters module APIs.
@@ -105,6 +107,12 @@ typedef enum InvertersReturnCode (*inverters_set_torque_callback)(float, enum In
  */
 typedef float (*inverters_get_rpm_callback)(enum InvertersPosition);
 
+/**
+ * \brief Callback to retrieve the SoC (State of Charge) of the battery pack.
+ * \return float Percentage between 0.0 and 1.0 to indicate the battery level
+ */
+typedef float (*inverters_get_soc_callback)(void);
+
 /*!
  * \brief Handler structure for inverter operations.
  */
@@ -112,6 +120,7 @@ struct InvertersHandler {
     inverters_send_drive_command_callback send_drive_command; /*!< Pointer to the function that sends commands to a given inverter */
     inverters_set_torque_callback set_torque;                 /*!< Pointer to the function that writes torque requests to a given inverter */
     inverters_get_rpm_callback get_rpm;                       /*!< Pointer to the function that retrieves current RPM from an inverter */
+    inverters_get_soc_callback get_soc;                       /*!< Pointer to the function that retrieves the battery's soc */
 };
 
 #endif

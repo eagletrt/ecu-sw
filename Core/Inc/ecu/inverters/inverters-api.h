@@ -1,7 +1,7 @@
 /*!
  * \file inverters-api.h
  * \author Dorijan Di Zepp
- * \date 2026-05-10
+ * \date 2026-05-11
  * \brief Public API for the inverters control module.
  */
 
@@ -17,13 +17,15 @@
  * \param[in] send_drive_command Pointer to callback for sending enable/disable commands.
  * \param[in] set_torque Pointer to callback for torque requests.
  * \param[in] get_rpm Pointer to callback for inverters' rpm.
+ * \param[in] get_soc Pointer to callback for battery's soc.
  * \retval INVERTERS_RC_OK If module is fully initialized and ready.
  * \retval INVERTERS_RC_ERROR If initialization, verification or safety failed.
  */
 enum InvertersReturnCode inverters_api_init(
     inverters_send_drive_command_callback send_drive_command,
     inverters_set_torque_callback set_torque,
-    inverters_get_rpm_callback get_rpm);
+    inverters_get_rpm_callback get_rpm,
+    inverters_get_soc_callback get_soc);
 
 /*!
  * \brief Sets the operational drive status for all inverters.

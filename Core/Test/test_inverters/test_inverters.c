@@ -1,7 +1,7 @@
 /*!
  * \file test_inverters.c
  * \author Dorijan Di Zepp
- * \date 2026-05-10
+ * \date 2026-05-11
  * \brief Unit tests using FFF for testing the inverters module
  * 
  * \details This test suite uses 'extern' declarations to access internal 'static' functions 
@@ -24,15 +24,17 @@ DEFINE_FFF_GLOBALS;
 FAKE_VALUE_FUNC(enum InvertersReturnCode, send_drive_command, enum InvertersDriveStatus, enum InvertersPosition);
 FAKE_VALUE_FUNC(enum InvertersReturnCode, set_torque, float, enum InvertersPosition);
 FAKE_VALUE_FUNC(float, get_rpm, enum InvertersPosition);
+FAKE_VALUE_FUNC(float, get_soc);
 
 void setUp(void) {
     // initialize inverters module
-    inverters_api_init(send_drive_command, set_torque, get_rpm);
+    inverters_api_init(send_drive_command, set_torque, get_rpm, get_soc);
 
     // reset mock state
     RESET_FAKE(send_drive_command);
     RESET_FAKE(set_torque);
     RESET_FAKE(get_rpm);
+    RESET_FAKE(get_soc);
 
     FFF_RESET_HISTORY();
 }
@@ -45,26 +47,32 @@ void setUp(void) {
  */
 
 void test_inverters_api_init_null_send_drive_command(void) {
-    enum InvertersReturnCode rc = inverters_api_init(NULL, set_torque, get_rpm);
+    enum InvertersReturnCode rc = inverters_api_init(NULL, set_torque, get_rpm, get_soc);
 
     TEST_ASSERT_EQUAL_MESSAGE(INVERTERS_RC_ERROR, rc, "Init should fail if send_drive_command callback is NULL");
 }
 
 void test_inverters_api_init_null_set_torque(void) {
-    enum InvertersReturnCode rc = inverters_api_init(send_drive_command, NULL, get_rpm);
+    enum InvertersReturnCode rc = inverters_api_init(send_drive_command, NULL, get_rpm, get_soc);
 
     TEST_ASSERT_EQUAL_MESSAGE(INVERTERS_RC_ERROR, rc, "Init should fail if set_torque callback is NULL");
 }
 
 void test_inverters_api_init_null_get_rpm(void) {
-    enum InvertersReturnCode rc = inverters_api_init(send_drive_command, set_torque, NULL);
+    enum InvertersReturnCode rc = inverters_api_init(send_drive_command, set_torque, NULL, get_soc);
 
     TEST_ASSERT_EQUAL_MESSAGE(INVERTERS_RC_ERROR, rc, "Init should fail if get_rpm callback is NULL");
 }
 
+void test_inverters_api_init_null_get_soc(void) {
+    enum InvertersReturnCode rc = inverters_api_init(send_drive_command, set_torque, get_rpm, NULL);
+
+    TEST_ASSERT_EQUAL_MESSAGE(INVERTERS_RC_ERROR, rc, "Init should fail if get_soc callback is NULL");
+}
+
 void test_inverters_api_init_failed_inverters_disabling(void) {
     send_drive_command_fake.return_val = INVERTERS_RC_ERROR;
-    enum InvertersReturnCode rc = inverters_api_init(send_drive_command, set_torque, get_rpm);
+    enum InvertersReturnCode rc = inverters_api_init(send_drive_command, set_torque, get_rpm, get_soc);
 
     TEST_ASSERT_EQUAL_MESSAGE(INVERTERS_RC_ERROR, rc, "Init should fail if it failed to disable the inverters");
 }
@@ -97,13 +105,23 @@ void test_inverters_api_set_drive_success_send_drive_command(void) {
 /*! \} */
 
 /*!
- * \defgroup inverters_api_set_torque Tests for inverters_api_set_torque function
+ * \defgroup inverters_api_set_torque Tests for function prv_inverters_apply_cut_off
  * \{
  */
 
 void test_inverters_api_set_torque_clamps_to_mechanical_peak(void) {
+    /* 
+     * Request: 50.0 Nm per motor.
+     * RPM: 1000.0.
+     * 1. Individual limit: At 1000 RPM, the power-based torque limit is very high 
+     * (20kW / 104.7 rad/s = ~191 Nm).
+     * 2. Mechanical limit: The code sees the request (50 Nm) exceeds MOTOR_PEAK_TORQUE_NM (21 Nm).
+     * 3. Result: The individual motor protection successfully clips the 
+     * request to 21 Nm before any global logic is even considered.
+     */
     float fl = 50.0f, fr = 50.0f, rl = 50.0f, rr = 50.0f;
     get_rpm_fake.return_val = 1000.0f;
+    get_soc_fake.return_val = 1.0F;
 
     // Call the logic function directly with pointers
     prv_inverters_apply_cut_off(&fl, &fr, &rl, &rr);
@@ -115,10 +133,22 @@ void test_inverters_api_set_torque_clamps_to_mechanical_peak(void) {
     TEST_ASSERT_EQUAL_FLOAT_MESSAGE(MOTOR_PEAK_TORQUE_NM, rr, "Rear right torque not clamped to mechanical peak");
 }
 
-void test_inverters_api_set_torque_limits_to_80kw(void) {
+void test_inverters_api_set_torque_limits_to_battery_max_power(void) {
+    /*
+     * Request: 21.0 Nm (Peak torque) at 15,000 RPM.
+     * Total Requested Power: 4 * (21Nm * 1570.8 rad/s) = ~132,000 W (Illegal as above 80kW).
+     * 1. Individual protection: At 15k RPM, the motor is clamped to ~12.7 Nm to stay under 20kW.
+     * Current Total: 4 * (12.7Nm * 1570.8 rad/s) = ~80,000 W.
+     * 2. Global protection: The function prv_inverters_maximum_allowable_power checks the 
+     * sum against BATTERY_MAX_POWER_W (80,000). 
+     * 3. Result: Because 4 * 20kW is exactly 80kW, the individual hardware limits 
+     * effectively "pre-solve" the 80kW limit, ensuring legality.
+     */
+
     // Requesting maximum torque at high RPM
     float fl = 21.0f, fr = 21.0f, rl = 21.0f, rr = 21.0f;
     get_rpm_fake.return_val = 15000.0f;
+    get_soc_fake.return_val = 1.0F;
 
     prv_inverters_apply_cut_off(&fl, &fr, &rl, &rr);
 
@@ -130,10 +160,22 @@ void test_inverters_api_set_torque_limits_to_80kw(void) {
 }
 
 void test_inverters_api_set_torque_no_cut_at_zero_rpm(void) {
+    /*
+     * Request: 10.0 Nm at 0.0 RPM.
+     * 1. Normally, Power = Torque * RPM. To find Torque, you'd do Power / RPM. 
+     * Division by zero (10 / 0) would crash the code.
+     * 2. prv_inverters_avoid_zero_division detects the 0.0 RPM and 
+     * internally treats it as a tiny value (e.g., 0.1 RPM) for the calculation.
+     * 3. Result: The math results in a massive torque limit (e.g., 20,000W / 0.01 rad/s). 
+     * Since 10.0 Nm is much smaller than that massive limit, the torque is passed 
+     * through unmodified.
+     */
+
     // Test if division-by-zero protection work
     // Requesting legal torque at standstill.
     float fl = 10.0f, fr = 10.0f, rl = 10.0f, rr = 10.0f;
     get_rpm_fake.return_val = 0.0f;
+    get_soc_fake.return_val = 1.0F;
 
     prv_inverters_apply_cut_off(&fl, &fr, &rl, &rr);
 
@@ -142,7 +184,7 @@ void test_inverters_api_set_torque_no_cut_at_zero_rpm(void) {
 }
 
 void test_inverters_api_set_torque_preserves_ratio_during_cut(void) {
-    /* Why this works:
+    /*
      * Request: 14Nm and 7Nm at 13,000 RPM.
      * Individual limit: 20kW / (13000 * 0.1047) = 14.68 Nm.
      * Our requests (14 & 7) are BOTH BELOW 14.68, so no individual clipping occurs.
@@ -150,15 +192,16 @@ void test_inverters_api_set_torque_preserves_ratio_during_cut(void) {
      */
     float fl = 14.0f, fr = 7.0f, rl = 14.0f, rr = 7.0f;
     get_rpm_fake.return_val = 13000.0f;
+    get_soc_fake.return_val = 1.0F;
 
     prv_inverters_apply_cut_off(&fl, &fr, &rl, &rr);
 
-    // If global scaling triggers, it multiplies all by the same 'k'
+    // If global scaling triggers, it multiplies all by the same ratio 'k'
     TEST_ASSERT_FLOAT_WITHIN_MESSAGE(0.01f, 2.0f, fl / fr, "Ratio should be preserved when only global scaling is active");
 }
 
 void test_inverters_api_set_torque_breaks_ratio_on_hardware_limit(void) {
-    /* Why the ratio breaks:
+    /* Why the ratio should break:
      * Request: 20Nm and 10Nm at 15,000 RPM. (Original ratio 2.0)
      * Individual Limit: 20kW / (15000 * 0.1047) = 12.73 Nm.
      * The clipping:
@@ -168,6 +211,7 @@ void test_inverters_api_set_torque_breaks_ratio_on_hardware_limit(void) {
      */
     float fl = 20.0f, fr = 10.0f, rl = 20.0f, rr = 10.0f;
     get_rpm_fake.return_val = 15000.0f;
+    get_soc_fake.return_val = 1.0F;
 
     prv_inverters_apply_cut_off(&fl, &fr, &rl, &rr);
 
@@ -178,9 +222,21 @@ void test_inverters_api_set_torque_breaks_ratio_on_hardware_limit(void) {
 }
 
 void test_inverters_api_set_torque_limits_regen_power(void) {
+    /*
+     * Request: -21.0 Nm (max regen) at 10,000 RPM.
+     * Total requested regen power: 4 * (-21Nm * 1047.2 rad/s) = -87,964 W (~ -88kW).
+     * 1. The code calculates the total power requested. 
+     * 2. It sees -88kW is "more negative" (less than) the 
+     * BATTERY_MAX_REGEN_POWER_W (e.g., -20kW).
+     * 3. Scaling: The global scaling logic (prv_inverters_maximum_allowable_power) 
+     * calculates a reduction ratio to bring that -88kW back up to exactly the -20kW limit.
+     * 4. Result: All torque values are reduced proportionally to stay within battery safety.
+     */
+
     // Request heavy braking (-21Nm) at high speed
     float fl = -21.0f, fr = -21.0f, rl = -21.0f, rr = -21.0f;
     get_rpm_fake.return_val = 10000.0f;
+    get_soc_fake.return_val = 1.0F;
 
     prv_inverters_apply_cut_off(&fl, &fr, &rl, &rr);
 
@@ -193,13 +249,22 @@ void test_inverters_api_set_torque_limits_regen_power(void) {
 }
 
 void test_inverters_api_set_torque_limits_to_inverter_current(void) {
-    // Requesting more torque than the inverter can physically provide current for
-    // Max torque = 90A * 0.25Nm/A = 22.5Nm (but limited by MOTOR_PEAK_TORQUE_NM = 21.0)
-    // To test this, we'd need a scenario where MOTOR_PEAK_TORQUE_NM is higher than current limit.
+    /*
+     * Request: 100.0 Nm (An impossible request).
+     * RPM: 100.0 (Very low speed).
+     * 1. Calculation: The code calculates three potential torque limits:
+     * a) t_max_mechanical: 21.0 Nm (Motor constant)
+     * b) t_max_current: 90A * 0.25 Nm/A = 22.5 Nm (Inverter hardware limit)
+     * c) t_max_power: 20kW / 10.47 rad/s = ~1910 Nm (Power limit at low speed)
+     * 2. The code takes the minimum of these: MIN(21.0, 22.5, 1910).
+     * 3. Result: 21.0 Nm wins. The code correctly identifies that the motor's physical 
+     * peak is reached before the inverter's current limit.
+     */
 
     float fl = 100.0f; // Ridiculous request
     float dummy = 0.0f;
     get_rpm_fake.return_val = 100.0f; // Low RPM so power isn't the bottleneck
+    get_soc_fake.return_val = 1.0F;
 
     prv_inverters_apply_cut_off(&fl, &dummy, &dummy, &dummy);
 
@@ -219,6 +284,7 @@ int main(void) {
     RUN_TEST(test_inverters_api_init_null_send_drive_command);
     RUN_TEST(test_inverters_api_init_null_set_torque);
     RUN_TEST(test_inverters_api_init_null_get_rpm);
+    RUN_TEST(test_inverters_api_init_null_get_soc);
     RUN_TEST(test_inverters_api_init_failed_inverters_disabling);
     /*! \} */
 
@@ -236,7 +302,7 @@ int main(void) {
      * \{
      */
     RUN_TEST(test_inverters_api_set_torque_clamps_to_mechanical_peak);
-    RUN_TEST(test_inverters_api_set_torque_limits_to_80kw);
+    RUN_TEST(test_inverters_api_set_torque_limits_to_battery_max_power);
     RUN_TEST(test_inverters_api_set_torque_no_cut_at_zero_rpm);
     RUN_TEST(test_inverters_api_set_torque_preserves_ratio_during_cut);
     RUN_TEST(test_inverters_api_set_torque_breaks_ratio_on_hardware_limit);
