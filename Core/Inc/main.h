@@ -57,8 +57,10 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define ENABLE_Pin GPIO_PIN_2
-#define ENABLE_GPIO_Port GPIOE
+#define SD_CLOSE_Pin GPIO_PIN_2
+#define SD_CLOSE_GPIO_Port GPIOE
+#define RPI_PowerButton_Pin GPIO_PIN_3
+#define RPI_PowerButton_GPIO_Port GPIOE
 #define DBG_TX_Pin GPIO_PIN_0
 #define DBG_TX_GPIO_Port GPIOA
 #define DBG_RX_Pin GPIO_PIN_1
@@ -67,14 +69,12 @@ void Error_Handler(void);
 #define SPI2_CLK_GPIO_Port GPIOB
 #define PTT_Pin GPIO_PIN_15
 #define PTT_GPIO_Port GPIOB
-#define SWDIO_Pin GPIO_PIN_13
-#define SWDIO_GPIO_Port GPIOA
-#define SWCLK_Pin GPIO_PIN_14
-#define SWCLK_GPIO_Port GPIOA
 #define AUX_BUZZER_Pin GPIO_PIN_3
 #define AUX_BUZZER_GPIO_Port GPIOB
 #define RTD_BUZZER_Pin GPIO_PIN_4
 #define RTD_BUZZER_GPIO_Port GPIOB
+#define MICRO_CS_Pin GPIO_PIN_9
+#define MICRO_CS_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
 

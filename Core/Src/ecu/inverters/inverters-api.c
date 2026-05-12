@@ -76,10 +76,10 @@ EAGLETRT_STATIC_INLINE float prv_inverters_get_motor_torque_limit(const float rp
     // Inverter current limit (Torque = Current * Kt)
     // Limits the phase current to protect inverter's hardware
     // using INVERTER_MAX_CONTINUOUS_CURRENT_A instead of INVERTER_PEAK_CURRENT_A
-    // will provide less power but can operate for much longer times
+    // will provide less power but can operate for much longer times safely
     float t_max_current = INVERTER_MAX_CONTINUOUS_CURRENT_A * MOTOR_TORQUE_PER_CURRENT_NM_A;
 
-    // ensure rpm is not zero to avoid division by zero
+    // Ensure rpm is not zero to avoid division by zero
     float abs_rpm = fabsf(rpm);
     if (abs_rpm < RPM_SPEED_THRESHOLD) {
         abs_rpm = RPM_SPEED_THRESHOLD;
@@ -129,7 +129,7 @@ float prv_inverters_internal_resistance_model(void) {
  * \brief Limits total vehicle torque to respect battery power and current constraints.
  * \details Calculates the instantaneous mechanical power and compares it against three limits:
  * 1. The provided 'power_max' (usually the 80kW regulatory limit or voltage sag limit).
- * 2. The physical DC current limit (Battery Voltage * Max Pack Current).
+ * 2. The physical DC current limit (Battery voltage * Max pack current).
  * 3. The hard-coded battery regeneration limit ( \ref BATTERY_MAX_REGEN_POWER_W ).
  * If any limit is exceeded, a uniform reduction ratio is applied to all wheels to 
  * maintain the torque-vectoring balance while reducing total power consumption or absorption.
@@ -226,10 +226,8 @@ EAGLETRT_STATIC_INLINE void prv_inverters_minimum_cell_voltage_limit(float rpm_f
     float i_max = dV / r;
     i_max *= BATTERY_PARALLELS;
 
-    // Using packV_min ensures our Power (P = V * I) limit isn't over-estimated
-    // by an optimistic (resting) voltage (VOC).
-    float packV_min = HV_MIN_CELL_VOLTAGE_V * HV_CELL_COUNT;
-    float p_max = packV_min * i_max;
+    float packV = VOC * HV_CELL_COUNT;
+    float p_max = packV * i_max;
     prv_inverters_limit_torque_by_power(p_max, w_front_left, w_front_right, w_rear_left, w_rear_right, torque_front_left, torque_front_right, torque_rear_left, torque_rear_right);
 }
 
@@ -237,8 +235,7 @@ EAGLETRT_STATIC_INLINE void prv_inverters_minimum_cell_voltage_limit(float rpm_f
  * \brief Orchestrates the safety cut-off pipeline for all four inverters.
  * \details This function acts as the "overseer" of the powertrain. It processes raw torque 
  * requests (which can be identical for all wheels or different if using for e.g. torque vectoring) 
- * and ensures they stay within the "Safe Operating Envelope" defined by the rules 
- * and hardware limits.
+ * and ensures they stay within the "safe operating env" defined by the rules and hardware limits.
  *
  * INDIVIDUAL MOTOR LIMITS
  * Ensures motors/inverters don't exceed mechanical or thermal limits.
@@ -260,6 +257,7 @@ EAGLETRT_STATIC_INLINE void prv_inverters_minimum_cell_voltage_limit(float rpm_f
  */
 EAGLETRT_STATIC_INLINE void prv_inverters_apply_cut_off(float *torque_front_left_nm, float *torque_front_right_nm, float *torque_rear_left_nm, float *torque_rear_right_nm) {
 
+    // Fetch current rpm of all motors
     float rpm_front_left = inverters_handler.get_rpm(INVERTERS_POSITION_FRONT_LEFT);
     float rpm_front_right = inverters_handler.get_rpm(INVERTERS_POSITION_FRONT_RIGHT);
     float rpm_rear_left = inverters_handler.get_rpm(INVERTERS_POSITION_REAR_LEFT);
