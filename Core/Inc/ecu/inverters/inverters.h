@@ -1,7 +1,7 @@
 /*!
  * \file inverters.h
  * \author Dorijan Di Zepp
- * \date 2026-05-11
+ * \date 2026-05-12
  * \brief Hardware-agnostic module for inverters control.
  *
  * This module defines the inverters handler, the return codes and the callbacks signatures
@@ -20,38 +20,34 @@
 #define _USE_MATH_DEFINES
 #include <math.h>
 
-#define BATTERY_MAX_POWER_W (80000.0f) /* Maximum battery power allowed by Formula Student rules (80kW). */
+#define BATTERY_MAX_POWER_W (80000.0F) /* Maximum battery power allowed by Formula Student rules (80kW). */
 
-#define RPM_TO_RAD_COEFF ((2 * M_PI) / 60.0f) /* Conversion factor: RPM to radians per second. */
+#define RPM_TO_RAD_COEFF ((2 * M_PI) / 60.0F) /* Conversion factor: RPM to radians per second. */
 
-#define RAD_TO_RPM_COEFF (60.0f / (2 * M_PI)) /* Conversion factor: Radians per second to RPM. */
+#define INVERTER_MAX_CONTINUOUS_CURRENT_A (74.0F) /* Maximum continuous phase current (Arms). */
 
-#define INVERTER_MAX_CONTINUOUS_CURRENT_A (74.0f) /* Maximum continuous phase current (Arms). */
-
-#define INVERTER_PEAK_CURRENT_A (90.0f) /* Absolute peak phase current (Arms). */
-
-#define DC_LINK_MAX_VOLTAGE_V (600.0f) /* Maximum safe operating DC-link voltage to protect inverter capacitors. */
+#define INVERTER_PEAK_CURRENT_A (90.0F) /* Absolute peak phase current (Arms). */
 
 /*
 TODO:
 the following constants require verification
 to see if the values associated are valid
 */
-#define MOTOR_PEAK_TORQUE_NM (21.0f) /* Maximum mechanical torque allowed per motor. */
+#define MOTOR_PEAK_TORQUE_NM (21.0F) /* Maximum mechanical torque allowed per motor. */
 
-#define MOTOR_TORQUE_PER_CURRENT_NM_A (0.25f) /* Torque constant (Kt) in Nm/Arms. */
+#define MOTOR_TORQUE_PER_CURRENT_NM_A (0.25F) /* Torque constant (Kt) in Nm/Arms. */
 
-#define MOTOR_MAX_MECHANICAL_POWER_W (20000.0f) /* Maximum mechanical power allowed per motor. */
+#define MOTOR_MAX_MECHANICAL_POWER_W (20000.0F) /* Maximum mechanical power allowed per motor. */
 
-#define HV_MAX_REGEN_CURRENT_A (-24.0f) /* Maximum allowable regenerative current into the battery. */
+#define HV_MAX_REGEN_CURRENT_A (-24.0F) /* Maximum allowable regenerative current into the battery. */
 
-#define HV_MIN_CELL_VOLTAGE_V (2.8f) /* Minimum safe voltage for a single battery cell (V). */
+#define HV_MIN_CELL_VOLTAGE_V (2.8F) /* Minimum safe voltage for a single battery cell (V). */
 
 #define HV_CELL_COUNT (144) /* Total number of battery cells in series. */
 
 #define BATTERY_MAX_REGEN_POWER_W (HV_MAX_REGEN_CURRENT_A * HV_MIN_CELL_VOLTAGE_V * HV_CELL_COUNT) /* Maximum regenerative power allowed into the battery. */
 
-#define BATTERY_MAX_CURRENT_A (140.0f) /* Maximum DC current allowed to be drawn from the battery. */
+#define BATTERY_MAX_CURRENT_A (140.0F) /* Maximum DC current allowed to be drawn from the battery. */
 
 #define BATTERY_PARALLELS (3) /* Number of individual battery cells connected in parallel */
 

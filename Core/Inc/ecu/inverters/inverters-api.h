@@ -1,7 +1,7 @@
 /*!
  * \file inverters-api.h
  * \author Dorijan Di Zepp
- * \date 2026-05-11
+ * \date 2026-05-12
  * \brief Public API for the inverters control module.
  */
 

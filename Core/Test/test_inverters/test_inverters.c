@@ -1,7 +1,7 @@
 /*!
  * \file test_inverters.c
  * \author Dorijan Di Zepp
- * \date 2026-05-11
+ * \date 2026-05-12
  * \brief Unit tests using FFF for testing the inverters module
  * 
  * \details This test suite uses 'extern' declarations to access internal 'static' functions 
@@ -109,168 +109,209 @@ void test_inverters_api_set_drive_success_send_drive_command(void) {
  * \{
  */
 
-void test_inverters_api_set_torque_clamps_to_mechanical_peak(void) {
-    /* 
-     * Request: 50.0 Nm per motor.
-     * RPM: 1000.0.
-     * 1. Individual limit: At 1000 RPM, the power-based torque limit is very high 
-     * (20kW / 104.7 rad/s = ~191 Nm).
-     * 2. Mechanical limit: The code sees the request (50 Nm) exceeds MOTOR_PEAK_TORQUE_NM (21 Nm).
-     * 3. Result: The individual motor protection successfully clips the 
-     * request to 21 Nm before any global logic is even considered.
-     */
-    float fl = 50.0f, fr = 50.0f, rl = 50.0f, rr = 50.0f;
-    get_rpm_fake.return_val = 1000.0f;
+void test_inverters_api_set_torque_never_exceeds_hardware_limits(void) {
+    // Provide a request that is significantly higher than any physical limit
+    float fl = 500.0F;
+    float fr = 500.0F;
+    float rl = 500.0F;
+    float rr = 500.0F;
+
+    // Use low RPM and high SoC to ensure we are testing the torque clamp
+    // and not the power clamp or voltage sag logic.
+    get_rpm_fake.return_val = 100.0F;
     get_soc_fake.return_val = 1.0F;
 
-    // Call the logic function directly with pointers
+    // The logic should be bounded by the minimum of the motor peak and inverter peak
+    float motor_ceiling = MOTOR_PEAK_TORQUE_NM;
+    float inverter_ceiling = INVERTER_MAX_CONTINUOUS_CURRENT_A * MOTOR_TORQUE_PER_CURRENT_NM_A;
+    float absolute_max_allowed = EAGLETRT_API_MIN(motor_ceiling, inverter_ceiling);
+
     prv_inverters_apply_cut_off(&fl, &fr, &rl, &rr);
 
-    // Now fl, fr, rl, rr have been modified by the function
-    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(MOTOR_PEAK_TORQUE_NM, fl, "Front left torque not clamped to mechanical peak");
-    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(MOTOR_PEAK_TORQUE_NM, fr, "Front right torque not clamped to mechanical peak");
-    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(MOTOR_PEAK_TORQUE_NM, rl, "Rear left torque not clamped to mechanical peak");
-    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(MOTOR_PEAK_TORQUE_NM, rr, "Rear right torque not clamped to mechanical peak");
+    TEST_ASSERT_LESS_OR_EQUAL_FLOAT_MESSAGE(absolute_max_allowed, fl, "Torque exceeded motor/inverter physical limits");
+    TEST_ASSERT_LESS_OR_EQUAL_FLOAT_MESSAGE(absolute_max_allowed, fr, "Torque exceeded motor/inverter physical limits");
+    TEST_ASSERT_LESS_OR_EQUAL_FLOAT_MESSAGE(absolute_max_allowed, rl, "Torque exceeded motor/inverter physical limits");
+    TEST_ASSERT_LESS_OR_EQUAL_FLOAT_MESSAGE(absolute_max_allowed, rr, "Torque exceeded motor/inverter physical limits");
 }
 
-void test_inverters_api_set_torque_limits_to_battery_max_power(void) {
-    /*
-     * Request: 21.0 Nm (Peak torque) at 15,000 RPM.
-     * Total Requested Power: 4 * (21Nm * 1570.8 rad/s) = ~132,000 W (Illegal as above 80kW).
-     * 1. Individual protection: At 15k RPM, the motor is clamped to ~12.7 Nm to stay under 20kW.
-     * Current Total: 4 * (12.7Nm * 1570.8 rad/s) = ~80,000 W.
-     * 2. Global protection: The function prv_inverters_maximum_allowable_power checks the 
-     * sum against BATTERY_MAX_POWER_W (80,000). 
-     * 3. Result: Because 4 * 20kW is exactly 80kW, the individual hardware limits 
-     * effectively "pre-solve" the 80kW limit, ensuring legality.
-     */
+void test_inverters_api_set_torque_never_exceeds_battery_max_power(void) {
+    // Request maximum possible torque at a very high RPM (15,000)
+    // This forces the total power to attempt to go way over 80kW.
+    float fl = MOTOR_PEAK_TORQUE_NM;
+    float fr = MOTOR_PEAK_TORQUE_NM;
+    float rl = MOTOR_PEAK_TORQUE_NM;
+    float rr = MOTOR_PEAK_TORQUE_NM;
 
-    // Requesting maximum torque at high RPM
-    float fl = 21.0f, fr = 21.0f, rl = 21.0f, rr = 21.0f;
-    get_rpm_fake.return_val = 15000.0f;
+    const float test_rpm = 15000.0F;
+    get_rpm_fake.return_val = test_rpm;
     get_soc_fake.return_val = 1.0F;
+
+    const float omega = test_rpm * RPM_TO_RAD_COEFF;
 
     prv_inverters_apply_cut_off(&fl, &fr, &rl, &rr);
 
+    // The "invariant": P_total = (sum of torques) * omega <= BATTERY MAX POWER
     float total_torque = fl + fr + rl + rr;
-    float omega = 15000.0f * RPM_TO_RAD_COEFF;
-    float total_power = total_torque * omega;
+    float actual_total_power = total_torque * omega;
 
-    TEST_ASSERT_TRUE_MESSAGE(total_power <= BATTERY_MAX_POWER_W + 1.0f, "Total power exceeded the legal 80kW limit");
+    TEST_ASSERT_LESS_OR_EQUAL_FLOAT_MESSAGE(
+        BATTERY_MAX_POWER_W,
+        actual_total_power,
+        "The logic failed to restrict total power to the legal limit");
 }
 
 void test_inverters_api_set_torque_no_cut_at_zero_rpm(void) {
-    /*
-     * Request: 10.0 Nm at 0.0 RPM.
-     * 1. Normally, Power = Torque * RPM. To find Torque, you'd do Power / RPM. 
-     * Division by zero (10 / 0) would crash the code.
-     * 2. prv_inverters_avoid_zero_division detects the 0.0 RPM and 
-     * internally treats it as a tiny value (e.g., 0.1 RPM) for the calculation.
-     * 3. Result: The math results in a massive torque limit (e.g., 20,000W / 0.01 rad/s). 
-     * Since 10.0 Nm is much smaller than that massive limit, the torque is passed 
-     * through unmodified.
-     */
+    // Request a safe, mid-range torque.
+    const float requested_torque = 10.0F;
+    float fl = requested_torque, fr = requested_torque;
+    float rl = requested_torque, rr = requested_torque;
 
-    // Test if division-by-zero protection work
-    // Requesting legal torque at standstill.
-    float fl = 10.0f, fr = 10.0f, rl = 10.0f, rr = 10.0f;
-    get_rpm_fake.return_val = 0.0f;
+    // Set RPM to exactly 0.0 to trigger the division-by-zero protection.
+    get_rpm_fake.return_val = 0.0F;
     get_soc_fake.return_val = 1.0F;
 
     prv_inverters_apply_cut_off(&fl, &fr, &rl, &rr);
 
-    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(10.0f, fl, "Torque was unexpectedly modified at zero RPM");
-    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(10.0f, rr, "Torque was unexpectedly modified at zero RPM");
+    // The result should be unmodified.
+    TEST_ASSERT_FLOAT_WITHIN_MESSAGE(0.001F, requested_torque, fl, "Torque modified or corrupted by zero-division at 0 RPM");
+    TEST_ASSERT_FLOAT_WITHIN_MESSAGE(0.001F, requested_torque, fr, "Torque modified or corrupted by zero-division at 0 RPM");
+    TEST_ASSERT_FLOAT_WITHIN_MESSAGE(0.001F, requested_torque, rl, "Torque modified or corrupted by zero-division at 0 RPM");
+    TEST_ASSERT_FLOAT_WITHIN_MESSAGE(0.001F, requested_torque, rr, "Torque modified or corrupted by zero-division at 0 RPM");
 }
 
 void test_inverters_api_set_torque_preserves_ratio_during_cut(void) {
-    /*
-     * Request: 14Nm and 7Nm at 13,000 RPM.
-     * Individual limit: 20kW / (13000 * 0.1047) = 14.68 Nm.
-     * Our requests (14 & 7) are BOTH BELOW 14.68, so no individual clipping occurs.
-     * Global limit: Total power is ~57kW.
-     */
-    float fl = 14.0f, fr = 7.0f, rl = 14.0f, rr = 7.0f;
-    get_rpm_fake.return_val = 13000.0f;
-    get_soc_fake.return_val = 1.0F;
+    // Request a specific ratio (e.g., 2:1)
+    const float high_torque = 10.0f;
+    const float low_torque = 5.0f;
+    const float expected_ratio = high_torque / low_torque;
+
+    float fl = high_torque, fr = low_torque;
+    float rl = high_torque, rr = low_torque;
+
+    get_rpm_fake.return_val = 5000.0f;
+    get_soc_fake.return_val = 1.0f;
 
     prv_inverters_apply_cut_off(&fl, &fr, &rl, &rr);
 
-    // If global scaling triggers, it multiplies all by the same ratio 'k'
-    TEST_ASSERT_FLOAT_WITHIN_MESSAGE(0.01f, 2.0f, fl / fr, "Ratio should be preserved when only global scaling is active");
+    // Ratio preservation
+    TEST_ASSERT_FLOAT_WITHIN_MESSAGE(0.001f, expected_ratio, fl / fr, "Front Left/Right ratio was distorted during scaling");
+    TEST_ASSERT_FLOAT_WITHIN_MESSAGE(0.001f, expected_ratio, rl / rr, "Rear Left/Right ratio was distorted during scaling");
+    TEST_ASSERT_FLOAT_WITHIN_MESSAGE(0.001f, 1.0f, fl / rl, "Front/Rear balance was distorted during scaling");
 }
 
-void test_inverters_api_set_torque_breaks_ratio_on_hardware_limit(void) {
-    /* Why the ratio should break:
-     * Request: 20Nm and 10Nm at 15,000 RPM. (Original ratio 2.0)
-     * Individual Limit: 20kW / (15000 * 0.1047) = 12.73 Nm.
-     * The clipping:
-     * - Left (20Nm) is GREATER than 12.73 -> Clamped to 12.73 Nm.
-     * - Right (10Nm) is LESS than 12.73 -> Stays at 10.00 Nm.
-     * Resulting ratio: 12.73 / 10.0 = 1.27 (Ratio is NOT 2.0 anymore).
-     */
-    float fl = 20.0f, fr = 10.0f, rl = 20.0f, rr = 10.0f;
-    get_rpm_fake.return_val = 15000.0f;
-    get_soc_fake.return_val = 1.0F;
+void test_inverters_api_set_torque_preserves_ratio_at_high_rpm_saturation(void) {
+    // At 14,000 RPM, the limit is roughly:
+    // 20,000W / (14,000 * 0.1047 rad/s) = ~13.6 Nm
+    get_rpm_fake.return_val = 14000.0f;
+    get_soc_fake.return_val = 1.0f;
+
+    // We request 20Nm and 10Nm (2:1 ratio)
+    // 20Nm is ABOVE the 13.6Nm limit.
+    const float req_high = 20.0f;
+    const float req_low = 10.0f;
+    const float expected_ratio = 2.0f;
+
+    float fl = req_high, fr = req_low;
+    float rl = req_high, rr = req_low;
 
     prv_inverters_apply_cut_off(&fl, &fr, &rl, &rr);
 
-    // We expect the ratio to be closer to 1.27 than 2.0
-    float actual_ratio = fl / fr;
-    TEST_ASSERT_TRUE_MESSAGE(actual_ratio < 1.5f, "Ratio should be broken because the high-torque side hit a hardware limit");
-    TEST_ASSERT_FLOAT_WITHIN(0.01f, 1.2732f, actual_ratio);
+    // Verify that a cut actually happened (fl should be capped at ~13.6Nm)
+    TEST_ASSERT_TRUE_MESSAGE(fl < 14.0f, "Hardware limit was not triggered; fl is too high");
+
+    // Verify ratio preservation
+    // Even though 'fr' (10Nm) was technically safe, it should have been
+    // scaled down to ~6.8Nm to maintain the 2:1 ratio with 'fl'.
+    TEST_ASSERT_FLOAT_WITHIN_MESSAGE(0.01f, expected_ratio, fl / fr, "Ratio distorted at saturation! Proportional scaling failed.");
+
+    // Verify Front/Rear Balance
+    TEST_ASSERT_FLOAT_WITHIN_MESSAGE(0.01f, 1.0f, fl / rl, "Front/Rear balance distorted at saturation!");
 }
 
-void test_inverters_api_set_torque_limits_regen_power(void) {
-    /*
-     * Request: -21.0 Nm (max regen) at 10,000 RPM.
-     * Total requested regen power: 4 * (-21Nm * 1047.2 rad/s) = -87,964 W (~ -88kW).
-     * 1. The code calculates the total power requested. 
-     * 2. It sees -88kW is "more negative" (less than) the 
-     * BATTERY_MAX_REGEN_POWER_W (e.g., -20kW).
-     * 3. Scaling: The global scaling logic (prv_inverters_maximum_allowable_power) 
-     * calculates a reduction ratio to bring that -88kW back up to exactly the -20kW limit.
-     * 4. Result: All torque values are reduced proportionally to stay within battery safety.
-     */
+void test_inverters_api_set_torque_preserves_ratio_with_mixed_directions(void) {
+    // Outside wheels pushing (+20), inside wheels braking (-10)
+    float fl = 20.0f, fr = -10.0f;
+    float rl = 20.0f, rr = -10.0f;
+    get_rpm_fake.return_val = 12000.0f; // High speed to trigger power limit
 
-    // Request heavy braking (-21Nm) at high speed
-    float fl = -21.0f, fr = -21.0f, rl = -21.0f, rr = -21.0f;
+    prv_inverters_apply_cut_off(&fl, &fr, &rl, &rr);
+
+    // The ratio between fl and fr must remain the same
+    TEST_ASSERT_FLOAT_WITHIN_MESSAGE(0.01f, -2.0f, fl / fr, "Mixed-direction ratio distorted");
+}
+
+void test_inverters_set_torque_regen_power_safety_limit(void) {
+    // Request extreme regen (-88kW)
     get_rpm_fake.return_val = 10000.0f;
-    get_soc_fake.return_val = 1.0F;
+    float fl = -21.0f, fr = -21.0f, rl = -21.0f, rr = -21.0f;
+    float omega = 10000.0f * RPM_TO_RAD_COEFF;
 
     prv_inverters_apply_cut_off(&fl, &fr, &rl, &rr);
 
-    float omega = 10000.0f * RPM_TO_RAD_COEFF;
-    float total_power = (fl + fr + rl + rr) * omega;
-
-    // Power is negative during regen. Ensure it's not "more negative" than the limit.
-    // e.g. If limit is -15000, power should be -15000, not -25000.
-    TEST_ASSERT_TRUE_MESSAGE(total_power >= BATTERY_MAX_REGEN_POWER_W - 1.0f, "Regen power exceeded battery limits");
+    // Total power must not be "more negative" than the limit
+    float actual_p = (fl + fr + rl + rr) * omega;
+    TEST_ASSERT_TRUE_MESSAGE(actual_p >= BATTERY_MAX_REGEN_POWER_W - 1.0f,
+                             "Regen power exceeded battery safety limits");
 }
 
-void test_inverters_api_set_torque_limits_to_inverter_current(void) {
-    /*
-     * Request: 100.0 Nm (An impossible request).
-     * RPM: 100.0 (Very low speed).
-     * 1. Calculation: The code calculates three potential torque limits:
-     * a) t_max_mechanical: 21.0 Nm (Motor constant)
-     * b) t_max_current: 90A * 0.25 Nm/A = 22.5 Nm (Inverter hardware limit)
-     * c) t_max_power: 20kW / 10.47 rad/s = ~1910 Nm (Power limit at low speed)
-     * 2. The code takes the minimum of these: MIN(21.0, 22.5, 1910).
-     * 3. Result: 21.0 Nm wins. The code correctly identifies that the motor's physical 
-     * peak is reached before the inverter's current limit.
-     */
+void test_inverters_set_torque_regen_preserves_ratio_during_cut(void) {
+    // Request a 2:1 braking ratio
+    float fl = -20.0f, fr = -10.0f;
+    float rl = -20.0f, rr = -10.0f;
+    const float expected_ratio = 2.0f;
 
-    float fl = 100.0f; // Ridiculous request
-    float dummy = 0.0f;
-    get_rpm_fake.return_val = 100.0f; // Low RPM so power isn't the bottleneck
-    get_soc_fake.return_val = 1.0F;
+    get_rpm_fake.return_val = 10000.0f;
 
-    prv_inverters_apply_cut_off(&fl, &dummy, &dummy, &dummy);
+    prv_inverters_apply_cut_off(&fl, &fr, &rl, &rr);
 
-    // Should be clamped to the lowest of mechanical peak, inverter current limit, power limit
-    float expected_limit = MOTOR_PEAK_TORQUE_NM;
-    TEST_ASSERT_FLOAT_WITHIN(0.1f, expected_limit, fl);
+    // Balance must remain 2:1
+    TEST_ASSERT_FLOAT_WITHIN_MESSAGE(0.001f, expected_ratio, fl / fr, "L/R braking balance was distorted during regen scaling");
+}
+
+void test_inverters_set_torque_regen_actually_attenuates_torque(void) {
+    const float requested = -21.0f;
+    float fl = requested, fr = requested, rl = requested, rr = requested;
+    get_rpm_fake.return_val = 10000.0f;
+
+    prv_inverters_apply_cut_off(&fl, &fr, &rl, &rr);
+
+    // Torque must be "less negative" (closer to 0) than requested
+    TEST_ASSERT_TRUE_MESSAGE(fl > requested,
+                             "Regen torque was not attenuated despite exceeding power limits");
+}
+
+void test_inverters_api_set_torque_scales_on_low_voltage_sag(void) {
+    // Request safe torque (10Nm) at high RPM (5000)
+    float fl = 10.0f, fr = 10.0f, rl = 10.0f, rr = 10.0f;
+    get_rpm_fake.return_val = 5000.0f;
+
+    // Simulate a nearly empty battery (SoC = 0.01)
+    get_soc_fake.return_val = 0.01f;
+
+    prv_inverters_apply_cut_off(&fl, &fr, &rl, &rr);
+
+    // Even though 10Nm is safe hardware-wise,
+    // it should be scaled down to protect against voltage collapse.
+    TEST_ASSERT_TRUE_MESSAGE(fl < 10.0f, "Torque FL was not scaled down during extreme voltage sag");
+    TEST_ASSERT_TRUE_MESSAGE(fr < 10.0f, "Torque FR was not scaled down during extreme voltage sag");
+    TEST_ASSERT_TRUE_MESSAGE(rl < 10.0f, "Torque RL was not scaled down during extreme voltage sag");
+    TEST_ASSERT_TRUE_MESSAGE(rr < 10.0f, "Torque RR was not scaled down during extreme voltage sag");
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, 1.0f, fl / fr); // Ratio must still hold!
+}
+
+void test_inverters_api_set_torque_reduces_drastically_at_zero_soc(void) {
+    // Request high torque to force voltage sag given a SoC equal to zero
+    float fl = 20.0f, fr = 20.0f, rl = 20.0f, rr = 20.0f;
+    get_rpm_fake.return_val = 2000.0f;
+    get_soc_fake.return_val = 0.0f;
+
+    prv_inverters_apply_cut_off(&fl, &fr, &rl, &rr);
+
+    // Instead of 0, check that it's heavily attenuated (e.g., less than 5Nm)
+    TEST_ASSERT_TRUE_MESSAGE(fl < 5.0f, "Torque FL was not sufficiently attenuated at 0% SoC");
+    TEST_ASSERT_TRUE_MESSAGE(fr < 5.0f, "Torque FR was not sufficiently attenuated at 0% SoC");
+    TEST_ASSERT_TRUE_MESSAGE(rl < 5.0f, "Torque RL was not sufficiently attenuated at 0% SoC");
+    TEST_ASSERT_TRUE_MESSAGE(rr < 5.0f, "Torque RR was not sufficiently attenuated at 0% SoC");
 }
 /*! \} */
 
@@ -301,13 +342,17 @@ int main(void) {
      * \addtogroup inverters_api_set_torque
      * \{
      */
-    RUN_TEST(test_inverters_api_set_torque_clamps_to_mechanical_peak);
-    RUN_TEST(test_inverters_api_set_torque_limits_to_battery_max_power);
+    RUN_TEST(test_inverters_api_set_torque_never_exceeds_hardware_limits);
+    RUN_TEST(test_inverters_api_set_torque_never_exceeds_battery_max_power);
     RUN_TEST(test_inverters_api_set_torque_no_cut_at_zero_rpm);
     RUN_TEST(test_inverters_api_set_torque_preserves_ratio_during_cut);
-    RUN_TEST(test_inverters_api_set_torque_breaks_ratio_on_hardware_limit);
-    RUN_TEST(test_inverters_api_set_torque_limits_regen_power);
-    RUN_TEST(test_inverters_api_set_torque_limits_to_inverter_current);
+    RUN_TEST(test_inverters_api_set_torque_preserves_ratio_at_high_rpm_saturation);
+    RUN_TEST(test_inverters_api_set_torque_preserves_ratio_with_mixed_directions);
+    RUN_TEST(test_inverters_set_torque_regen_power_safety_limit);
+    RUN_TEST(test_inverters_set_torque_regen_preserves_ratio_during_cut);
+    RUN_TEST(test_inverters_set_torque_regen_actually_attenuates_torque);
+    RUN_TEST(test_inverters_api_set_torque_scales_on_low_voltage_sag);
+    RUN_TEST(test_inverters_api_set_torque_reduces_drastically_at_zero_soc);
     /*! \} */
 
     return UNITY_END();
