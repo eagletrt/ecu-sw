@@ -1,7 +1,7 @@
 /*!
  * \file driver-api.h
  * \author Dorijan Di Zepp
- * \date 2026-05-13
+ * \date 2026-05-14
  * \brief API for driver selection, readiness verification before R2D transition
  * and continuous safety monitoring during operation.
  */
@@ -43,10 +43,16 @@ enum DriverReturnCode driver_api_is_driver_ready(void);
  * \details This function verifies that critical operating conditions are met. 
  * Failure of these checks usually mandates immediate inverter deactivation for safety.
  * \note The result is intended for use by the FSM (specifically in the R2D state) 
- * to decide if the inverters or Autonomous System must be disabled.
+ * to decide if the inverters or Autonomous System must be disabled without explicit user request.
  * \retval DRIVER_RC_OK All safety conditions are met; car is safe to drive.
  * \retval DRIVER_RC_ERROR A safety check failed or the callback is \c NULL; stop the vehicle.
  */
 enum DriverReturnCode driver_api_continuous_check(void);
+
+/*!
+ * \brief Returns the currently selected driver type.
+ * \return The active \ref DriverType (e.g. MANUAL or AS).
+ */
+enum DriverType driver_api_get_driver_type(void);
 
 #endif

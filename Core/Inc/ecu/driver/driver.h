@@ -1,7 +1,7 @@
 /*!
  * \file driver.h
  * \author Dorijan Di Zepp
- * \date 2026-05-13
+ * \date 2026-05-14
  * \brief Management of driver selection, readiness checks and 
  * continuous safety monitoring.
  */
@@ -10,7 +10,7 @@
 #define DRIVER_H
 
 /*!
- * \brief Return codes for the driver module APIs
+ * \brief Return codes for the driver module APIs.
  */
 enum DriverReturnCode {
     DRIVER_RC_OK,    /*!< Operation completed successfully */
@@ -29,7 +29,7 @@ enum DriverType {
 /*!
  * \brief Callback signature to determine if the driver is ready.
  * This function is typically polled while the car is in a pre-drive state 
- * (e.g., IDLE) to determine if transition to R2D is permitted.
+ * (e.g. IDLE) to determine if transition to R2D is permitted.
  * \retval DRIVER_RC_OK    Driver is ready; all checks passed.
  * \retval DRIVER_RC_ERROR Driver is not ready; checks failed.
  */

@@ -15,7 +15,7 @@
 /*!
  * \brief The global state of the Finite State Machine (FSM).
  * \details This variable represents the current operational state 
- * of the vehicle (e.g., INIT, IDLE, R2D). Modules like driver-api.c use 
+ * of the vehicle (e.g. INIT, IDLE, R2D). Modules like \ref driver-api.c use 
  * this variable to verify if certain actions (like re-initialization) 
  * are permitted in the current context.
  * In tests, this can be manually manipulated to simulate different car conditions.
