@@ -91,6 +91,24 @@ void test_driver_api_init_on_idle_state(void) {
 
     TEST_ASSERT_EQUAL_MESSAGE(DRIVER_RC_OK, rc, "Init should complete if all parameters are passed and current state is a valid one");
 }
+
+void test_driver_api_init_unchanged_previous_configuration(void) {
+    // Allow explicitly the possibility to reinitialize the module
+    current_state = STATE_INIT;
+
+    // Zero out memory to be sure no garbage value is present
+    struct DriverHandler expected_driver;
+    memset(&expected_driver, 0, sizeof(struct DriverHandler));
+    expected_driver.driver_type = DRIVER_TYPE_MANUAL;
+    expected_driver.wait_for_driver = wait_for_driver;
+    expected_driver.continuous_check = continuous_check;
+
+    // If the call fails, the previous configuration should be left unchanged
+    // to avoid erasing of information
+    driver_api_init(DRIVER_TYPE_AS, wait_for_driver, NULL);
+
+    TEST_ASSERT_EQUAL_MEMORY_MESSAGE(&expected_driver, &driver_handler, sizeof(struct DriverHandler), "The driver handler configuration should be left unchanged in case of a failed initialization");
+}
 /*! \} */
 
 /*!
@@ -162,6 +180,7 @@ int main(void) {
     RUN_TEST(test_driver_api_init_not_in_init_and_idle);
     RUN_TEST(test_driver_api_init_on_init_state);
     RUN_TEST(test_driver_api_init_on_idle_state);
+    RUN_TEST(test_driver_api_init_unchanged_previous_configuration);
     /*! \} */
 
     /*!

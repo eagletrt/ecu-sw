@@ -13,6 +13,7 @@
 
 /*!
  * \brief Initializes the driver handler by storing the driver type and necessary callbacks.
+ * \note If the initialization is not successful, the previous configuration is left unchanged.
  * \note It is recommended to initialize the module with \ref DRIVER_TYPE_MANUAL by default. 
  * This establishes a **fail-safe default configuration**, ensuring that human control 
  * is the baseline state upon system boot or reset. This prevents the vehicle from 

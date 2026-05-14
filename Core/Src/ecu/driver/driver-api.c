@@ -27,7 +27,7 @@ enum DriverReturnCode driver_api_init(enum DriverType driver_type, driver_wait_f
         return DRIVER_RC_ERROR;
     }
 
-    // Ss the init function can be called many times in init or idle
+    // Since the init function can be called many times in init or idle
     // it is required to first validate the parameters and
     // then reset the values to avoid loosing the past valid configuration
     if (driver_type >= DRIVER_TYPE_COUNT || (wait_for_driver == NULL) || (continuous_check == NULL)) {
