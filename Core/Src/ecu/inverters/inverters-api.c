@@ -1,7 +1,7 @@
 /*!
  * \file inverters-api.c
  * \author Dorijan Di Zepp
- * \date 2026-05-12
+ * \date 2026-05-19
  * \brief Implementation of inverters module.
  * \details Provides an interface for sending activation/deactivation 
  * commands and requested torque by applying a cut-off safety function.
@@ -9,8 +9,7 @@
 
 #include "inverters-api.h"
 #include "eagletrt-api.h"
-
-#define RPM_SPEED_THRESHOLD (0.1F) /* Avoid division by zero in case the RPM is equal/near to zero*/
+#include <string.h>
 
 /*!
  * \brief Internal module handler.
@@ -37,7 +36,7 @@ EAGLETRT_STATIC struct InvertersHandler inverters_handler;
  * \param[in] limit_rear_right    The maximum allowable torque for the rear-right motor at current RPM (Nm).
  * \return float A scaling factor from 0.0 to 1.0. Returns 1.0 if no motors exceed their limits.
  */
-EAGLETRT_STATIC_INLINE float prv_inverters_get_motors_reduction(
+EAGLETRT_STATIC float prv_inverters_get_motors_reduction(
     float torque_front_left, float torque_front_right, float torque_rear_left, float torque_rear_right, float limit_front_left, float limit_front_right, float limit_rear_left, float limit_rear_right) {
     float global_reduction = 1.0F;
 
@@ -46,15 +45,13 @@ EAGLETRT_STATIC_INLINE float prv_inverters_get_motors_reduction(
     float limits[4] = { limit_front_left, limit_front_right, limit_rear_left, limit_rear_right };
 
     for (int i = 0; i < 4; i++) {
-        float abs_req = fabsf(requests[i]);
+        float absolute_request = fabsf(requests[i]);
 
         // If the request exceeds the limit, calculate the necessary reduction
-        if (abs_req > limits[i] && abs_req > 0.001F) {
-            float local_ratio = limits[i] / abs_req;
+        if (absolute_request > limits[i] && absolute_request > 0.001F) {
+            float local_ratio = limits[i] / absolute_request;
             // Keep the smallest ratio (the most restrictive cut)
-            if (local_ratio < global_reduction) {
-                global_reduction = local_ratio;
-            }
+            global_reduction = EAGLETRT_API_MIN(global_reduction, local_ratio);
         }
     }
 
@@ -72,25 +69,23 @@ EAGLETRT_STATIC_INLINE float prv_inverters_get_motors_reduction(
  * \param[in] rpm The current rotational speed of the motor. Sign is ignored via fabsf.
  * \return The maximum allowable absolute torque in Newton-meters (Nm), always positive.
  */
-EAGLETRT_STATIC_INLINE float prv_inverters_get_motor_torque_limit(const float rpm) {
+EAGLETRT_STATIC float prv_inverters_get_motor_torque_limit(const float rpm) {
     // Inverter current limit (Torque = Current * Kt)
     // Limits the phase current to protect inverter's hardware
     // using INVERTER_MAX_CONTINUOUS_CURRENT_A instead of INVERTER_PEAK_CURRENT_A
     // will provide less power but can operate for much longer times safely
-    float t_max_current = INVERTER_MAX_CONTINUOUS_CURRENT_A * MOTOR_TORQUE_PER_CURRENT_NM_A;
+    float current_max_current = INVERTERS_INVERTER_MAX_CONTINUOUS_CURRENT_A * INVERTERS_MOTOR_TORQUE_PER_CURRENT_NM_A;
 
     // Ensure rpm is not zero to avoid division by zero
-    float abs_rpm = fabsf(rpm);
-    if (abs_rpm < RPM_SPEED_THRESHOLD) {
-        abs_rpm = RPM_SPEED_THRESHOLD;
-    }
+    float absolute_rpm = fabsf(rpm);
+    absolute_rpm = EAGLETRT_API_MAX(absolute_rpm, INVERTERS_RPM_SPEED_THRESHOLD);
 
     // Motor power limit (Torque = Power / Omega)
-    float t_max_power = MOTOR_MAX_MECHANICAL_POWER_W / (abs_rpm * RPM_TO_RAD_COEFF);
+    const float current_max_torque = INVERTERS_MOTOR_MAX_MECHANICAL_POWER_W / (absolute_rpm * INVERTERS_RPM_TO_RAD_COEFFICIENT);
 
     // Return the lowest of the three.
     // This protects the motor and the inverter
-    return EAGLETRT_API_MIN(MOTOR_PEAK_TORQUE_NM, EAGLETRT_API_MIN(t_max_current, t_max_power));
+    return EAGLETRT_API_MIN(INVERTERS_MOTOR_PEAK_TORQUE_NM, EAGLETRT_API_MIN(current_max_current, current_max_torque));
 }
 
 /*!
@@ -102,10 +97,10 @@ EAGLETRT_STATIC_INLINE float prv_inverters_get_motor_torque_limit(const float rp
  * \return float Estimated voltage per cell (V). Clamped between the model's 0% and 100% values.
  */
 float prv_inverters_pack_voc_model(void) {
-    float soc = inverters_handler.get_soc();
-    soc = EAGLETRT_API_CLAMP(soc, 0.0F, 1.0F);
+    float soc = inverters_handler.hv_bms_soc;
     //TODO: verify the values as they correspond to the characteristics of the old pack
     // which should be "recycled" for kraken.
+    // It may be possible to retrieve directly the VOC value from the SOC's CAN frame, to be checked.
     return -3.85189120F * powf(soc, 4) + 9.42278296F * powf(soc, 3) - 8.31949326F * powf(soc, 2) + 4.04805239F * soc + 2.82544823F;
 }
 
@@ -118,10 +113,10 @@ float prv_inverters_pack_voc_model(void) {
  * \return float The estimated internal resistance of a single cell in Ohms (Ω).
  */
 float prv_inverters_internal_resistance_model(void) {
-    float soc = inverters_handler.get_soc();
-    soc = EAGLETRT_API_CLAMP(soc, 0.0F, 1.0F);
+    float soc = inverters_handler.hv_bms_soc;
     //TODO: verify the values as they correspond to the characteristics of the old pack
     // which should be "recycled" for kraken.
+    // It may be possible to retrieve directly the resistance value from the SOC's CAN frame, to be checked.
     return 0.0141F + 0.0021F * soc;
 }
 
@@ -134,24 +129,24 @@ float prv_inverters_internal_resistance_model(void) {
  * If any limit is exceeded, a uniform reduction ratio is applied to all wheels to 
  * maintain the torque-vectoring balance while reducing total power consumption or absorption.
  * \param[in] power_max The maximum allowable total power (Watts).
- * \param[in] w_front_left Angular velocity (rad/s) of the front left wheel.
- * \param[in] w_front_right Angular velocity (rad/s) of the front right wheel.
- * \param[in] w_rear_left Angular velocity (rad/s) of the rear left wheel.
- * \param[in] w_rear_right Angular velocity (rad/s) of the rear right wheel.
+ * \param[in] angular_velocity_front_left Angular velocity (rad/s) of the front left wheel.
+ * \param[in] angular_velocity_front_right Angular velocity (rad/s) of the front right wheel.
+ * \param[in] angular_velocity_rear_left Angular velocity (rad/s) of the rear left wheel.
+ * \param[in] angular_velocity_rear_right Angular velocity (rad/s) of the rear right wheel.
  * \param[in,out] torque_front_left Pointer to the front left torque; to be scaled on low voltage.
  * \param[in,out] torque_front_right Pointer to the front right torque; to be scaled on low voltage.
  * \param[in,out] torque_rear_left Pointer to the rear left torque; to be scaled on low voltage.
  * \param[in,out] torque_rear_right Pointer to the rear right torque; to be scaled on low voltage.
  */
-void prv_inverters_limit_torque_by_power(float power_max, float w_front_left, float w_front_right, float w_rear_left, float w_rear_right, float *torque_front_left, float *torque_front_right, float *torque_rear_left, float *torque_rear_right) {
+EAGLETRT_STATIC void prv_inverters_limit_torque_by_power(float power_max, float angular_velocity_front_left, float angular_velocity_front_right, float angular_velocity_rear_left, float angular_velocity_rear_right, float *torque_front_left, float *torque_front_right, float *torque_rear_left, float *torque_rear_right) {
     // Total mechanical power: P = Sum(T * w)
-    float total_mechanical_p = (*torque_front_left * w_front_left) + (*torque_front_right * w_front_right) + (*torque_rear_left * w_rear_left) + (*torque_rear_right * w_rear_right);
+    float total_mechanical_power = (*torque_front_left * angular_velocity_front_left) + (*torque_front_right * angular_velocity_front_right) + (*torque_rear_left * angular_velocity_rear_left) + (*torque_rear_right * angular_velocity_rear_right);
     float reduction_ratio = 1.0F;
 
     // Physical DC current limit
     // Using the Voc model and cell count to find the real-time battery voltage
-    float pack_v = prv_inverters_pack_voc_model() * HV_CELL_COUNT;
-    float physical_limit = pack_v * BATTERY_MAX_CURRENT_A;
+    float pack_voltage = prv_inverters_pack_voc_model() * INVERTERS_HV_CELL_COUNT;
+    float physical_limit = pack_voltage * INVERTERS_HV_MAX_CURRENT_A;
 
     // Update power_max to the most restrictive limit
     // This ensures we respect both the 80kW rule and the 140A battery limit
@@ -159,12 +154,12 @@ void prv_inverters_limit_torque_by_power(float power_max, float w_front_left, fl
 
     if (fabsf(power_max) < 0.5F) {
         reduction_ratio = 0.0F; // kill torque if battery is almost "dead"
-    } else if (total_mechanical_p > power_max && total_mechanical_p >= 0.0F) {
+    } else if (total_mechanical_power > power_max && total_mechanical_power >= 0.0F) {
         // discharge and power limit scaling
-        reduction_ratio = EAGLETRT_API_MIN(EAGLETRT_API_MAX(power_max / total_mechanical_p, 0.0F), 1.0F);
-    } else if (total_mechanical_p < BATTERY_MAX_REGEN_POWER_W && total_mechanical_p < 0.0F) {
+        reduction_ratio = EAGLETRT_API_MIN(EAGLETRT_API_MAX(power_max / total_mechanical_power, 0.0F), 1.0F);
+    } else if (total_mechanical_power < INVERTERS_HV_MAX_REGEN_POWER_W && total_mechanical_power < 0.0F) {
         // regen scaling, avoid  "pushing" more than the cells can absorb
-        reduction_ratio = EAGLETRT_API_MIN(EAGLETRT_API_MAX(BATTERY_MAX_REGEN_POWER_W / total_mechanical_p, 0.0F), 1.0F);
+        reduction_ratio = EAGLETRT_API_MIN(EAGLETRT_API_MAX(INVERTERS_HV_MAX_REGEN_POWER_W / total_mechanical_power, 0.0F), 1.0F);
     }
 
     // Apply the same ratio to all motors
@@ -189,15 +184,15 @@ void prv_inverters_limit_torque_by_power(float power_max, float w_front_left, fl
  * \param[in,out] torque_rear_left Pointer to the rear left torque request.
  * \param[in,out] torque_rear_right Pointer to the rear right torque request.
  */
-EAGLETRT_STATIC_INLINE void prv_inverters_maximum_allowable_power(float rpm_front_left, float rpm_front_right, float rpm_rear_left, float rpm_rear_right, float *torque_front_left, float *torque_front_right, float *torque_rear_left, float *torque_rear_right) {
+EAGLETRT_STATIC void prv_inverters_maximum_allowable_power(float rpm_front_left, float rpm_front_right, float rpm_rear_left, float rpm_rear_right, float *torque_front_left, float *torque_front_right, float *torque_rear_left, float *torque_rear_right) {
 
     // Convert speeds to angular velocity (rad/s)
-    float w_front_left = rpm_front_left * RPM_TO_RAD_COEFF;
-    float w_front_right = rpm_front_right * RPM_TO_RAD_COEFF;
-    float w_rear_left = rpm_rear_left * RPM_TO_RAD_COEFF;
-    float w_rear_right = rpm_rear_right * RPM_TO_RAD_COEFF;
+    float w_front_left = rpm_front_left * INVERTERS_RPM_TO_RAD_COEFFICIENT;
+    float w_front_right = rpm_front_right * INVERTERS_RPM_TO_RAD_COEFFICIENT;
+    float w_rear_left = rpm_rear_left * INVERTERS_RPM_TO_RAD_COEFFICIENT;
+    float w_rear_right = rpm_rear_right * INVERTERS_RPM_TO_RAD_COEFFICIENT;
 
-    prv_inverters_limit_torque_by_power(BATTERY_MAX_POWER_W, w_front_left, w_front_right, w_rear_left, w_rear_right, torque_front_left, torque_front_right, torque_rear_left, torque_rear_right);
+    prv_inverters_limit_torque_by_power(INVERTERS_HV_MAX_POWER_W, w_front_left, w_front_right, w_rear_left, w_rear_right, torque_front_left, torque_front_right, torque_rear_left, torque_rear_right);
 }
 
 /*!
@@ -213,20 +208,20 @@ EAGLETRT_STATIC_INLINE void prv_inverters_maximum_allowable_power(float rpm_fron
  * \param[in,out] torque_rear_left Pointer to the rear left torque; to be scaled on low voltage.
  * \param[in,out] torque_rear_right Pointer to the rear right torque; to be scaled on low voltage.
  */
-EAGLETRT_STATIC_INLINE void prv_inverters_minimum_cell_voltage_limit(float rpm_front_left, float rpm_front_right, float rpm_rear_left, float rpm_rear_right, float *torque_front_left, float *torque_front_right, float *torque_rear_left, float *torque_rear_right) {
+EAGLETRT_STATIC void prv_inverters_minimum_cell_voltage_limit(float rpm_front_left, float rpm_front_right, float rpm_rear_left, float rpm_rear_right, float *torque_front_left, float *torque_front_right, float *torque_rear_left, float *torque_rear_right) {
 
-    float w_front_left = rpm_front_left * RPM_TO_RAD_COEFF;
-    float w_front_right = rpm_front_right * RPM_TO_RAD_COEFF;
-    float w_rear_left = rpm_rear_left * RPM_TO_RAD_COEFF;
-    float w_rear_right = rpm_rear_right * RPM_TO_RAD_COEFF;
+    float w_front_left = rpm_front_left * INVERTERS_RPM_TO_RAD_COEFFICIENT;
+    float w_front_right = rpm_front_right * INVERTERS_RPM_TO_RAD_COEFFICIENT;
+    float w_rear_left = rpm_rear_left * INVERTERS_RPM_TO_RAD_COEFFICIENT;
+    float w_rear_right = rpm_rear_right * INVERTERS_RPM_TO_RAD_COEFFICIENT;
 
-    float VOC = prv_inverters_pack_voc_model(); // VOC is the open circuit voltage
-    float dV = EAGLETRT_API_MAX(VOC - HV_MIN_CELL_VOLTAGE_V, 0.0);
-    float r = prv_inverters_internal_resistance_model();
-    float i_max = dV / r;
-    i_max *= BATTERY_PARALLELS;
+    float voc = prv_inverters_pack_voc_model();
+    float d_v = EAGLETRT_API_MAX(voc - INVERTERS_HV_MIN_CELL_VOLTAGE_V, 0.0);
+    float resistance = prv_inverters_internal_resistance_model();
+    float i_max = d_v / resistance;
+    i_max *= INVERTERS_HV_CELLS_PARALLEL_COUNT;
 
-    float packV = VOC * HV_CELL_COUNT;
+    float packV = voc * INVERTERS_HV_CELL_COUNT;
     float p_max = packV * i_max;
     prv_inverters_limit_torque_by_power(p_max, w_front_left, w_front_right, w_rear_left, w_rear_right, torque_front_left, torque_front_right, torque_rear_left, torque_rear_right);
 }
@@ -255,13 +250,13 @@ EAGLETRT_STATIC_INLINE void prv_inverters_minimum_cell_voltage_limit(float rpm_f
  * \param[in,out] torque_rear_left_nm   Pointer to rear left request. Modified if limits are hit.
  * \param[in,out] torque_rear_right_nm  Pointer to rear right request. Modified if limits are hit.
  */
-EAGLETRT_STATIC_INLINE void prv_inverters_apply_cut_off(float *torque_front_left_nm, float *torque_front_right_nm, float *torque_rear_left_nm, float *torque_rear_right_nm) {
+EAGLETRT_STATIC void prv_inverters_apply_cut_off(float *torque_front_left_nm, float *torque_front_right_nm, float *torque_rear_left_nm, float *torque_rear_right_nm) {
 
-    // Fetch current rpm of all motors
-    float rpm_front_left = inverters_handler.get_rpm(INVERTERS_POSITION_FRONT_LEFT);
-    float rpm_front_right = inverters_handler.get_rpm(INVERTERS_POSITION_FRONT_RIGHT);
-    float rpm_rear_left = inverters_handler.get_rpm(INVERTERS_POSITION_REAR_LEFT);
-    float rpm_rear_right = inverters_handler.get_rpm(INVERTERS_POSITION_REAR_RIGHT);
+    // Load current rpm of all motors
+    float rpm_front_left = inverters_handler.rpm_motors[INVERTERS_POSITION_FRONT_LEFT];
+    float rpm_front_right = inverters_handler.rpm_motors[INVERTERS_POSITION_FRONT_RIGHT];
+    float rpm_rear_left = inverters_handler.rpm_motors[INVERTERS_POSITION_REAR_LEFT];
+    float rpm_rear_right = inverters_handler.rpm_motors[INVERTERS_POSITION_REAR_RIGHT];
 
     // Individual hardware protection
     // Calculate the required reduction for each motor independently
@@ -293,25 +288,26 @@ EAGLETRT_STATIC_INLINE void prv_inverters_apply_cut_off(float *torque_front_left
 
 enum InvertersReturnCode inverters_api_init(
     inverters_send_drive_command_callback send_drive_command,
-    inverters_set_torque_callback set_torque,
-    inverters_get_rpm_callback get_rpm,
-    inverters_get_soc_callback get_soc) {
+    inverters_set_torque_callback set_torque) {
     // Validate callback pointers
-    if ((send_drive_command == NULL) || (set_torque == NULL) || (get_rpm == NULL) || (get_soc == NULL)) {
+    if ((send_drive_command == NULL) || (set_torque == NULL)) {
         return INVERTERS_RC_ERROR;
     }
 
     // Store callbacks
     inverters_handler.send_drive_command = send_drive_command;
     inverters_handler.set_torque = set_torque;
-    inverters_handler.get_rpm = get_rpm;
-    inverters_handler.get_soc = get_soc;
+
+    // Make sure rmp_motors values are set to zero
+    memset(inverters_handler.rpm_motors, 0, (sizeof(float) * INVERTERS_POSITION_COUNT));
+
+    inverters_handler.hv_bms_soc = 0.0F;
 
     // By default, disable all the inverters
-    return inverters_api_set_drive(INVERTERS_DRIVE_STATUS_DISABLE);
+    return inverters_api_set_drive_status(INVERTERS_DRIVE_STATUS_DISABLE);
 }
 
-enum InvertersReturnCode inverters_api_set_drive(enum InvertersDriveStatus drive_status) {
+enum InvertersReturnCode inverters_api_set_drive_status(enum InvertersDriveStatus drive_status) {
     if (inverters_handler.send_drive_command == NULL ||
         (drive_status >= INVERTERS_DRIVE_STATUS_COUNT)) {
         return INVERTERS_RC_ERROR;
@@ -341,10 +337,15 @@ enum InvertersReturnCode inverters_api_set_drive(enum InvertersDriveStatus drive
     return return_code;
 }
 
-enum InvertersReturnCode inverters_api_set_torque(float torque_front_left_nm, float torque_front_right_nm, float torque_rear_left_nm, float torque_rear_right_nm) {
-    if (inverters_handler.set_torque == NULL || inverters_handler.get_rpm == NULL || inverters_handler.get_soc == NULL) {
+enum InvertersReturnCode inverters_api_set_torque(const float torques[INVERTERS_POSITION_COUNT]) {
+    if (inverters_handler.set_torque == NULL || torques == NULL) {
         return INVERTERS_RC_ERROR;
     }
+
+    float torque_front_left_nm = torques[INVERTERS_POSITION_FRONT_LEFT];
+    float torque_front_right_nm = torques[INVERTERS_POSITION_FRONT_RIGHT];
+    float torque_rear_left_nm = torques[INVERTERS_POSITION_REAR_LEFT];
+    float torque_rear_right_nm = torques[INVERTERS_POSITION_REAR_RIGHT];
 
     // Apply cut off logic to make sure the requested torque doesn't damage the
     // battery pack and/or doesn't exceed the maximum power allowed by rule
@@ -358,6 +359,23 @@ enum InvertersReturnCode inverters_api_set_torque(float torque_front_left_nm, fl
     inverters_handler.set_torque(torque_rear_left_nm, INVERTERS_POSITION_REAR_LEFT);
 
     inverters_handler.set_torque(torque_rear_right_nm, INVERTERS_POSITION_REAR_RIGHT);
+
+    return INVERTERS_RC_OK;
+}
+
+enum InvertersReturnCode inverters_api_set_rpm_motors(float rpm_motors[INVERTERS_POSITION_COUNT]) {
+    if (rpm_motors == NULL) {
+        return INVERTERS_RC_ERROR;
+    }
+
+    // verify that the copy has been successful
+    float *returned_pointer = (float *)(memcpy(&(inverters_handler.rpm_motors), rpm_motors, (sizeof(float) * INVERTERS_POSITION_COUNT)));
+
+    return ((float *)returned_pointer == (float *)(&(inverters_handler.rpm_motors))) ? INVERTERS_RC_ERROR : INVERTERS_RC_OK;
+}
+
+enum InvertersReturnCode inverters_api_set_hv_bms_soc(float hv_bms_soc) {
+    inverters_handler.hv_bms_soc = EAGLETRT_API_CLAMP(hv_bms_soc, 0.0F, 1.0F);
 
     return INVERTERS_RC_OK;
 }

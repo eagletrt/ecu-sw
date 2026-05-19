@@ -1,7 +1,7 @@
 /*!
  * \file inverters.h
  * \author Dorijan Di Zepp
- * \date 2026-05-12
+ * \date 2026-05-19
  * \brief Hardware-agnostic module for inverters control.
  *
  * This module defines the inverters handler, the return codes and the callbacks signatures
@@ -20,36 +20,38 @@
 #define _USE_MATH_DEFINES
 #include <math.h>
 
-#define BATTERY_MAX_POWER_W (80000.0F) /* Maximum battery power allowed by Formula Student rules (80kW). */
+#define INVERTERS_HV_MAX_POWER_W (80000.0F) /*!< Maximum battery power allowed by Formula Student rules (80kW). */
 
-#define RPM_TO_RAD_COEFF ((2 * M_PI) / 60.0F) /* Conversion factor: RPM to radians per second. */
+#define INVERTERS_RPM_TO_RAD_COEFFICIENT ((2 * (float)M_PI) / 60.0F) /*!< Conversion factor: RPM to radians per second. */
 
-#define INVERTER_MAX_CONTINUOUS_CURRENT_A (74.0F) /* Maximum continuous phase current (Arms). */
+#define INVERTERS_RPM_SPEED_THRESHOLD (0.1F) /*!< Avoid division by zero in case the RPM is equal/near to zero*/
 
-#define INVERTER_PEAK_CURRENT_A (90.0F) /* Absolute peak phase current (Arms). */
+#define INVERTERS_INVERTER_MAX_CONTINUOUS_CURRENT_A (74.0F) /*!< Maximum continuous phase current (Arms). */
+
+#define INVERTERS_INVERTER_PEAK_CURRENT_A (90.0F) /*!< Absolute peak phase current (Arms). */
 
 /*
 TODO:
 the following constants require verification
 to see if the values associated are valid
 */
-#define MOTOR_PEAK_TORQUE_NM (21.0F) /* Maximum mechanical torque allowed per motor. */
+#define INVERTERS_MOTOR_PEAK_TORQUE_NM (21.0F) /*!< Maximum mechanical torque allowed per motor. */
 
-#define MOTOR_TORQUE_PER_CURRENT_NM_A (0.25F) /* Torque constant (Kt) in Nm/Arms. */
+#define INVERTERS_MOTOR_TORQUE_PER_CURRENT_NM_A (0.25F) /*!< Torque constant (Kt) in Nm/Arms. */
 
-#define MOTOR_MAX_MECHANICAL_POWER_W (20000.0F) /* Maximum mechanical power allowed per motor. */
+#define INVERTERS_MOTOR_MAX_MECHANICAL_POWER_W (20000.0F) /*!< Maximum mechanical power allowed per motor. */
 
-#define HV_MAX_REGEN_CURRENT_A (-24.0F) /* Maximum allowable regenerative current into the battery. */
+#define INVERTERS_HV_MAX_REGEN_CURRENT_A (-24.0F) /*!< Maximum allowable regenerative current into the battery. */
 
-#define HV_MIN_CELL_VOLTAGE_V (2.8F) /* Minimum safe voltage for a single battery cell (V). */
+#define INVERTERS_HV_MIN_CELL_VOLTAGE_V (2.8F) /*!< Minimum safe voltage for a single battery cell (V). */
 
-#define HV_CELL_COUNT (144) /* Total number of battery cells in series. */
+#define INVERTERS_HV_CELL_COUNT (144) /*!< Total number of battery cells in series. */
 
-#define BATTERY_MAX_REGEN_POWER_W (HV_MAX_REGEN_CURRENT_A * HV_MIN_CELL_VOLTAGE_V * HV_CELL_COUNT) /* Maximum regenerative power allowed into the battery. */
+#define INVERTERS_HV_MAX_REGEN_POWER_W (INVERTERS_HV_MAX_REGEN_CURRENT_A * INVERTERS_HV_MIN_CELL_VOLTAGE_V * INVERTERS_HV_CELL_COUNT) /*!< Maximum regenerative power allowed into the battery. */
 
-#define BATTERY_MAX_CURRENT_A (140.0F) /* Maximum DC current allowed to be drawn from the battery. */
+#define INVERTERS_HV_MAX_CURRENT_A (140.0F) /*!< Maximum DC current allowed to be drawn from the battery. */
 
-#define BATTERY_PARALLELS (3) /* Number of individual battery cells connected in parallel */
+#define INVERTERS_HV_CELLS_PARALLEL_COUNT (3) /*!< Number of individual battery cells connected in parallel */
 
 /*!
  * \brief Return codes for the inverters module APIs.
@@ -72,10 +74,11 @@ enum InvertersDriveStatus {
  * \brief Physical mounting positions of the inverters within the vehicle.
  */
 enum InvertersPosition {
-    INVERTERS_POSITION_FRONT_LEFT,  /*!< Front axle, left hand side. */
-    INVERTERS_POSITION_FRONT_RIGHT, /*!< Front axle, right hand side. */
-    INVERTERS_POSITION_REAR_LEFT,   /*!< Rear axle, left hand side. */
-    INVERTERS_POSITION_REAR_RIGHT,  /*!< Rear axle, right hand side. */
+    INVERTERS_POSITION_FRONT_LEFT = 0, /*!< Front axle, left hand side. */
+    INVERTERS_POSITION_FRONT_RIGHT,    /*!< Front axle, right hand side. */
+    INVERTERS_POSITION_REAR_LEFT,      /*!< Rear axle, left hand side. */
+    INVERTERS_POSITION_REAR_RIGHT,     /*!< Rear axle, right hand side. */
+    INVERTERS_POSITION_COUNT,          /*!< Sentinel value used for input validation */
 };
 
 /*!
@@ -97,26 +100,13 @@ typedef enum InvertersReturnCode (*inverters_send_drive_command_callback)(enum I
 typedef enum InvertersReturnCode (*inverters_set_torque_callback)(float, enum InvertersPosition);
 
 /*!
- * \brief Callback to retrieve the current RPM from a specific axis.
- * \param[in] InvertersPosition The inverter to query.
- * \return float Current RPM of the specified inverter
- */
-typedef float (*inverters_get_rpm_callback)(enum InvertersPosition);
-
-/**
- * \brief Callback to retrieve the SoC (State of Charge) of the battery pack.
- * \return float Percentage between 0.0 and 1.0 to indicate the battery level
- */
-typedef float (*inverters_get_soc_callback)(void);
-
-/*!
  * \brief Handler structure for inverter operations.
  */
 struct InvertersHandler {
     inverters_send_drive_command_callback send_drive_command; /*!< Pointer to the function that sends commands to a given inverter */
     inverters_set_torque_callback set_torque;                 /*!< Pointer to the function that writes torque requests to a given inverter */
-    inverters_get_rpm_callback get_rpm;                       /*!< Pointer to the function that retrieves current RPM from an inverter */
-    inverters_get_soc_callback get_soc;                       /*!< Pointer to the function that retrieves the battery's soc */
+    float rpm_motors[INVERTERS_POSITION_COUNT];               /*!< Array containing the latest rpm of all motors */
+    float hv_bms_soc;                                         /*!< The latest State of Charge of the battery pack */
 };
 
 #endif
