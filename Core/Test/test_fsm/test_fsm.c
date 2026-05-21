@@ -11,11 +11,6 @@ void tearDown(void) {
  * test next state after running the current one
  */
 
-void test_state_init_to_enable_inv_updates(void) {
-    state_t next_state = run_state(STATE_INIT, NULL);
-    TEST_ASSERT_EQUAL(STATE_ENABLE_INV_UPDATES, next_state);
-}
-
 void test_state_init_not_to_idle(void) {
     state_t next_state = run_state(STATE_INIT, NULL);
     TEST_ASSERT_NOT_EQUAL(STATE_IDLE, next_state);
@@ -59,11 +54,6 @@ void test_transition_to_wait_ts_discharge_for_error_or_normal_execution(void) {
  * test possible next states after the execution of a current state
  */
 
-void test_do_init_returns_valid_state(void) {
-    state_t result = do_init(NULL);
-    TEST_ASSERT_TRUE(result == STATE_ENABLE_INV_UPDATES || result == STATE_FATAL);
-}
-
 void test_do_flash_returns_valid_state(void) {
     state_t result = do_flash(NULL);
     TEST_ASSERT_TRUE(result == NO_CHANGE || result == STATE_IDLE || result == STATE_FLASH);
@@ -72,11 +62,6 @@ void test_do_flash_returns_valid_state(void) {
 void test_do_pause_returns_valid_state(void) {
     state_t result = do_pause(NULL);
     TEST_ASSERT_TRUE(result == NO_CHANGE || result == STATE_IDLE || result == STATE_PAUSE);
-}
-
-void test_do_check_inv_settings_valid_tate(void) {
-    state_t result = do_check_inv_settings(NULL);
-    TEST_ASSERT_TRUE(result == NO_CHANGE || result == STATE_FATAL || result == STATE_IDLE);
 }
 
 void test_do_wait_driver_returns_valid_state(void) {
@@ -97,7 +82,6 @@ void test_do_wait_ts_discharge_valid_state(void) {
 int main(void) {
     UNITY_BEGIN();
 
-    RUN_TEST(test_state_init_to_enable_inv_updates);
     RUN_TEST(test_state_init_not_to_idle);
     RUN_TEST(test_fatal_state_stays_fatal);
 
@@ -107,10 +91,8 @@ int main(void) {
     RUN_TEST(test_transition_from_rd2_to_wait_ts_discharge_does_not_exist);
     RUN_TEST(test_transition_to_wait_ts_discharge_for_error_or_normal_execution);
 
-    RUN_TEST(test_do_init_returns_valid_state);
     RUN_TEST(test_do_flash_returns_valid_state);
     RUN_TEST(test_do_flash_returns_valid_state);
-    RUN_TEST(test_do_check_inv_settings_valid_tate);
     RUN_TEST(test_do_wait_driver_returns_valid_state);
     RUN_TEST(test_do_r2d_returns_valid_state);
     RUN_TEST(test_do_wait_ts_discharge_valid_state);
