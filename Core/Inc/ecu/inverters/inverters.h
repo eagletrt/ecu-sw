@@ -1,7 +1,7 @@
 /*!
  * \file inverters.h
  * \author Dorijan Di Zepp
- * \date 2026-05-19
+ * \date 2026-05-21
  * \brief Hardware-agnostic module for inverters control.
  *
  * This module defines the inverters handler, the return codes and the callbacks signatures
@@ -17,7 +17,7 @@
 #ifndef INVERTERS_H
 #define INVERTERS_H
 
-#define _USE_MATH_DEFINES
+#define _USE_MATH_DEFINES // NOLINT
 #include <math.h>
 
 #define INVERTERS_HV_MAX_POWER_W (80000.0F) /*!< Maximum battery power allowed by Formula Student rules (80kW). */

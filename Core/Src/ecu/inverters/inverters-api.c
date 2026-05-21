@@ -1,7 +1,7 @@
 /*!
  * \file inverters-api.c
  * \author Dorijan Di Zepp
- * \date 2026-05-19
+ * \date 2026-05-21
  * \brief Implementation of inverters module.
  * \details Provides an interface for sending activation/deactivation 
  * commands and requested torque by applying a cut-off safety function.
@@ -41,10 +41,10 @@ EAGLETRT_STATIC float prv_inverters_get_motors_reduction(
     float global_reduction = 1.0F;
 
     // Create arrays to iterate through the 4 wheels
-    float requests[4] = { torque_front_left, torque_front_right, torque_rear_left, torque_rear_right };
-    float limits[4] = { limit_front_left, limit_front_right, limit_rear_left, limit_rear_right };
+    float requests[INVERTERS_POSITION_COUNT] = { torque_front_left, torque_front_right, torque_rear_left, torque_rear_right };
+    float limits[INVERTERS_POSITION_COUNT] = { limit_front_left, limit_front_right, limit_rear_left, limit_rear_right };
 
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < INVERTERS_POSITION_COUNT; i++) {
         float absolute_request = fabsf(requests[i]);
 
         // If the request exceeds the limit, calculate the necessary reduction
