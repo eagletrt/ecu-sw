@@ -69,6 +69,8 @@ void Error_Handler(void);
 #define SPI2_CLK_GPIO_Port GPIOB
 #define PTT_Pin GPIO_PIN_15
 #define PTT_GPIO_Port GPIOB
+#define SPI3_CLK_Pin GPIO_PIN_10
+#define SPI3_CLK_GPIO_Port GPIOC
 #define AUX_BUZZER_Pin GPIO_PIN_3
 #define AUX_BUZZER_GPIO_Port GPIOB
 #define RTD_BUZZER_Pin GPIO_PIN_4
