@@ -22,10 +22,10 @@ enum ASDriverReturnCode as_driver_api_init(air_release_from_line_callback air_ca
         return AS_DRIVER_RC_ERROR;
     }
 
-    /* Clear all fields to 0, false and default struct parameters */
+    // Clear all fields to 0, false and default struct parameters
     memset(&as_driver_handler, 0, sizeof(struct ASDriverHandler));
 
-    /* Populate safe startup parameters and bindings */
+    // Populate safe startup parameters and bindings
     as_driver_handler.as_mission = AS_DRIVER_MISSION_NOT_SELECTED;
     as_driver_handler.release_air = air_callback;
 
