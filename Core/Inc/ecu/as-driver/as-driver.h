@@ -1,7 +1,7 @@
 /*!
  * \file as-driver.h
  * \author Dorijan Di Zepp
- * \date 2026-05-30
+ * \date 2026-05-31
  * \brief Callback and struct definitions for the Autonomous System (AS) driver.
  * \details This module encapsulates the state variables, sensor values
  * and system-level status flags necessary to govern the autonomous mission.
@@ -50,6 +50,8 @@ typedef enum ASDriverReturnCode (*air_release_from_line_callback)(enum ASDriverA
 
 /*!
  * \brief Braking system pressure profiles spanning both pneumatic and hydraulic circuits.
+ * \note Nomenclature and numbering attributes directly match the ASF (Autonomous System Form) 
+ * system architecture documentation.
  */
 struct ASDriverPressures {
     float brake_pressure_1_1; /*!< Pneumatic supply circuit pressure point 1.1 (bar). */
@@ -62,6 +64,8 @@ struct ASDriverPressures {
 
 /*!
  * \brief Structural and mechanical actuator verification sensors.
+ * \note Nomenclature and numbering attributes directly match the ASF (Autonomous System Form) 
+ * system architecture documentation.
  */
 struct ASDriverMechanicalSensors {
     float bremsweg_1_1;   /*!< Linear travel feedback displacement sensor 1.1 (mm). */

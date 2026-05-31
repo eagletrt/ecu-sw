@@ -11,50 +11,68 @@
 #include "as-driver.h"
 
 /*!
- * \brief           Initializes the private AS Driver state to default values.
- * \details         Clears all internal metrics, flags and binds the mandatory
+ * \brief Initializes the private AS Driver state to default values.
+ * \details Clears all internal metrics, flags and binds the mandatory
  * low-level pneumatic relief callback to the internal instance.
- * \param[in]       air_callback  Function pointer pointing to the PAL-level actuator.
- * \retval          AS_DRIVER_RC_OK on successful initialization.
- * \retval          AS_DRIVER_RC_ERROR if the callback pointer is \c NULL.
+ * \param[in] air_callback  Function pointer pointing to the PAL-level actuator.
+ * \retval AS_DRIVER_RC_OK on successful initialization.
+ * \retval AS_DRIVER_RC_ERROR if the callback pointer is \c NULL.
  */
 enum ASDriverReturnCode as_driver_api_init(air_release_from_line_callback air_callback);
 
 /*!
- * \brief           Sets the currently selected autonomous mission discipline.
- * \param[in]       mission  The target \ref ASDriverMission discipline enum value.
+ * \brief           Triggers the release of air from a specified pneumatic line.
+ * \details         Invokes the underlying functional safety callback registered 
+ * during module initialization to change pneumatic state.
+ * \param[in]       line  The target pneumatic line to vent.
+ * \retval          AS_DRIVER_RC_OK if the callback was successfully executed.
+ * \retval          AS_DRIVER_RC_ERROR if the module is uninitialized or the callback is missing.
+ */
+enum ASDriverReturnCode as_driver_api_release_air(enum ASDriverAirLine line);
+
+/*!
+ * \brief Sets the currently selected autonomous mission discipline.
+ * \param[in] mission The target \ref ASDriverMission discipline enum value.
  */
 void as_driver_api_set_mission(enum ASDriverMission mission);
 
 /*!
- * \brief           Gets the currently selected autonomous mission discipline.
- * \return          The active \ref ASDriverMission enum value.
+ * \brief Gets the currently selected autonomous mission discipline.
+ * \return The active \ref ASDriverMission enum value.
  */
 enum ASDriverMission as_driver_api_get_mission(void);
 
 /*!
- * \brief           Updates the private system pressure profiles.
- * \param[in]       new_press  Pointer to the latest pressure data block from PAL.
+ * \brief Updates the private system pressure profiles.
+ * \param[in] new_press  Pointer to the latest pressure data block from PAL.
+ * \retval AS_DRIVER_RC_OK if the data was successfully copied.
+ * \retval AS_DRIVER_RC_ERROR if the input pointer is \c NULL.
  */
-void as_driver_api_set_pressures(const struct ASDriverPressures *new_press);
+enum ASDriverReturnCode as_driver_api_set_pressures(const struct ASDriverPressures *new_press);
 
 /*!
  * \brief           Retrieves the current system pressure profiles.
  * \param[out]      out_press  Pointer to a pressure structure to populate with current data.
+ * \retval          AS_DRIVER_RC_OK if the data was successfully retrieved.
+ * \retval          AS_DRIVER_RC_ERROR if the output pointer is \c NULL.
  */
-void as_driver_api_get_pressures(struct ASDriverPressures *out_press);
+enum ASDriverReturnCode as_driver_api_get_pressures(struct ASDriverPressures *out_press);
 
 /*!
  * \brief           Updates the private mechanical sensor displacement metrics.
  * \param[in]       new_mech   Pointer to the latest mechanical metrics block from PAL.
+ * \retval          AS_DRIVER_RC_OK if the data was successfully copied.
+ * \retval          AS_DRIVER_RC_ERROR if the input pointer is \c NULL.
  */
-void as_driver_api_set_mechanical_sensors(const struct ASDriverMechanicalSensors *new_mech);
+enum ASDriverReturnCode as_driver_api_set_mechanical_sensors(const struct ASDriverMechanicalSensors *new_mech);
 
 /*!
  * \brief           Retrieves the current mechanical sensor displacement metrics.
  * \param[out]      out_mech   Pointer to a mechanical structure to populate with current data.
+ * \retval          AS_DRIVER_RC_OK if the data was successfully retrieved.
+ * \retval          AS_DRIVER_RC_ERROR if the output pointer is \c NULL.
  */
-void as_driver_api_get_mechanical_sensors(struct ASDriverMechanicalSensors *out_mech);
+enum ASDriverReturnCode as_driver_api_get_mechanical_sensors(struct ASDriverMechanicalSensors *out_mech);
 
 /*!
  * \brief           Sets the physical Autonomous System Master Switch (ASMS) status flag.

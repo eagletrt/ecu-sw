@@ -32,6 +32,16 @@ enum ASDriverReturnCode as_driver_api_init(air_release_from_line_callback air_ca
     return AS_DRIVER_RC_OK;
 }
 
+enum ASDriverReturnCode as_driver_api_release_air(enum ASDriverAirLine line) {
+    // Ensure the callback pointer was mapped during initialization
+    if (as_driver_handler.release_air == NULL) {
+        return AS_DRIVER_RC_ERROR;
+    }
+
+    // Execute the registered hardware abstraction callback and forward its result
+    return as_driver_handler.release_air(line);
+}
+
 void as_driver_api_set_mission(enum ASDriverMission mission) {
     as_driver_handler.as_mission = mission;
 }
@@ -40,28 +50,36 @@ enum ASDriverMission as_driver_api_get_mission(void) {
     return as_driver_handler.as_mission;
 }
 
-void as_driver_api_set_pressures(const struct ASDriverPressures *new_press) {
-    if (new_press != NULL) {
-        memcpy(&as_driver_handler.pressures, new_press, sizeof(struct ASDriverPressures));
+enum ASDriverReturnCode as_driver_api_set_pressures(const struct ASDriverPressures *new_press) {
+    if (new_press == NULL) {
+        return AS_DRIVER_RC_ERROR;
     }
+    memcpy(&as_driver_handler.pressures, new_press, sizeof(struct ASDriverPressures));
+    return AS_DRIVER_RC_OK;
 }
 
-void as_driver_api_get_pressures(struct ASDriverPressures *out_press) {
-    if (out_press != NULL) {
-        memcpy(out_press, &as_driver_handler.pressures, sizeof(struct ASDriverPressures));
+enum ASDriverReturnCode as_driver_api_get_pressures(struct ASDriverPressures *out_press) {
+    if (out_press == NULL) {
+        return AS_DRIVER_RC_ERROR;
     }
+    memcpy(out_press, &as_driver_handler.pressures, sizeof(struct ASDriverPressures));
+    return AS_DRIVER_RC_OK;
 }
 
-void as_driver_api_set_mechanical_sensors(const struct ASDriverMechanicalSensors *new_mech) {
-    if (new_mech != NULL) {
-        memcpy(&as_driver_handler.mechanical_sensors, new_mech, sizeof(struct ASDriverMechanicalSensors));
+enum ASDriverReturnCode as_driver_api_set_mechanical_sensors(const struct ASDriverMechanicalSensors *new_mech) {
+    if (new_mech == NULL) {
+        return AS_DRIVER_RC_ERROR;
     }
+    memcpy(&as_driver_handler.mechanical_sensors, new_mech, sizeof(struct ASDriverMechanicalSensors));
+    return AS_DRIVER_RC_OK;
 }
 
-void as_driver_api_get_mechanical_sensors(struct ASDriverMechanicalSensors *out_mech) {
-    if (out_mech != NULL) {
-        memcpy(out_mech, &as_driver_handler.mechanical_sensors, sizeof(struct ASDriverMechanicalSensors));
+enum ASDriverReturnCode as_driver_api_get_mechanical_sensors(struct ASDriverMechanicalSensors *out_mech) {
+    if (out_mech == NULL) {
+        return AS_DRIVER_RC_ERROR;
     }
+    memcpy(out_mech, &as_driver_handler.mechanical_sensors, sizeof(struct ASDriverMechanicalSensors));
+    return AS_DRIVER_RC_OK;
 }
 
 void as_driver_api_set_asms_on(bool status) {
