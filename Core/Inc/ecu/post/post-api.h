@@ -1,8 +1,8 @@
 /*!
  * \file post-api.h
  * \author Dorijan Di Zepp
- * \date 2026-04-13
- * \brief This file defines Power-On Self-Test (POST) functions for system diagnostics.
+ * \date 2026-06-01
+ * \brief This file defines Power-On Self-Test (POST) functions for system initialization.
  */
 
 #ifndef POST_API_H
@@ -11,20 +11,15 @@
 #include "post.h"
 
 /*!
- * \brief Performs the Power-On Self-Test (POST) using the provided configuration table.
- * This function iterates through the provided test table and executes each callback 
- * sequentially. It uses a "fail-fast" approach: if any test returns \ref POST_RC_ERROR, 
- * the function exits immediately and returns the error code.
+ * \brief Performs the Power-On Self-Test (POST) using the provided configuration.
+ * If one initialization fails, the function will still continue to initialize every module
+ * but ultimately will return \ref POST_RC_ERROR.
  *
- * \warning The \c .num_tests field must exactly match the number of valid elements in 
- * the \c .test_table array. Providing a count larger than the actual array size 
- * results in undefined behavior (reading out-of-bounds memory).
+ * \param[in] post_init_config Pointer to a structure containing the callbacks required for all modules.
  *
- * \param[in] post_init_config Pointer to a structure containing the test table.
- *
- * \retval POST_RC_OK if all tests in the table completed successfully.
- * \retval POST_RC_ERROR if a test failed or if the provided configuration is invalid.
+ * \retval POST_RC_OK if all modules have been initialized successfully.
+ * \retval POST_RC_ERROR if any module was not possible to initialize or in the presence of a \c NULL.
  */
-enum PostReturnCode post_api_execute(const struct PostConfig *post_init_config);
+enum PostReturnCode post_api_do_init(struct PostConfig *post_config);
 
 #endif
