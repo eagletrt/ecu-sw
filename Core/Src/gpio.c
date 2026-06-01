@@ -50,17 +50,24 @@ void MX_GPIO_Init(void) {
     __HAL_RCC_GPIOB_CLK_ENABLE();
 
     /*Configure GPIO pin Output Level */
-    HAL_GPIO_WritePin(ENABLE_GPIO_Port, ENABLE_Pin, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(GPIOE, SD_CLOSE_Pin | RPI_PowerButton_Pin, GPIO_PIN_RESET);
 
     /*Configure GPIO pin Output Level */
     HAL_GPIO_WritePin(GPIOB, PTT_Pin | RTD_BUZZER_Pin, GPIO_PIN_RESET);
 
-    /*Configure GPIO pin : ENABLE_Pin */
-    GPIO_InitStruct.Pin = ENABLE_Pin;
+    /*Configure GPIO pin : SD_CLOSE_Pin */
+    GPIO_InitStruct.Pin = SD_CLOSE_Pin;
+    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+    GPIO_InitStruct.Pull = GPIO_PULLUP;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+    HAL_GPIO_Init(SD_CLOSE_GPIO_Port, &GPIO_InitStruct);
+
+    /*Configure GPIO pin : RPI_PowerButton_Pin */
+    GPIO_InitStruct.Pin = RPI_PowerButton_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-    HAL_GPIO_Init(ENABLE_GPIO_Port, &GPIO_InitStruct);
+    HAL_GPIO_Init(RPI_PowerButton_GPIO_Port, &GPIO_InitStruct);
 
     /*Configure GPIO pins : PTT_Pin RTD_BUZZER_Pin */
     GPIO_InitStruct.Pin = PTT_Pin | RTD_BUZZER_Pin;
@@ -95,5 +102,23 @@ enum BuzzerReturnCode gpio_buzzer_play_sync(uint32_t frequency, float amplitude,
     HAL_Delay(duration);
 
     return gpio_buzzer_off();
+}
+
+enum RaspberryReturnCode gpio_raspberry_set_pin(enum RaspberryControlPinState pin_state) {
+    switch (pin_state) {
+        case RASPBERRY_CONTROL_PIN_STATE_ON:
+            HAL_GPIO_WritePin(RPI_PowerButton_GPIO_Port, RPI_PowerButton_Pin, GPIO_PIN_SET);
+            break;
+
+        case RASPBERRY_CONTROL_PIN_STATE_OFF:
+            HAL_GPIO_WritePin(RPI_PowerButton_GPIO_Port, RPI_PowerButton_Pin, GPIO_PIN_RESET);
+            break;
+
+        default:
+            // unknown state requested, return an error
+            return RASPBERRY_RC_ERROR;
+    }
+
+    return RASPBERRY_RC_OK;
 }
 /* USER CODE END 2 */

@@ -1,14 +1,16 @@
 /*!
  * \file post.h
  * \author Dorijan Di Zepp
- * \date 2026-04-13
- * \brief This file defines Power-On Self-Test (POST) structures for system diagnostics.
+ * \date 2026-06-01
+ * \brief This file defines Power-On Self-Test (POST) structures for system initialization.
  */
 
 #ifndef POST_H
 #define POST_H
 
-#include <stdint.h>
+#include "buzzer.h"
+#include "pedals.h"
+#include "tractive-system.h"
 
 /*!
  * \brief Return codes for the post module APIs
@@ -26,19 +28,13 @@ enum PostReturnCode {
 typedef enum PostReturnCode (*post_test_callback)(void);
 
 /*!
- * \brief Definition of a single Power-On Self-Test task.
- */
-struct PostTask {
-    const char *test_name;  /*!< Name that can be used for logging. Can be set to NULL if not required. */
-    post_test_callback run; /*!< Test function callback. */
-};
-
-/*!
  * \brief The configuration passed to the POST module.
  */
 struct PostConfig {
-    const struct PostTask *test_table; /*!< Pointer to the array of tests. */
-    uint8_t num_tests;                 /*!< The exact number of tasks to run */
+    post_test_callback check_sys_clock;
+    post_test_callback check_power_rails;
+    post_test_callback check_can_bus;
+    post_test_callback check_pedals;
 };
 
 #endif
