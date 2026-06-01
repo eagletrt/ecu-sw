@@ -3,6 +3,12 @@
  * \author Dorijan Di Zepp
  * \date 2026-06-01
  * \brief Unit tests using FFF for testing the logger module.
+ * \note When validating the return codes in unit tests, it is sufficient to 
+ * explicitly verify a representative subset of PAL-mapped failures 
+ * (such as `LOGGER_RC_PAL_IO_ERROR` and `LOGGER_RC_PAL_QUEUE_FULL`). 
+ * Testing every individual error permutation is not required, as the underlying 
+ * mapping infrastructure is proven via these representative paths, and unhandled 
+ * or impossible transmission states safely fallback to `LOGGER_RC_PAL_GENERIC_ERROR`.
  */
 
 #include "unity.h"
@@ -60,9 +66,21 @@ void setUp(void) {
  */
 
 void test_logger_api_init_should_fail_on_null_pointer(void) {
+    logger_handler.pal_handler = NULL;
+
     enum LoggerReturnCode rc = logger_api_init(NULL);
 
-    TEST_ASSERT_EQUAL_INT(LOGGER_RC_ERROR, rc);
+    TEST_ASSERT_EQUAL_INT(LOGGER_RC_NULL_POINTER, rc);
+    TEST_ASSERT_NULL(logger_handler.pal_handler);
+}
+
+void test_logger_api_init_should_succeed_with_correct_pal_handler(void) {
+    logger_handler.pal_handler = NULL;
+
+    enum LoggerReturnCode rc = logger_api_init(&pal_handler);
+
+    TEST_ASSERT_EQUAL_INT(LOGGER_RC_OK, rc);
+    TEST_ASSERT_EQUAL_PTR(&pal_handler, logger_handler.pal_handler);
 }
 /*! \} */
 
@@ -77,7 +95,7 @@ void test_logger_api_log_should_fail_if_module_not_initialized(void) {
 
     enum LoggerReturnCode rc = logger_api_log(LOGGER_LEVEL_INFO, "Test");
 
-    TEST_ASSERT_EQUAL_INT(LOGGER_RC_ERROR, rc);
+    TEST_ASSERT_EQUAL_INT(LOGGER_RC_NOT_INITIALIZED, rc);
     // verify that the callback is not called
     TEST_ASSERT_EQUAL_INT(0, mock_uart_hardware_transmit_fake.call_count);
 }
@@ -101,7 +119,16 @@ void test_logger_api_log_should_bubble_error_if_hardware_fails(void) {
 
     enum LoggerReturnCode rc = logger_api_log(LOGGER_LEVEL_ERROR, "SDC Trip");
 
-    TEST_ASSERT_EQUAL_INT(LOGGER_RC_ERROR, rc);
+    TEST_ASSERT_EQUAL_INT(LOGGER_RC_PAL_IO_ERROR, rc);
+    TEST_ASSERT_EQUAL_INT(1, mock_uart_hardware_transmit_fake.call_count);
+}
+
+void test_logger_api_log_should_bubble_error_if_queue_overflows(void) {
+    mock_uart_hardware_transmit_fake.return_val = PAL_RC_QUEUE_FULL;
+
+    enum LoggerReturnCode rc = logger_api_log(LOGGER_LEVEL_WARN, "Queue Maxed");
+
+    TEST_ASSERT_EQUAL_INT(LOGGER_RC_PAL_QUEUE_FULL, rc);
     TEST_ASSERT_EQUAL_INT(1, mock_uart_hardware_transmit_fake.call_count);
 }
 
@@ -129,6 +156,7 @@ int main(void) {
      * \{
      */
     RUN_TEST(test_logger_api_init_should_fail_on_null_pointer);
+    RUN_TEST(test_logger_api_init_should_succeed_with_correct_pal_handler);
     /*! \} */
 
     /*!
@@ -138,6 +166,7 @@ int main(void) {
     RUN_TEST(test_logger_api_log_should_fail_if_module_not_initialized);
     RUN_TEST(test_logger_api_log_should_format_and_pass_successfully_to_hardware);
     RUN_TEST(test_logger_api_log_should_bubble_error_if_hardware_fails);
+    RUN_TEST(test_logger_api_log_should_bubble_error_if_queue_overflows);
     RUN_TEST(test_logger_api_log_should_clamp_oversized_strings_at_max_msg_size);
     /*! \} */
 
