@@ -24,13 +24,15 @@
 enum LoggerReturnCode logger_api_init(struct PalHandler *pal_h);
 
 /*!
- * \brief Formally dispatches a formatted log message over the registered PAL UART interface.
+ * \brief Dispatches a formatted log message over the registered PAL UART interface.
  * \details Leverages C variable arguments to provide printf-style formatting.
  * \param[in] level Severity level of the outgoing record.
  * \param[in] format Standard printf-style format configuration string.
  * \param[in] ... Variable argument listing.
- * \retval LOGGER_RC_OK if the message was successfully queued and processed by PAL.
- * \retval LOGGER_RC_ERROR if formatting failed, or PAL encountered an IO/size constraint.
+ * \retval LOGGER_RC_OK Operation completed successfully and data was processed by the PAL.
+ * \retval LOGGER_RC_NULL_POINTER An invalid NULL pointer was passed for the format string or the internal module handler is uninitialized.
+ * \retval LOGGER_RC_TRANSMISSION_ERROR String generation failed, or the downstream PAL physical hardware transmission encountered a failure.
+ * \retval LOGGER_RC_BUFFER_FULL The underlying PAL transmission queue or logging buffer has become saturated and cannot accept new records.
  */
 enum LoggerReturnCode logger_api_log(enum LoggerLevel level, const char *format, ...);
 

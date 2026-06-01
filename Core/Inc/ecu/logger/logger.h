@@ -11,30 +11,24 @@
 #include <stdint.h>
 #include "pal-api.h"
 
-/**
+/*!
  * \brief System logger return/status codes.
  */
 enum LoggerReturnCode {
-    LOGGER_RC_OK,                   /*!< Operation completed successfully. */
-    LOGGER_RC_NULL_POINTER,         /*!< An invalid NULL pointer was passed directly to the logger. */
-    LOGGER_RC_NOT_INITIALIZED,      /*!< Logging was attempted before initializing the module. */
-    LOGGER_RC_FORMAT_ERROR,         /*!< String parsing or vsnprintf formatting failed. */
-    LOGGER_RC_PAL_INVALID_ARGUMENT, /*!< PAL rejected parameter data provided by the logger. */
-    LOGGER_RC_PAL_NULL_POINTER,     /*!< Downstream PAL encountered an unexpected NULL pointer. */
-    LOGGER_RC_PAL_IO_ERROR,         /*!< Downstream PAL physical hardware transmission failed. */
-    LOGGER_RC_PAL_QUEUE_FULL,       /*!< The PAL transmission queue is completely full. */
-    LOGGER_RC_PAL_MESSAGE_TOO_BIG,  /*!< Formatted string exceeded internal PAL message limits. */
-    LOGGER_RC_PAL_GENERIC_ERROR     /*!< Fallback for unhandled or unexpected PAL return codes. */
+    LOGGER_RC_OK,                 /*!< Operation completed successfully. */
+    LOGGER_RC_NULL_POINTER,       /*!< An invalid NULL pointer was passed directly to the logger. */
+    LOGGER_RC_TRANSMISSION_ERROR, /*!< Downstream PAL physical hardware transmission failed or generic error occurred. */
+    LOGGER_RC_BUFFER_FULL         /*!< The logging medium or underlying PAL transmission queue is completely full. */
 };
 
 /*!
  * \brief Severity level for logging records.
  */
 enum LoggerLevel {
-    LOGGER_LEVEL_DEBUG = 0, /*!< Verbose diagnostics for developer use. */
-    LOGGER_LEVEL_INFO = 1,  /*!< Routine operational updates. */
-    LOGGER_LEVEL_WARN = 2,  /*!< Non-fatal anomalies or timing retries. */
-    LOGGER_LEVEL_ERROR = 3  /*!< Fatal system faults. */
+    LOGGER_LEVEL_DEBUG, /*!< Verbose diagnostics for developer use. */
+    LOGGER_LEVEL_INFO,  /*!< Routine operational updates. */
+    LOGGER_LEVEL_WARN,  /*!< Non-fatal anomalies or timing retries. */
+    LOGGER_LEVEL_ERROR  /*!< Fatal system faults. */
 };
 
 /*!

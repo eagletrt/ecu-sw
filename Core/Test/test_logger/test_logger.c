@@ -3,12 +3,6 @@
  * \author Dorijan Di Zepp
  * \date 2026-06-01
  * \brief Unit tests using FFF for testing the logger module.
- * \note When validating the return codes in unit tests, it is sufficient to 
- * explicitly verify a representative subset of PAL-mapped failures 
- * (such as `LOGGER_RC_PAL_IO_ERROR` and `LOGGER_RC_PAL_QUEUE_FULL`). 
- * Testing every individual error permutation is not required, as the underlying 
- * mapping infrastructure is proven via these representative paths, and unhandled 
- * or impossible transmission states safely fallback to `LOGGER_RC_PAL_GENERIC_ERROR`.
  */
 
 #include "unity.h"
@@ -95,7 +89,7 @@ void test_logger_api_log_should_fail_if_module_not_initialized(void) {
 
     enum LoggerReturnCode rc = logger_api_log(LOGGER_LEVEL_INFO, "Test");
 
-    TEST_ASSERT_EQUAL_INT(LOGGER_RC_NOT_INITIALIZED, rc);
+    TEST_ASSERT_EQUAL_INT(LOGGER_RC_NULL_POINTER, rc);
     // verify that the callback is not called
     TEST_ASSERT_EQUAL_INT(0, mock_uart_hardware_transmit_fake.call_count);
 }
@@ -111,7 +105,7 @@ void test_logger_api_log_should_format_and_pass_successfully_to_hardware(void) {
     // verify the message passed to the callback is the expected one
     const struct PalMessage *sent_msg = mock_uart_hardware_transmit_fake.arg0_val;
     TEST_ASSERT_NOT_NULL(sent_msg);
-    TEST_ASSERT_EQUAL_STRING("[INFO]  Volt: 12", (const char *)sent_msg->payload);
+    TEST_ASSERT_EQUAL_STRING("[INFO] Volt: 12", (const char *)sent_msg->payload);
 }
 
 void test_logger_api_log_should_bubble_error_if_hardware_fails(void) {
@@ -119,7 +113,7 @@ void test_logger_api_log_should_bubble_error_if_hardware_fails(void) {
 
     enum LoggerReturnCode rc = logger_api_log(LOGGER_LEVEL_ERROR, "SDC Trip");
 
-    TEST_ASSERT_EQUAL_INT(LOGGER_RC_PAL_IO_ERROR, rc);
+    TEST_ASSERT_EQUAL_INT(LOGGER_RC_TRANSMISSION_ERROR, rc);
     TEST_ASSERT_EQUAL_INT(1, mock_uart_hardware_transmit_fake.call_count);
 }
 
@@ -128,7 +122,7 @@ void test_logger_api_log_should_bubble_error_if_queue_overflows(void) {
 
     enum LoggerReturnCode rc = logger_api_log(LOGGER_LEVEL_WARN, "Queue Maxed");
 
-    TEST_ASSERT_EQUAL_INT(LOGGER_RC_PAL_QUEUE_FULL, rc);
+    TEST_ASSERT_EQUAL_INT(LOGGER_RC_BUFFER_FULL, rc);
     TEST_ASSERT_EQUAL_INT(1, mock_uart_hardware_transmit_fake.call_count);
 }
 
