@@ -1,7 +1,7 @@
 /*!
  * \file as-driver-api.c
  * \author Dorijan Di Zepp
- * \date 2026-05-31
+ * \date 2026-06-04
  * \brief Implementation of the global AS Driver module.
  * \details Provides an interface to store all required flags and values
  * needed to verify the correct behavior and safety of the AS driver.
@@ -22,23 +22,23 @@ enum ASDriverReturnCode as_driver_api_init(air_release_from_line_callback air_ca
         return AS_DRIVER_RC_ERROR;
     }
 
-    // Clear all fields to 0, false and default struct parameters
-    memset(&as_driver_handler, 0, sizeof(struct ASDriverHandler));
+    // Clear all fields to 0, false and default struct parameters safely
+    (void)memset(&as_driver_handler, 0, sizeof(struct ASDriverHandler));
 
     // Populate safe startup parameters and bindings
     as_driver_handler.as_mission = AS_DRIVER_MISSION_NOT_SELECTED;
+    as_driver_handler.res_signal = AS_DRIVER_RES_SIGNAL_NONE;
+    as_driver_handler.watchdog_state = AS_DRIVER_WATCHDOG_STATE_UNTESTED;
     as_driver_handler.release_air = air_callback;
 
     return AS_DRIVER_RC_OK;
 }
 
 enum ASDriverReturnCode as_driver_api_release_air(enum ASDriverAirLine line) {
-    // Ensure the callback pointer was mapped during initialization
     if (as_driver_handler.release_air == NULL) {
         return AS_DRIVER_RC_ERROR;
     }
 
-    // Execute the registered hardware abstraction callback and forward its result
     return as_driver_handler.release_air(line);
 }
 
@@ -50,36 +50,72 @@ enum ASDriverMission as_driver_api_get_mission(void) {
     return as_driver_handler.as_mission;
 }
 
-enum ASDriverReturnCode as_driver_api_set_pressures(const struct ASDriverPressures *new_press) {
-    if (new_press == NULL) {
+void as_driver_api_set_brake_pressure(enum ASDriverBrakePressure index, float pressure) {
+    if (index < AS_DRIVER_BRAKE_PRESSURE_COUNT) {
+        as_driver_handler.brake_pressures[index] = pressure;
+    }
+}
+
+enum ASDriverReturnCode as_driver_api_set_all_brake_pressures(const float pressures[AS_DRIVER_BRAKE_PRESSURE_COUNT]) {
+    if (pressures == NULL) {
         return AS_DRIVER_RC_ERROR;
     }
-    memcpy(&as_driver_handler.pressures, new_press, sizeof(struct ASDriverPressures));
+
+    (void)memcpy(as_driver_handler.brake_pressures, pressures, sizeof(float) * AS_DRIVER_BRAKE_PRESSURE_COUNT);
     return AS_DRIVER_RC_OK;
 }
 
-enum ASDriverReturnCode as_driver_api_get_pressures(struct ASDriverPressures *out_press) {
-    if (out_press == NULL) {
+float as_driver_api_get_brake_pressure(enum ASDriverBrakePressure index) {
+    if (index >= AS_DRIVER_BRAKE_PRESSURE_COUNT) {
+        return 0.0F; // Safety fallback
+    }
+    return as_driver_handler.brake_pressures[index];
+}
+
+const float *as_driver_api_get_all_brake_pressures(void) {
+    return as_driver_handler.brake_pressures;
+}
+
+void as_driver_api_set_mechanical_sensor(enum ASDriverMechanicalSensor index, float value) {
+    if (index < AS_DRIVER_MECHANICAL_SENSOR_COUNT) {
+        as_driver_handler.mechanical_sensors[index] = value;
+    }
+}
+
+enum ASDriverReturnCode as_driver_api_set_all_mechanical_sensors(const float sensors[AS_DRIVER_MECHANICAL_SENSOR_COUNT]) {
+    if (sensors == NULL) {
         return AS_DRIVER_RC_ERROR;
     }
-    memcpy(out_press, &as_driver_handler.pressures, sizeof(struct ASDriverPressures));
+
+    (void)memcpy(as_driver_handler.mechanical_sensors, sensors, sizeof(float) * AS_DRIVER_MECHANICAL_SENSOR_COUNT);
     return AS_DRIVER_RC_OK;
 }
 
-enum ASDriverReturnCode as_driver_api_set_mechanical_sensors(const struct ASDriverMechanicalSensors *new_mech) {
-    if (new_mech == NULL) {
-        return AS_DRIVER_RC_ERROR;
+float as_driver_api_get_mechanical_sensor(enum ASDriverMechanicalSensor index) {
+    if (index >= AS_DRIVER_MECHANICAL_SENSOR_COUNT) {
+        return 0.0F; // Safety fallback
     }
-    memcpy(&as_driver_handler.mechanical_sensors, new_mech, sizeof(struct ASDriverMechanicalSensors));
-    return AS_DRIVER_RC_OK;
+    return as_driver_handler.mechanical_sensors[index];
 }
 
-enum ASDriverReturnCode as_driver_api_get_mechanical_sensors(struct ASDriverMechanicalSensors *out_mech) {
-    if (out_mech == NULL) {
-        return AS_DRIVER_RC_ERROR;
-    }
-    memcpy(out_mech, &as_driver_handler.mechanical_sensors, sizeof(struct ASDriverMechanicalSensors));
-    return AS_DRIVER_RC_OK;
+const float *as_driver_api_get_all_mechanical_sensors(void) {
+    return as_driver_handler.mechanical_sensors;
+}
+
+void as_driver_api_set_res_signal(enum ASDriverRESSignal signal) {
+    as_driver_handler.res_signal = signal;
+}
+
+enum ASDriverRESSignal as_driver_api_get_res_signal(void) {
+    return as_driver_handler.res_signal;
+}
+
+void as_driver_api_set_watchdog_state(enum ASDriverWatchdogState state) {
+    as_driver_handler.watchdog_state = state;
+}
+
+enum ASDriverWatchdogState as_driver_api_get_watchdog_state(void) {
+    return as_driver_handler.watchdog_state;
 }
 
 void as_driver_api_set_asms_on(bool status) {
@@ -98,22 +134,6 @@ bool as_driver_api_get_mission_started(void) {
     return as_driver_handler.is_mission_started;
 }
 
-void as_driver_api_set_watchdog_worked(bool status) {
-    as_driver_handler.is_watchdog_worked = status;
-}
-
-bool as_driver_api_get_watchdog_worked(void) {
-    return as_driver_handler.is_watchdog_worked;
-}
-
-void as_driver_api_set_watchdog_check(bool status) {
-    as_driver_handler.is_watchdog_check = status;
-}
-
-bool as_driver_api_get_watchdog_check(void) {
-    return as_driver_handler.is_watchdog_check;
-}
-
 void as_driver_api_set_tsms_on(bool status) {
     as_driver_handler.is_tsms_on = status;
 }
@@ -128,22 +148,6 @@ void as_driver_api_set_sdc_closed(bool status) {
 
 bool as_driver_api_get_sdc_closed(void) {
     return as_driver_handler.is_sdc_closed;
-}
-
-void as_driver_api_set_res_go(bool status) {
-    as_driver_handler.is_res_go = status;
-}
-
-bool as_driver_api_get_res_go(void) {
-    return as_driver_handler.is_res_go;
-}
-
-void as_driver_api_set_res_emergency(bool status) {
-    as_driver_handler.is_res_emergency = status;
-}
-
-bool as_driver_api_get_res_emergency(void) {
-    return as_driver_handler.is_res_emergency;
 }
 
 void as_driver_api_set_ebs_active(bool status) {

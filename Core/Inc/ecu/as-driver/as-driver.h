@@ -1,7 +1,7 @@
 /*!
  * \file as-driver.h
  * \author Dorijan Di Zepp
- * \date 2026-05-31
+ * \date 2026-06-04
  * \brief Callback and struct definitions for the Autonomous System (AS) driver.
  * \details This module encapsulates the state variables, sensor values
  * and system-level status flags necessary to govern the autonomous mission.
@@ -10,6 +10,7 @@
 #define AS_DRIVER_H
 
 #include <stdbool.h>
+#include <stdint.h>
 
 /*!
  * \brief Return codes for the AS driver functions and hardware callbacks.
@@ -41,7 +42,7 @@ enum ASDriverAirLine {
 };
 
 /*!
- * \brief Callback signature to handle mechanical/pneumatic pneumatic venting.
+ * \brief Callback signature to handle mechanical/pneumatic venting.
  * \param[in] line Target pneumatic circuit channel to trigger.
  * \retval AS_DRIVER_RC_OK if actuation is deployed.
  * \retval AS_DRIVER_RC_ERROR if actuation failed.
@@ -51,51 +52,73 @@ typedef enum ASDriverReturnCode (*air_release_from_line_callback)(enum ASDriverA
 /*!
  * \brief Braking system pressure profiles spanning both pneumatic and hydraulic circuits.
  * \note Nomenclature and numbering attributes directly match the ASF (Autonomous System Form) 
- * system architecture documentation.
+ * architecture documentation. Used directly as indices for the internal tracking arrays.
  */
-struct ASDriverPressures {
-    float brake_pressure_1_1; /*!< Pneumatic supply circuit pressure point 1.1 (bar). */
-    float brake_pressure_1_2; /*!< Pneumatic supply circuit pressure point 1.2 (bar). */
-    float brake_pressure_1_3; /*!< Pneumatic supply circuit pressure point 1.3 (bar). */
-    float brake_pressure_1_4; /*!< Pneumatic supply circuit pressure point 1.4 (bar). */
-    float brake_pressure_2_1; /*!< Hydraulic brake caliper line pressure point 2.1 (Front) (bar). */
-    float brake_pressure_2_2; /*!< Hydraulic brake caliper line pressure point 2.2 (Rear) (bar). */
+enum ASDriverBrakePressure {
+    AS_DRIVER_BRAKE_PRESSURE_1_1,  /*!< Index for pneumatic supply circuit pressure point 1.1 (bar). */
+    AS_DRIVER_BRAKE_PRESSURE_1_2,  /*!< Index for pneumatic supply circuit pressure point 1.2 (bar). */
+    AS_DRIVER_BRAKE_PRESSURE_1_3,  /*!< Index for pneumatic supply circuit pressure point 1.3 (bar). */
+    AS_DRIVER_BRAKE_PRESSURE_1_4,  /*!< Index for pneumatic supply circuit pressure point 1.4 (bar). */
+    AS_DRIVER_BRAKE_PRESSURE_2_1,  /*!< Index for hydraulic brake caliper line pressure point 2.1 (Front) (bar). */
+    AS_DRIVER_BRAKE_PRESSURE_2_2,  /*!< Index for hydraulic brake caliper line pressure point 2.2 (Rear) (bar). */
+    AS_DRIVER_BRAKE_PRESSURE_COUNT /*!< Total number of mapped brake pressure sensor points. */
 };
 
 /*!
  * \brief Structural and mechanical actuator verification sensors.
  * \note Nomenclature and numbering attributes directly match the ASF (Autonomous System Form) 
- * system architecture documentation.
+ * architecture documentation. Used directly as indices for the internal tracking arrays.
  */
-struct ASDriverMechanicalSensors {
-    float bremsweg_1_1;   /*!< Linear travel feedback displacement sensor 1.1 (mm). */
-    float bremsweg_1_2;   /*!< Linear travel feedback displacement sensor 1.2 (mm). */
-    float bremskraft_3_1; /*!< Actuator force or structural load cell strain gauge (N). */
+enum ASDriverMechanicalSensor {
+    AS_DRIVER_MECHANICAL_SENSOR_BREMSWEG_1_1,   /*!< Index for linear travel feedback displacement sensor 1.1 (mm). */
+    AS_DRIVER_MECHANICAL_SENSOR_BREMSWEG_1_2,   /*!< Index for linear travel feedback displacement sensor 1.2 (mm). */
+    AS_DRIVER_MECHANICAL_SENSOR_BREMSKRAFT_3_1, /*!< Index for actuator force or structural load cell strain gauge (N). */
+    AS_DRIVER_MECHANICAL_SENSOR_COUNT           /*!< Total number of mapped mechanical validation sensors. */
 };
 
 /*!
- * \brief Core state machine handler managing the active AS runtime context.
+ * \brief Operational states of the Remote Emergency System (RES) interface.
+ * \details Consolidates individual booleans into a single mutual token.
+ */
+enum ASDriverRESSignal {
+    AS_DRIVER_RES_SIGNAL_NONE,     /*!< No active commands or packets received from the RES station. */
+    AS_DRIVER_RES_SIGNAL_GO,       /*!< Remote Emergency System active execution 'GO' command packet received. */
+    AS_DRIVER_RES_SIGNAL_EMERGENCY /*!< Remote Emergency System has explicitly commanded an immediate emergency shutdown. */
+};
+
+/*!
+ * \brief Internal evaluation states of the hardware watchdog check sequence.
+ * \details Replaces concurrent booleans to enforce a safe, progressive verification tracking path.
+ */
+enum ASDriverWatchdogState {
+    AS_DRIVER_WATCHDOG_STATE_UNTESTED, /*!< Default state indicating the startup watchdog test sequence has not yet executed. */
+    AS_DRIVER_WATCHDOG_STATE_CHECKING, /*!< Watchdog validation pulse check is actively in progress. */
+    AS_DRIVER_WATCHDOG_STATE_VERIFIED, /*!< Watchdog loop confirmed operational and working within prescribed runtime limits. */
+    AS_DRIVER_WATCHDOG_STATE_FAILED    /*!< Watchdog failure detected during test cycle. */
+};
+
+/*!
+ * \brief Core AS driver handler.
  */
 struct ASDriverHandler {
-    enum ASDriverMission as_mission;                     /*!< Current active driverless mission discipline. */
-    struct ASDriverPressures pressures;                  /*!< Instantiated profile tracking system pressure data blocks. */
-    struct ASDriverMechanicalSensors mechanical_sensors; /*!< Instantiated profile tracking structural displacement metrics. */
+    enum ASDriverMission as_mission; /*!< Current active driverless mission. */
 
-    air_release_from_line_callback release_air; /*!< Callback to command pneumatic relief valves. */
+    float brake_pressures[AS_DRIVER_BRAKE_PRESSURE_COUNT];       /*!< Metrics for system pressures (bar), indexed by \ref ASDriverBrakePressure. */
+    float mechanical_sensors[AS_DRIVER_MECHANICAL_SENSOR_COUNT]; /*!< Mechanical feedback data (mm / N), indexed by \ref ASDriverMechanicalSensors. */
 
-    bool is_asms_on;         /*!< Status of the Autonomous System Master Switch physical interface. */
-    bool is_mission_started; /*!< Asserts if the vehicle has crossed the startup criteria boundary. */
+    air_release_from_line_callback release_air; /*!< Callback to command pneumatic emergency relief valves. */
 
-    bool is_watchdog_worked; /*!< Feedback status indicating the watchdog correctly works after initial checkup. */
-    bool is_watchdog_check;  /*!< Flag to indicate if the watchdog needs to be tested or has already been tested during initial checkup. */
+    enum ASDriverRESSignal res_signal;         /*!< Unified state tracker managing command signals from the RES. */
+    enum ASDriverWatchdogState watchdog_state; /*!< Safety tracker status mapping the watchdog test. */
 
-    bool is_tsms_on;    /*!< Status of the Tractive System Master Switch physical interface. */
-    bool is_sdc_closed; /*!< Monitored state of the high-voltage shutdown circuit physical logic line. */
+    bool is_asms_on;         /*!< Status of the Autonomous System Master Switch. */
+    bool is_mission_started; /*!< Asserts if the vehicle is ready and is starting the mission. */
 
-    bool is_res_go;             /*!< Remote Emergency System active execution 'GO' command packet received. */
-    bool is_res_emergency;      /*!< Asserted if the RES has sent an emergency command. */
-    bool is_ebs_active;         /*!< Emergency Brake System tripped marker indicating forced pneumatic venting. */
-    bool is_vehicle_standstill; /*!< Evaluated dynamics bit derived from wheel nodes to trigger AS_FINISHED. */
+    bool is_tsms_on;    /*!< Status of the Tractive System Master Switch. */
+    bool is_sdc_closed; /*!< Monitored state of the shutdown circuit line. */
+
+    bool is_ebs_active;         /*!< Emergency Brake System tripped indicating forced pneumatic venting deployment. */
+    bool is_vehicle_standstill; /*!< Evaluated vehicle dynamics indicator derived from wheel nodes to trigger \ref AS_FINISHED status. */
 };
 
 #endif

@@ -1,16 +1,15 @@
 /*!
  * \file test_as_driver.c
  * \author Dorijan Di Zepp
- * \date 2026-05-31
+ * \date 2026-06-04
  * \brief Unit tests using FFF for testing the AS driver module.
- * \details Tests target initialization and pointer-based data structs 
- * (pressures, mechanical sensors) due to safety-critical memory copies.
- * Trivial getters/setters (like ASMS, TSMS, SDC, RES flags) 
- * are omitted here as they lack conditional or pointer logic.
+ * \details Enforces comprehensive verification of initialization, flat-array
+ * data copies, edge-case safety boundaries, and abstract state enums.
  */
 
 #include <unity.h>
 #include <stdbool.h>
+#include <string.h>
 #include "as-driver-api.h"
 #include "fff.h"
 #include "eagletrt-api.h"
@@ -19,14 +18,14 @@ extern struct ASDriverHandler as_driver_handler;
 
 DEFINE_FFF_GLOBALS;
 
-// mocks for raspberry
+// Mocks for functional safety callbacks
 FAKE_VALUE_FUNC(enum ASDriverReturnCode, air_release_from_line, enum ASDriverAirLine);
 
 void setUp(void) {
-    // initialize as driver module
-    as_driver_api_init(air_release_from_line);
+    // Initialize AS driver module to pristine defaults before each test
+    (void)as_driver_api_init(air_release_from_line);
 
-    // reset mock state
+    // Reset mock execution state
     RESET_FAKE(air_release_from_line);
 
     FFF_RESET_HISTORY();
@@ -47,138 +46,168 @@ void test_as_driver_api_init_null_air_release_from_line(void) {
 
 void test_as_driver_api_init_struct_with_correct_default_values(void) {
     enum ASDriverReturnCode rc = as_driver_api_init(air_release_from_line);
+    TEST_ASSERT_EQUAL_INT(AS_DRIVER_RC_OK, rc);
 
     // Create a local reference structure representing the expected blank state
     struct ASDriverHandler expected_blank_handler;
-    memset(&expected_blank_handler, 0, sizeof(struct ASDriverHandler));
+    (void)memset(&expected_blank_handler, 0, sizeof(struct ASDriverHandler));
 
-    // Explicitly map the values that should be configured rather than purely zeroed out
+    // Explicitly map the state engine values that should be configured defaults
     expected_blank_handler.as_mission = AS_DRIVER_MISSION_NOT_SELECTED;
+    expected_blank_handler.res_signal = AS_DRIVER_RES_SIGNAL_NONE;
+    expected_blank_handler.watchdog_state = AS_DRIVER_WATCHDOG_STATE_UNTESTED;
     expected_blank_handler.release_air = air_release_from_line;
 
-    // Compare the initialized global struct memory against the expected configuration layout
-    int mem_check = memcmp(&as_driver_handler, &expected_blank_handler, sizeof(struct ASDriverHandler));
-
-    TEST_ASSERT_EQUAL_INT_MESSAGE(0, mem_check, "The internal state structure fields were not completely or correctly initialized to defaults");
+    // Compare the initialized global struct memory directly via Unity memory assertions
+    TEST_ASSERT_EQUAL_MEMORY_MESSAGE(&expected_blank_handler, &as_driver_handler, sizeof(struct ASDriverHandler), "The internal state structure fields were not completely or correctly initialized to defaults");
 }
 /*! \} */
 
 /*!
- * \defgroup as_driver_api_pressures Tests for as_driver_api_set_pressures and 
- * as_driver_api_get_pressures functions
+ * \defgroup as_driver_api_pressures Tests for brake pressure single-point and bulk array functions
  * \{
  */
 
-void test_as_driver_api_set_pressures_success(void) {
-    memset(&as_driver_handler, 0, sizeof(struct ASDriverHandler));
+void test_as_driver_api_set_brake_pressure_individual_success(void) {
+    (void)memset(&as_driver_handler, 0, sizeof(struct ASDriverHandler));
 
-    struct ASDriverPressures input_pressures = {
-        .brake_pressure_1_1 = 1.5f,
-        .brake_pressure_1_2 = 2.5f,
-        .brake_pressure_1_3 = 3.5f,
-        .brake_pressure_1_4 = 4.5f,
-        .brake_pressure_2_1 = 5.5f,
-        .brake_pressure_2_2 = 6.5f
+    as_driver_api_set_brake_pressure(AS_DRIVER_BRAKE_PRESSURE_1_1, 4.25f);
+    as_driver_api_set_brake_pressure(AS_DRIVER_BRAKE_PRESSURE_2_2, 8.50f);
+
+    TEST_ASSERT_EQUAL_FLOAT(4.25f, as_driver_handler.brake_pressures[AS_DRIVER_BRAKE_PRESSURE_1_1]);
+    TEST_ASSERT_EQUAL_FLOAT(8.50f, as_driver_handler.brake_pressures[AS_DRIVER_BRAKE_PRESSURE_2_2]);
+}
+
+void test_as_driver_api_set_brake_pressure_out_of_bounds_ignored(void) {
+    (void)memset(&as_driver_handler, 0, sizeof(struct ASDriverHandler));
+
+    // Force an invalid index modification attempt past the compiler check
+    as_driver_api_set_brake_pressure((enum ASDriverBrakePressure)99, 150.0f);
+
+    struct ASDriverHandler expected_clean;
+    (void)memset(&expected_clean, 0, sizeof(struct ASDriverHandler));
+
+    // Structural check confirming no out-of-bounds corruption happened
+    TEST_ASSERT_EQUAL_MEMORY(&expected_clean, &as_driver_handler, sizeof(struct ASDriverHandler));
+}
+
+void test_as_driver_api_set_all_brake_pressures_success(void) {
+    (void)memset(&as_driver_handler, 0, sizeof(struct ASDriverHandler));
+
+    const float input_pressures[AS_DRIVER_BRAKE_PRESSURE_COUNT] = {
+        [AS_DRIVER_BRAKE_PRESSURE_1_1] = 1.5f,
+        [AS_DRIVER_BRAKE_PRESSURE_1_2] = 2.5f,
+        [AS_DRIVER_BRAKE_PRESSURE_1_3] = 3.5f,
+        [AS_DRIVER_BRAKE_PRESSURE_1_4] = 4.5f,
+        [AS_DRIVER_BRAKE_PRESSURE_2_1] = 5.5f,
+        [AS_DRIVER_BRAKE_PRESSURE_2_2] = 6.5f
     };
 
-    enum ASDriverReturnCode rc = as_driver_api_set_pressures(&input_pressures);
+    enum ASDriverReturnCode rc = as_driver_api_set_all_brake_pressures(input_pressures);
 
     TEST_ASSERT_EQUAL_INT(AS_DRIVER_RC_OK, rc);
-    // Check that memory matches perfectly
-    int mem_check = memcmp(&as_driver_handler.pressures, &input_pressures, sizeof(struct ASDriverPressures));
-    TEST_ASSERT_EQUAL_INT_MESSAGE(0, mem_check, "The pressures struct was not copied correctly into storage");
+    TEST_ASSERT_EQUAL_MEMORY_MESSAGE(input_pressures, as_driver_handler.brake_pressures, sizeof(float) * AS_DRIVER_BRAKE_PRESSURE_COUNT, "The bulk pressures buffer was not copied correctly into storage");
 }
 
-void test_as_driver_api_set_pressures_null_pointer(void) {
-    const struct ASDriverPressures *invalid_input = NULL;
+void test_as_driver_api_set_all_brake_pressures_null_pointer(void) {
+    enum ASDriverReturnCode rc = as_driver_api_set_all_brake_pressures(NULL);
 
-    enum ASDriverReturnCode rc = as_driver_api_set_pressures(invalid_input);
-
-    TEST_ASSERT_EQUAL_INT_MESSAGE(AS_DRIVER_RC_ERROR, rc, "Set pressures should return ERROR when given NULL");
+    TEST_ASSERT_EQUAL_INT_MESSAGE(AS_DRIVER_RC_ERROR, rc, "Set bulk pressures should return ERROR when given NULL pointer");
 }
 
-void test_as_driver_api_get_pressures_success(void) {
-    // Manually prime the internal state with known values
-    as_driver_handler.pressures.brake_pressure_1_1 = 10.1f;
-    as_driver_handler.pressures.brake_pressure_1_2 = 20.2f;
-    as_driver_handler.pressures.brake_pressure_1_3 = 30.3f;
-    as_driver_handler.pressures.brake_pressure_1_4 = 40.4f;
-    as_driver_handler.pressures.brake_pressure_2_1 = 50.5f;
-    as_driver_handler.pressures.brake_pressure_2_2 = 60.6f;
+void test_as_driver_api_get_brake_pressure_individual_success(void) {
+    (void)memset(&as_driver_handler, 0, sizeof(struct ASDriverHandler));
+    as_driver_handler.brake_pressures[AS_DRIVER_BRAKE_PRESSURE_1_4] = 12.34f;
 
-    struct ASDriverPressures output_buffer;
-    memset(&output_buffer, 0, sizeof(struct ASDriverPressures));
+    float pressure = as_driver_api_get_brake_pressure(AS_DRIVER_BRAKE_PRESSURE_1_4);
 
-    enum ASDriverReturnCode rc = as_driver_api_get_pressures(&output_buffer);
-
-    TEST_ASSERT_EQUAL_INT(AS_DRIVER_RC_OK, rc);
-
-    // Compare output container to private state layout
-    int mem_check = memcmp(&output_buffer, &as_driver_handler.pressures, sizeof(struct ASDriverPressures));
-    TEST_ASSERT_EQUAL_INT_MESSAGE(0, mem_check, "The pressures data retrieved does not match internal storage");
+    TEST_ASSERT_EQUAL_FLOAT(12.34f, pressure);
 }
 
-void test_as_driver_api_get_pressures_null_pointer(void) {
-    struct ASDriverPressures *invalid_output_buffer = NULL;
+void test_as_driver_api_get_brake_pressure_out_of_bounds_fallback(void) {
+    float fallback_value = as_driver_api_get_brake_pressure((enum ASDriverBrakePressure)99);
 
-    enum ASDriverReturnCode rc = as_driver_api_get_pressures(invalid_output_buffer);
+    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(0.0f, fallback_value, "Out of bounds pressure request should return a clean 0.0f fallback loop");
+}
 
-    TEST_ASSERT_EQUAL_INT_MESSAGE(AS_DRIVER_RC_ERROR, rc, "Get pressures should return ERROR when given NULL destination");
+void test_as_driver_api_get_all_brake_pressures_success(void) {
+    as_driver_handler.brake_pressures[AS_DRIVER_BRAKE_PRESSURE_1_1] = 10.1f;
+    as_driver_handler.brake_pressures[AS_DRIVER_BRAKE_PRESSURE_2_1] = 50.5f;
+
+    const float *retrieved_pressures = as_driver_api_get_all_brake_pressures();
+
+    TEST_ASSERT_EQUAL_MEMORY_MESSAGE(as_driver_handler.brake_pressures, retrieved_pressures, sizeof(float) * AS_DRIVER_BRAKE_PRESSURE_COUNT, "The retrieved pointer layout does not mirror internal storage configuration");
 }
 /*! \} */
 
 /*!
- * \defgroup as_driver_api_mechanical_sensors Tests for as_driver_api_set_mechanical_sensors and 
- * as_driver_api_get_mechanical_sensors functions
+ * \defgroup as_driver_api_mechanical_sensors Tests for mechanical sensor single-point and bulk array functions
  * \{
  */
 
-void test_as_driver_api_set_mechanical_sensors_success(void) {
-    memset(&as_driver_handler, 0, sizeof(struct ASDriverHandler));
+void test_as_driver_api_set_mechanical_sensor_individual_success(void) {
+    (void)memset(&as_driver_handler, 0, sizeof(struct ASDriverHandler));
 
-    struct ASDriverMechanicalSensors input_mech = {
-        .bremsweg_1_1 = 12.5f,
-        .bremskraft_3_1 = 250.0f
+    as_driver_api_set_mechanical_sensor(AS_DRIVER_MECHANICAL_SENSOR_BREMSWEG_1_1, 15.4f);
+    as_driver_api_set_mechanical_sensor(AS_DRIVER_MECHANICAL_SENSOR_BREMSKRAFT_3_1, 320.0f);
+
+    TEST_ASSERT_EQUAL_FLOAT(15.4f, as_driver_handler.mechanical_sensors[AS_DRIVER_MECHANICAL_SENSOR_BREMSWEG_1_1]);
+    TEST_ASSERT_EQUAL_FLOAT(320.0f, as_driver_handler.mechanical_sensors[AS_DRIVER_MECHANICAL_SENSOR_BREMSKRAFT_3_1]);
+}
+
+void test_as_driver_api_set_mechanical_sensor_out_of_bounds_ignored(void) {
+    (void)memset(&as_driver_handler, 0, sizeof(struct ASDriverHandler));
+
+    as_driver_api_set_mechanical_sensor((enum ASDriverMechanicalSensor)99, 500.0f);
+
+    struct ASDriverHandler expected_clean;
+    (void)memset(&expected_clean, 0, sizeof(struct ASDriverHandler));
+
+    TEST_ASSERT_EQUAL_MEMORY(&expected_clean, &as_driver_handler, sizeof(struct ASDriverHandler));
+}
+
+void test_as_driver_api_set_all_mechanical_sensors_success(void) {
+    (void)memset(&as_driver_handler, 0, sizeof(struct ASDriverHandler));
+
+    const float input_mech[AS_DRIVER_MECHANICAL_SENSOR_COUNT] = {
+        [AS_DRIVER_MECHANICAL_SENSOR_BREMSWEG_1_1] = 12.5f,
+        [AS_DRIVER_MECHANICAL_SENSOR_BREMSWEG_1_2] = 14.2f,
+        [AS_DRIVER_MECHANICAL_SENSOR_BREMSKRAFT_3_1] = 250.0f
     };
 
-    enum ASDriverReturnCode rc = as_driver_api_set_mechanical_sensors(&input_mech);
+    enum ASDriverReturnCode rc = as_driver_api_set_all_mechanical_sensors(input_mech);
 
     TEST_ASSERT_EQUAL_INT(AS_DRIVER_RC_OK, rc);
-    // Check that memory matches perfectly
-    int mem_check = memcmp(&as_driver_handler.mechanical_sensors, &input_mech, sizeof(struct ASDriverMechanicalSensors));
-    TEST_ASSERT_EQUAL_INT_MESSAGE(0, mem_check, "The mechanical sensors struct was not copied correctly into storage");
+    TEST_ASSERT_EQUAL_MEMORY_MESSAGE(input_mech, as_driver_handler.mechanical_sensors, sizeof(float) * AS_DRIVER_MECHANICAL_SENSOR_COUNT, "The bulk mechanical array was not copied correctly into storage");
 }
 
-void test_as_driver_api_set_mechanical_sensors_null_pointer(void) {
-    const struct ASDriverMechanicalSensors *invalid_input = NULL;
+void test_as_driver_api_set_all_mechanical_sensors_null_pointer(void) {
+    enum ASDriverReturnCode rc = as_driver_api_set_all_mechanical_sensors(NULL);
 
-    enum ASDriverReturnCode rc = as_driver_api_set_mechanical_sensors(invalid_input);
-
-    TEST_ASSERT_EQUAL_INT_MESSAGE(AS_DRIVER_RC_ERROR, rc, "Set mechanical sensors should return ERROR when given NULL");
+    TEST_ASSERT_EQUAL_INT_MESSAGE(AS_DRIVER_RC_ERROR, rc, "Set bulk mechanical sensors should return ERROR when given NULL pointer");
 }
 
-void test_as_driver_api_get_mechanical_sensors_success(void) {
-    // Manually prime the internal state with known values
-    as_driver_handler.mechanical_sensors.bremsweg_1_1 = 8.4f;
-    as_driver_handler.mechanical_sensors.bremskraft_3_1 = 185.0f;
+void test_as_driver_api_get_mechanical_sensor_individual_success(void) {
+    (void)memset(&as_driver_handler, 0, sizeof(struct ASDriverHandler));
+    as_driver_handler.mechanical_sensors[AS_DRIVER_MECHANICAL_SENSOR_BREMSKRAFT_3_1] = 195.5f;
 
-    struct ASDriverMechanicalSensors output_buffer;
-    memset(&output_buffer, 0, sizeof(struct ASDriverMechanicalSensors));
+    float force = as_driver_api_get_mechanical_sensor(AS_DRIVER_MECHANICAL_SENSOR_BREMSKRAFT_3_1);
 
-    enum ASDriverReturnCode rc = as_driver_api_get_mechanical_sensors(&output_buffer);
-
-    TEST_ASSERT_EQUAL_INT(AS_DRIVER_RC_OK, rc);
-    // Compare output container to private state layout
-    int mem_check = memcmp(&output_buffer, &as_driver_handler.mechanical_sensors, sizeof(struct ASDriverMechanicalSensors));
-    TEST_ASSERT_EQUAL_INT_MESSAGE(0, mem_check, "The mechanical sensors data retrieved does not match internal storage");
+    TEST_ASSERT_EQUAL_FLOAT(195.5f, force);
 }
 
-void test_as_driver_api_get_mechanical_sensors_null_pointer(void) {
-    struct ASDriverMechanicalSensors *invalid_output_buffer = NULL;
+void test_as_driver_api_get_mechanical_sensor_out_of_bounds_fallback(void) {
+    float fallback_value = as_driver_api_get_mechanical_sensor((enum ASDriverMechanicalSensor)99);
 
-    enum ASDriverReturnCode rc = as_driver_api_get_mechanical_sensors(invalid_output_buffer);
+    TEST_ASSERT_EQUAL_FLOAT_MESSAGE(0.0f, fallback_value, "Out of bounds mechanical request should return a clean 0.0f fallback loop");
+}
 
-    TEST_ASSERT_EQUAL_INT_MESSAGE(AS_DRIVER_RC_ERROR, rc, "Get mechanical sensors should return ERROR when given NULL destination");
+void test_as_driver_api_get_all_mechanical_sensors_success(void) {
+    as_driver_handler.mechanical_sensors[AS_DRIVER_MECHANICAL_SENSOR_BREMSWEG_1_2] = 9.1f;
+
+    const float *retrieved_sensors = as_driver_api_get_all_mechanical_sensors();
+
+    TEST_ASSERT_EQUAL_MEMORY_MESSAGE(as_driver_handler.mechanical_sensors, retrieved_sensors, sizeof(float) * AS_DRIVER_MECHANICAL_SENSOR_COUNT, "The retrieved mechanical array pointer does not mirror internal storage");
 }
 /*! \} */
 
@@ -235,20 +264,26 @@ int main(void) {
      * \addtogroup as_driver_api_pressures
      * \{
      */
-    RUN_TEST(test_as_driver_api_set_pressures_success);
-    RUN_TEST(test_as_driver_api_set_pressures_null_pointer);
-    RUN_TEST(test_as_driver_api_get_pressures_success);
-    RUN_TEST(test_as_driver_api_get_pressures_null_pointer);
+    RUN_TEST(test_as_driver_api_set_brake_pressure_individual_success);
+    RUN_TEST(test_as_driver_api_set_brake_pressure_out_of_bounds_ignored);
+    RUN_TEST(test_as_driver_api_set_all_brake_pressures_success);
+    RUN_TEST(test_as_driver_api_set_all_brake_pressures_null_pointer);
+    RUN_TEST(test_as_driver_api_get_brake_pressure_individual_success);
+    RUN_TEST(test_as_driver_api_get_brake_pressure_out_of_bounds_fallback);
+    RUN_TEST(test_as_driver_api_get_all_brake_pressures_success);
     /*! \} */
 
     /*!
      * \addtogroup as_driver_api_mechanical_sensors
      * \{
      */
-    RUN_TEST(test_as_driver_api_set_mechanical_sensors_success);
-    RUN_TEST(test_as_driver_api_set_mechanical_sensors_null_pointer);
-    RUN_TEST(test_as_driver_api_get_mechanical_sensors_success);
-    RUN_TEST(test_as_driver_api_get_mechanical_sensors_null_pointer);
+    RUN_TEST(test_as_driver_api_set_mechanical_sensor_individual_success);
+    RUN_TEST(test_as_driver_api_set_mechanical_sensor_out_of_bounds_ignored);
+    RUN_TEST(test_as_driver_api_set_all_mechanical_sensors_success);
+    RUN_TEST(test_as_driver_api_set_all_mechanical_sensors_null_pointer);
+    RUN_TEST(test_as_driver_api_get_mechanical_sensor_individual_success);
+    RUN_TEST(test_as_driver_api_get_mechanical_sensor_out_of_bounds_fallback);
+    RUN_TEST(test_as_driver_api_get_all_mechanical_sensors_success);
     /*! \} */
 
     /*!
