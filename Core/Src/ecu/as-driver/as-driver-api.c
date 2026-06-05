@@ -1,7 +1,7 @@
 /*!
  * \file as-driver-api.c
  * \author Dorijan Di Zepp
- * \date 2026-06-04
+ * \date 2026-06-05
  * \brief Implementation of the global AS Driver module.
  * \details Provides an interface to store all required flags and values
  * needed to verify the correct behavior and safety of the AS driver.
@@ -23,7 +23,7 @@ enum ASDriverReturnCode as_driver_api_init(air_release_from_line_callback air_ca
     }
 
     // Clear all fields to 0, false and default struct parameters safely
-    (void)memset(&as_driver_handler, 0, sizeof(struct ASDriverHandler));
+    (void)memset(&as_driver_handler, 0, sizeof(as_driver_handler));
 
     // Populate safe startup parameters and bindings
     as_driver_handler.as_mission = AS_DRIVER_MISSION_NOT_SELECTED;
@@ -43,7 +43,9 @@ enum ASDriverReturnCode as_driver_api_release_air(enum ASDriverAirLine line) {
 }
 
 void as_driver_api_set_mission(enum ASDriverMission mission) {
-    as_driver_handler.as_mission = mission;
+    if (mission < AS_DRIVER_MISSION_COUNT) {
+        as_driver_handler.as_mission = mission;
+    }
 }
 
 enum ASDriverMission as_driver_api_get_mission(void) {
@@ -61,7 +63,7 @@ enum ASDriverReturnCode as_driver_api_set_all_brake_pressures(const float pressu
         return AS_DRIVER_RC_ERROR;
     }
 
-    (void)memcpy(as_driver_handler.brake_pressures, pressures, sizeof(float) * AS_DRIVER_BRAKE_PRESSURE_COUNT);
+    (void)memcpy(as_driver_handler.brake_pressures, pressures, sizeof(*pressures) * AS_DRIVER_BRAKE_PRESSURE_COUNT);
     return AS_DRIVER_RC_OK;
 }
 
@@ -87,7 +89,7 @@ enum ASDriverReturnCode as_driver_api_set_all_mechanical_sensors(const float sen
         return AS_DRIVER_RC_ERROR;
     }
 
-    (void)memcpy(as_driver_handler.mechanical_sensors, sensors, sizeof(float) * AS_DRIVER_MECHANICAL_SENSOR_COUNT);
+    (void)memcpy(as_driver_handler.mechanical_sensors, sensors, sizeof(*sensors) * AS_DRIVER_MECHANICAL_SENSOR_COUNT);
     return AS_DRIVER_RC_OK;
 }
 
@@ -103,7 +105,9 @@ const float *as_driver_api_get_all_mechanical_sensors(void) {
 }
 
 void as_driver_api_set_res_signal(enum ASDriverRESSignal signal) {
-    as_driver_handler.res_signal = signal;
+    if (signal < AS_DRIVER_RES_SIGNAL_COUNT) {
+        as_driver_handler.res_signal = signal;
+    }
 }
 
 enum ASDriverRESSignal as_driver_api_get_res_signal(void) {
@@ -111,7 +115,9 @@ enum ASDriverRESSignal as_driver_api_get_res_signal(void) {
 }
 
 void as_driver_api_set_watchdog_state(enum ASDriverWatchdogState state) {
-    as_driver_handler.watchdog_state = state;
+    if (state < AS_DRIVER_WATCHDOG_STATE_COUNT) {
+        as_driver_handler.watchdog_state = state;
+    }
 }
 
 enum ASDriverWatchdogState as_driver_api_get_watchdog_state(void) {

@@ -1,7 +1,7 @@
 /*!
  * \file as-driver.h
  * \author Dorijan Di Zepp
- * \date 2026-06-04
+ * \date 2026-06-05
  * \brief Callback and struct definitions for the Autonomous System (AS) driver.
  * \details This module encapsulates the state variables, sensor values
  * and system-level status flags necessary to govern the autonomous mission.
@@ -31,6 +31,7 @@ enum ASDriverMission {
     AS_DRIVER_MISSION_TRACKDRIVE,   /*!< Multi-lap endurance track layout event. */
     AS_DRIVER_MISSION_EBS_TEST,     /*!< Dedicated validation protocol for emergency braking. */
     AS_DRIVER_MISSION_INSPECTION,   /*!< Static system check and technical inspection mode. */
+    AS_DRIVER_MISSION_COUNT,        /*!< Sentinel value used for input validation */
 };
 
 /*!
@@ -81,9 +82,10 @@ enum ASDriverMechanicalSensor {
  * \details Consolidates individual booleans into a single mutual token.
  */
 enum ASDriverRESSignal {
-    AS_DRIVER_RES_SIGNAL_NONE,     /*!< No active commands or packets received from the RES station. */
-    AS_DRIVER_RES_SIGNAL_GO,       /*!< Remote Emergency System active execution 'GO' command packet received. */
-    AS_DRIVER_RES_SIGNAL_EMERGENCY /*!< Remote Emergency System has explicitly commanded an immediate emergency shutdown. */
+    AS_DRIVER_RES_SIGNAL_NONE,      /*!< No active commands or packets received from the RES station. */
+    AS_DRIVER_RES_SIGNAL_GO,        /*!< Remote Emergency System active execution 'GO' command packet received. */
+    AS_DRIVER_RES_SIGNAL_EMERGENCY, /*!< Remote Emergency System has explicitly commanded an immediate emergency shutdown. */
+    AS_DRIVER_RES_SIGNAL_COUNT      /*!< Sentinel value used for input validation */
 };
 
 /*!
@@ -94,7 +96,8 @@ enum ASDriverWatchdogState {
     AS_DRIVER_WATCHDOG_STATE_UNTESTED, /*!< Default state indicating the startup watchdog test sequence has not yet executed. */
     AS_DRIVER_WATCHDOG_STATE_CHECKING, /*!< Watchdog validation pulse check is actively in progress. */
     AS_DRIVER_WATCHDOG_STATE_VERIFIED, /*!< Watchdog loop confirmed operational and working within prescribed runtime limits. */
-    AS_DRIVER_WATCHDOG_STATE_FAILED    /*!< Watchdog failure detected during test cycle. */
+    AS_DRIVER_WATCHDOG_STATE_FAILED,   /*!< Watchdog failure detected during test cycle. */
+    AS_DRIVER_WATCHDOG_STATE_COUNT     /*!< Sentinel value used for input validation */
 };
 
 /*!
