@@ -1,12 +1,13 @@
 /*!
  * \file post-api.c
  * \author Dorijan Di Zepp
- * \date 2026-06-01
+ * \date 2026-06-06
  * \brief This file defines Power-On Self-Test (POST) functions for system initialization.
  */
 
 #include "post-api.h"
 #include "eagletrt-api.h"
+#include "as-driver-api.h"
 #include "buzzer-api.h"
 #include "inverters-api.h"
 #include "pedals-api.h"
@@ -19,7 +20,8 @@ enum PostReturnCode post_api_do_init(struct PostConfig *post_config) {
     }
 
     // NULL pointer validation of all required dependency members
-    if (post_config->inverters_send_drive_command == NULL ||
+    if (post_config->as_air_release == NULL ||
+        post_config->inverters_send_drive_command == NULL ||
         post_config->inverters_set_torque == NULL ||
         post_config->raspberry_pin_control == NULL ||
         post_config->ts_send_command == NULL) {
@@ -38,6 +40,11 @@ enum PostReturnCode post_api_do_init(struct PostConfig *post_config) {
 
     enum PostReturnCode final_status = POST_RC_OK;
 
+    // Initialize all modules given the post configuration
+    if (as_driver_api_init(post_config->as_air_release) != AS_DRIVER_RC_OK) {
+        final_status = POST_RC_ERROR;
+    }
+
     if (buzzer_api_init(post_config->buzzer_on_ptrs,
                         post_config->buzzer_off_ptrs,
                         post_config->buzzer_delay_ptrs,
@@ -54,10 +61,10 @@ enum PostReturnCode post_api_do_init(struct PostConfig *post_config) {
         final_status = POST_RC_ERROR;
     }
 
-    // For the Raspberry initialization, the pin is turned on in order
-    // to let the raspberry to boot
+    // Initialize RaspberryPi module using the configurable startup pin state
+    // The pin state validity is already managed by the raspberry module
     if (raspberry_api_init(post_config->raspberry_pin_control,
-                           RASPBERRY_CONTROL_PIN_STATE_ON) != RASPBERRY_RC_OK) {
+                           post_config->raspberry_initial_state) != RASPBERRY_RC_OK) {
         final_status = POST_RC_ERROR;
     }
 
