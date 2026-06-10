@@ -96,8 +96,17 @@ transition_func_t *const transition_table[NUM_STATES][NUM_STATES] = {
 // Function to be executed in state init
 // valid return states: STATE_FATAL, STATE_IDLE
 state_t do_init(state_data_t *data) {
-    state_t next_state = STATE_FATAL;
+    state_t next_state = STATE_IDLE;
     /* Your Code Here */
+
+    // convert state data into POST struct configuration
+    struct PostConfig *post_configuration = (struct PostConfig *)data;
+
+    if (post_api_do_init(post_configuration) != POST_RC_OK) {
+        // Error during POST initialization
+        next_state = STATE_FATAL;
+    }
+    // If ok, transit to idle
 
     switch (next_state) {
         case STATE_FATAL:
@@ -115,6 +124,9 @@ state_t do_init(state_data_t *data) {
 state_t do_fatal(state_data_t *data) {
     state_t next_state = NO_CHANGE;
     /* Your Code Here */
+    EAGLETRT_API_UNUSED(data);
+
+    // fatal state is a sink, no other operation should be made
 
     switch (next_state) {
         case NO_CHANGE:
@@ -132,6 +144,7 @@ state_t do_fatal(state_data_t *data) {
 state_t do_idle(state_data_t *data) {
     state_t next_state = NO_CHANGE;
     /* Your Code Here */
+    EAGLETRT_API_UNUSED(data);
 
     switch (next_state) {
         case NO_CHANGE:
@@ -154,6 +167,10 @@ state_t do_idle(state_data_t *data) {
 state_t do_flash(state_data_t *data) {
     state_t next_state = NO_CHANGE;
     /* Your Code Here */
+    EAGLETRT_API_UNUSED(data);
+
+    // Remain in flash until an external request is received
+    // to indicate that flashing is aborted
 
     switch (next_state) {
         case NO_CHANGE:
@@ -170,8 +187,12 @@ state_t do_flash(state_data_t *data) {
 // Function to be executed in state pause
 // valid return states: NO_CHANGE, STATE_PAUSE, STATE_IDLE
 state_t do_pause(state_data_t *data) {
-    state_t next_state = NO_CHANGE;
+    state_t next_state = STATE_IDLE;
     /* Your Code Here */
+    EAGLETRT_API_UNUSED(data);
+
+    // Pause won't be used during the 2026 season
+    // For this reason, hard-code the fallback to STATE_IDLE
 
     switch (next_state) {
         case NO_CHANGE:
@@ -190,6 +211,7 @@ state_t do_pause(state_data_t *data) {
 state_t do_manual_wait_ts_precharge(state_data_t *data) {
     state_t next_state = NO_CHANGE;
     /* Your Code Here */
+    EAGLETRT_API_UNUSED(data);
 
     switch (next_state) {
         case NO_CHANGE:
@@ -209,6 +231,7 @@ state_t do_manual_wait_ts_precharge(state_data_t *data) {
 state_t do_as_off(state_data_t *data) {
     state_t next_state = NO_CHANGE;
     /* Your Code Here */
+    EAGLETRT_API_UNUSED(data);
 
     switch (next_state) {
         case NO_CHANGE:
@@ -229,6 +252,7 @@ state_t do_as_off(state_data_t *data) {
 state_t do_wait_driver(state_data_t *data) {
     state_t next_state = NO_CHANGE;
     /* Your Code Here */
+    EAGLETRT_API_UNUSED(data);
 
     switch (next_state) {
         case NO_CHANGE:
@@ -248,6 +272,7 @@ state_t do_wait_driver(state_data_t *data) {
 state_t do_manual_wait_ts_discharge(state_data_t *data) {
     state_t next_state = NO_CHANGE;
     /* Your Code Here */
+    EAGLETRT_API_UNUSED(data);
 
     switch (next_state) {
         case NO_CHANGE:
@@ -266,6 +291,7 @@ state_t do_manual_wait_ts_discharge(state_data_t *data) {
 state_t do_manual_wait_inv_enable(state_data_t *data) {
     state_t next_state = NO_CHANGE;
     /* Your Code Here */
+    EAGLETRT_API_UNUSED(data);
 
     switch (next_state) {
         case NO_CHANGE:
@@ -285,6 +311,7 @@ state_t do_manual_wait_inv_enable(state_data_t *data) {
 state_t do_driving(state_data_t *data) {
     state_t next_state = NO_CHANGE;
     /* Your Code Here */
+    EAGLETRT_API_UNUSED(data);
 
     switch (next_state) {
         case NO_CHANGE:
@@ -303,6 +330,7 @@ state_t do_driving(state_data_t *data) {
 state_t do_manual_wait_inv_disable(state_data_t *data) {
     state_t next_state = NO_CHANGE;
     /* Your Code Here */
+    EAGLETRT_API_UNUSED(data);
 
     switch (next_state) {
         case NO_CHANGE:
@@ -321,6 +349,7 @@ state_t do_manual_wait_inv_disable(state_data_t *data) {
 state_t do_as_off_wait_ts_precharge(state_data_t *data) {
     state_t next_state = NO_CHANGE;
     /* Your Code Here */
+    EAGLETRT_API_UNUSED(data);
 
     switch (next_state) {
         case NO_CHANGE:
@@ -340,6 +369,7 @@ state_t do_as_off_wait_ts_precharge(state_data_t *data) {
 state_t do_as_ready(state_data_t *data) {
     state_t next_state = NO_CHANGE;
     /* Your Code Here */
+    EAGLETRT_API_UNUSED(data);
 
     switch (next_state) {
         case NO_CHANGE:
@@ -359,6 +389,7 @@ state_t do_as_ready(state_data_t *data) {
 state_t do_as_ready_wait_inv_enable(state_data_t *data) {
     state_t next_state = NO_CHANGE;
     /* Your Code Here */
+    EAGLETRT_API_UNUSED(data);
 
     switch (next_state) {
         case NO_CHANGE:
@@ -378,6 +409,7 @@ state_t do_as_ready_wait_inv_enable(state_data_t *data) {
 state_t do_as_emergency(state_data_t *data) {
     state_t next_state = NO_CHANGE;
     /* Your Code Here */
+    EAGLETRT_API_UNUSED(data);
 
     switch (next_state) {
         case NO_CHANGE:
@@ -396,6 +428,7 @@ state_t do_as_emergency(state_data_t *data) {
 state_t do_as_r2d(state_data_t *data) {
     state_t next_state = STATE_AS_DRIVING;
     /* Your Code Here */
+    EAGLETRT_API_UNUSED(data);
 
     switch (next_state) {
         case STATE_AS_DRIVING:
@@ -413,6 +446,7 @@ state_t do_as_r2d(state_data_t *data) {
 state_t do_as_driving(state_data_t *data) {
     state_t next_state = NO_CHANGE;
     /* Your Code Here */
+    EAGLETRT_API_UNUSED(data);
 
     switch (next_state) {
         case NO_CHANGE:
@@ -432,6 +466,7 @@ state_t do_as_driving(state_data_t *data) {
 state_t do_as_finished(state_data_t *data) {
     state_t next_state = NO_CHANGE;
     /* Your Code Here */
+    EAGLETRT_API_UNUSED(data);
 
     switch (next_state) {
         case NO_CHANGE:
@@ -450,6 +485,7 @@ state_t do_as_finished(state_data_t *data) {
 state_t do_as_off_wait_ts_discharge(state_data_t *data) {
     state_t next_state = NO_CHANGE;
     /* Your Code Here */
+    EAGLETRT_API_UNUSED(data);
 
     switch (next_state) {
         case NO_CHANGE:
@@ -468,6 +504,7 @@ state_t do_as_off_wait_ts_discharge(state_data_t *data) {
 state_t do_as_ready_wait_inv_disable(state_data_t *data) {
     state_t next_state = NO_CHANGE;
     /* Your Code Here */
+    EAGLETRT_API_UNUSED(data);
 
     switch (next_state) {
         case NO_CHANGE:
@@ -486,6 +523,7 @@ state_t do_as_ready_wait_inv_disable(state_data_t *data) {
 state_t do_as_finished_wait_inv_disable(state_data_t *data) {
     state_t next_state = NO_CHANGE;
     /* Your Code Here */
+    EAGLETRT_API_UNUSED(data);
 
     switch (next_state) {
         case NO_CHANGE:
@@ -504,6 +542,7 @@ state_t do_as_finished_wait_inv_disable(state_data_t *data) {
 state_t do_as_finished_wait_ts_discharge(state_data_t *data) {
     state_t next_state = NO_CHANGE;
     /* Your Code Here */
+    EAGLETRT_API_UNUSED(data);
 
     switch (next_state) {
         case NO_CHANGE:
@@ -522,6 +561,7 @@ state_t do_as_finished_wait_ts_discharge(state_data_t *data) {
 state_t do_as_emergency_wait_inv_disable(state_data_t *data) {
     state_t next_state = NO_CHANGE;
     /* Your Code Here */
+    EAGLETRT_API_UNUSED(data);
 
     switch (next_state) {
         case NO_CHANGE:
@@ -540,6 +580,7 @@ state_t do_as_emergency_wait_inv_disable(state_data_t *data) {
 state_t do_as_emergency_wait_ts_discharge(state_data_t *data) {
     state_t next_state = NO_CHANGE;
     /* Your Code Here */
+    EAGLETRT_API_UNUSED(data);
 
     switch (next_state) {
         case NO_CHANGE:
@@ -571,6 +612,7 @@ state_t do_as_emergency_wait_ts_discharge(state_data_t *data) {
 // 2. from as_off to as_off_wait_ts_precharge
 void start_ts_precharge(state_data_t *data) {
     /* Your Code Here */
+    EAGLETRT_API_UNUSED(data);
 }
 
 // This function is called in 6 transitions:
@@ -582,6 +624,7 @@ void start_ts_precharge(state_data_t *data) {
 // 6. from as_emergency_wait_inv_disable to as_emergency_wait_ts_discharge
 void start_ts_discharge(state_data_t *data) {
     /* Your Code Here */
+    EAGLETRT_API_UNUSED(data);
 }
 
 // This function is called in 2 transitions:
@@ -589,6 +632,7 @@ void start_ts_discharge(state_data_t *data) {
 // 2. from as_ready to as_ready_wait_inv_enable
 void start_inv_enable(state_data_t *data) {
     /* Your Code Here */
+    EAGLETRT_API_UNUSED(data);
 }
 
 // This function is called in 5 transitions:
@@ -599,6 +643,7 @@ void start_inv_enable(state_data_t *data) {
 // 5. from as_emergency to as_emergency_wait_inv_disable
 void start_inv_disable(state_data_t *data) {
     /* Your Code Here */
+    EAGLETRT_API_UNUSED(data);
 }
 
 /*  ____  _        _        

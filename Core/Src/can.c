@@ -21,7 +21,7 @@
 #include "can.h"
 
 /* USER CODE BEGIN 0 */
-
+#include "eagletrt-api.h"
 /* USER CODE END 0 */
 
 CAN_HandleTypeDef hcan1;
@@ -291,5 +291,26 @@ void HAL_CAN_MspDeInit(CAN_HandleTypeDef *canHandle) {
 }
 
 /* USER CODE BEGIN 1 */
+//TODO: missing implementation as canlib is not available yet
+enum ASDriverReturnCode can_air_release_from_line(enum ASDriverAirLine air_line) {
+    EAGLETRT_API_UNUSED(air_line);
+    return AS_DRIVER_RC_OK;
+}
 
+enum InvertersReturnCode can_inverters_send_drive_command(enum InvertersDriveStatus drive_status, enum InvertersPosition position) {
+    EAGLETRT_API_UNUSED(drive_status);
+    EAGLETRT_API_UNUSED(position);
+    return INVERTERS_RC_OK;
+}
+
+enum InvertersReturnCode can_inverters_set_torque(float target_torque, enum InvertersPosition position) {
+    EAGLETRT_API_UNUSED(target_torque);
+    EAGLETRT_API_UNUSED(position);
+    return INVERTERS_RC_OK;
+}
+
+enum TSReturnCode can_ts_send_command(enum TSCommand ts_command) {
+    EAGLETRT_API_UNUSED(ts_command);
+    return TS_RC_OK;
+}
 /* USER CODE END 1 */

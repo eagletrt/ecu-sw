@@ -27,6 +27,14 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "ecu_fsm.h"
+#include "eagletrt-api.h"
+#include "as-driver-api.h"
+#include "buzzer-api.h"
+#include "inverters-api.h"
+#include "pedals-api.h"
+#include "post-api.h"
+#include "raspberry-api.h"
+#include "tractive-system-api.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -68,6 +76,7 @@ static void VectorBase_Config(void) {
     /* Remap the vector table to where the vector table is located for this program. */
     SCB->VTOR = (unsigned long)&g_pfnVectors[0];
 }
+
 /* USER CODE END 0 */
 
 /**
@@ -110,6 +119,34 @@ int main(void) {
     MX_SPI3_Init();
     /* USER CODE BEGIN 2 */
 
+    // Initialize POST configuration ----------------------------------------------------
+    buzzer_on_callback buzzer_ons[BUZZER_TYPE_COUNT] = { gpio_buzzer_on, tim_buzzer_on };
+    buzzer_off_callback buzzer_offs[BUZZER_TYPE_COUNT] = { gpio_buzzer_off, tim_buzzer_off };
+    buzzer_delay_callback buzzer_syncs[BUZZER_TYPE_COUNT] = { gpio_buzzer_play_sync, tim_buzzer_play_sync };
+    buzzer_tick_callback buzzer_ticks[BUZZER_TYPE_COUNT] = { HAL_GetTick, HAL_GetTick };
+
+    struct PostConfig post_configuration;
+
+    post_configuration.as_air_release = can_air_release_from_line;
+
+    for (size_t i = 0; i < (size_t)BUZZER_TYPE_COUNT; i++) {
+        post_configuration.buzzer_on_ptrs[i] = buzzer_ons[i];
+        post_configuration.buzzer_off_ptrs[i] = buzzer_offs[i];
+        post_configuration.buzzer_delay_ptrs[i] = buzzer_syncs[i];
+        post_configuration.buzzer_tick_ptrs[i] = buzzer_ticks[i];
+    }
+
+    post_configuration.inverters_send_drive_command = can_inverters_send_drive_command;
+    post_configuration.inverters_set_torque = can_inverters_set_torque;
+
+    post_configuration.raspberry_pin_control = gpio_raspberry_set_pin;
+    post_configuration.raspberry_initial_state = RASPBERRY_CONTROL_PIN_STATE_ON;
+
+    post_configuration.ts_send_command = can_ts_send_command;
+    // end of POST configuration --------------------------------------------------------
+
+    // single call run_state to verify POST
+    current_state = run_state(current_state, &post_configuration);
     /* USER CODE END 2 */
 
     /* Infinite loop */
