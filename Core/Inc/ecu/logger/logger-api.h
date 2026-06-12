@@ -1,7 +1,7 @@
 /*!
  * \file logger-api.h
  * \author Dorijan Di Zepp
- * \date 2026-06-01
+ * \date 2026-06-12
  * \brief API interface for initializing and writing to the system logger.
  */
 
@@ -17,11 +17,23 @@
  * If your system interfaces with separate physical protocols (such as a CAN bus), 
  * a distinct, separate `PalHandler` instance must be initialized for that peripheral 
  * to prevent transmission queue collisions and driver conflicts.
+ * \warning If the \ref LoggerState passed is invalid, by default the logger will be disabled.
  * \param[in] pal_h Pointer to the initialized PAL configuration tracking block.
+ * \param[in] state Indicate whether the logger should log any string passed or not after initialization.
  * \retval LOGGER_RC_OK if setup succeeds.
- * \retval LOGGER_RC_ERROR if the input pointer is NULL.
+ * \retval LOGGER_RC_ERROR if the input pointer is \c NULL.
  */
-enum LoggerReturnCode logger_api_init(struct PalHandler *pal_h);
+enum LoggerReturnCode logger_api_init(struct PalHandler *pal_h, enum LoggerState state);
+
+/*!
+ * \brief Modifies the runtime state of the logger dynamically.
+ * \details Can be used to change printing behavior at runtime, such as enabling 
+ * full logging during testing or limiting it during production loops.
+ * \param[in] state Target state to enable or disable logging.
+ * \retval LOGGER_RC_OK if the state has been successfully updated or matches the current configuration.
+ * \retval LOGGER_RC_ERROR if the state couldn't be updated (e.g bad state input).
+ */
+enum LoggerReturnCode logger_api_set_state(enum LoggerState state);
 
 /*!
  * \brief Dispatches a formatted log message over the registered PAL UART interface.
@@ -29,9 +41,9 @@ enum LoggerReturnCode logger_api_init(struct PalHandler *pal_h);
  * \param[in] level Severity level of the outgoing record.
  * \param[in] format Standard printf-style format configuration string.
  * \param[in] ... Variable argument listing.
- * \retval LOGGER_RC_OK Operation completed successfully and data was processed by the PAL.
+ * \retval LOGGER_RC_OK Operation completed successfully and data was processed by the PAL or the logger is disabled.
  * \retval LOGGER_RC_NULL_POINTER An invalid NULL pointer was passed for the format string or the internal module handler is uninitialized.
- * \retval LOGGER_RC_TRANSMISSION_ERROR String generation failed, or the downstream PAL physical hardware transmission encountered a failure.
+ * \retval LOGGER_RC_TRANSMISSION_ERROR String generation failed or the downstream PAL physical hardware transmission encountered a failure.
  * \retval LOGGER_RC_BUFFER_FULL The underlying PAL transmission queue or logging buffer has become saturated and cannot accept new records.
  */
 enum LoggerReturnCode logger_api_log(enum LoggerLevel level, const char *format, ...);

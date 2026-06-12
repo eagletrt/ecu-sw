@@ -1,7 +1,7 @@
 /*!
  * \file logger-api.c
  * \author Dorijan Di Zepp
- * \date 2026-06-01
+ * \date 2026-06-12
  * \brief API execution handling for logging records.
  */
 
@@ -19,18 +19,35 @@
  */
 EAGLETRT_STATIC struct LoggerHandler logger_handler;
 
-enum LoggerReturnCode logger_api_init(struct PalHandler *pal_h) {
+enum LoggerReturnCode logger_api_init(struct PalHandler *pal_h, enum LoggerState state) {
     if (pal_h == NULL) {
         return LOGGER_RC_NULL_POINTER;
     }
 
+    // If the state passed is invalid, disable automatically
+    logger_handler.state = (state < LOGGER_STATE_COUNT) ? state : LOGGER_STATE_DISABLED;
     logger_handler.pal_handler = pal_h;
+
+    return LOGGER_RC_OK;
+}
+
+enum LoggerReturnCode logger_api_set_state(enum LoggerState state) {
+    if (state >= LOGGER_STATE_COUNT) {
+        return LOGGER_RC_ERROR;
+    }
+
+    logger_handler.state = state;
     return LOGGER_RC_OK;
 }
 
 enum LoggerReturnCode logger_api_log(enum LoggerLevel level, const char *format, ...) {
     if (logger_handler.pal_handler == NULL || format == NULL) {
         return LOGGER_RC_NULL_POINTER;
+    }
+
+    // Return OK as the behavior is the one expected
+    if (logger_handler.state == LOGGER_STATE_DISABLED) {
+        return LOGGER_RC_OK;
     }
 
     char final_buffer[LOGGER_MAX_LINE_SIZE];
@@ -70,10 +87,11 @@ enum LoggerReturnCode logger_api_log(enum LoggerLevel level, const char *format,
         return LOGGER_RC_TRANSMISSION_ERROR; // Format parsing exception
     }
 
-    int total_len = offset + body_len;
+    // Measure the actual string safely populated inside the buffer boundary
+    size_t actual_len = strlen(final_buffer);
 
     // Determine transmission size including the string null terminator to match PAL style
-    uint32_t tx_bytes = (total_len >= (int)LOGGER_MAX_LINE_SIZE) ? (uint32_t)LOGGER_MAX_LINE_SIZE : (uint32_t)(total_len + 1);
+    uint32_t tx_bytes = (uint32_t)(actual_len + 1U);
 
     // Queue the formatted record into PAL and collapse lower-level parameters into abstract behaviors
     enum PalReturnCode pal_rc = pal_api_add_to_tx_queue(logger_handler.pal_handler, final_buffer, tx_bytes);
