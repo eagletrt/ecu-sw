@@ -47,6 +47,13 @@ enum CanCommunicationReturnCode can_communication_api_add_to_rx(enum CanCommunic
  * The provided \p application_state pointer is forwarded completely unmodified through 
  * the PAL translation layer directly into the callback execution context.
  *
+ * \warning This function will immediately fail and return \c CAN_COMM_RC_NULL_POINTER if 
+ * \p application_state is \c NULL, as the underlying PAL layer enforces non-null verification. 
+ * However, it is not strictly required that this parameter points to active application 
+ * memory; if your deserialization callback manages states globally or internally, you 
+ * can pass a placeholder address (such as a local reference or a handler reference) 
+ * strictly to bypass the PAL safety gate.
+ * 
  * \param[in,out] application_state Generic pointer to the destination target structure 
  * (e.g. vehicle status tracker) where the deserialized metrics will be stored by the callback.
  *
@@ -74,7 +81,7 @@ enum CanCommunicationReturnCode can_communication_api_add_to_tx(enum CanCommunic
 /*!
  * \brief Commits and flushes all staged buffers out to the 3 physical CAN hardware lines.
  * \details Executed at the very end of an FSM loop iteration to execute the actual 
- * transmission of all queued messages simultaneously.
+ * transmission of all queued messages simultaneously until the queues are completely empty.
  * \retval CAN_COMM_RC_OK if all staged buffers were successfully passed to the hardware layer.
  * \retval CAN_COMM_RC_TRANSMISSION_ERROR if downstream hardware encounters an IO or bus failure.
  */

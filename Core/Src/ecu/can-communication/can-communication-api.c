@@ -139,15 +139,25 @@ enum CanCommunicationReturnCode can_communication_api_process_tx(void) {
         return CAN_COMM_RC_NULL_POINTER;
     }
 
-    enum PalReturnCode rc1 = pal_api_process_tx(can_comm_handler.pal_can1);
-    enum PalReturnCode rc2 = pal_api_process_tx(can_comm_handler.pal_can2);
-    enum PalReturnCode rc3 = pal_api_process_tx(can_comm_handler.pal_can3);
+    for (int i = 0; i < (int)CAN_COMM_NODE_COUNT; ++i) {
+        struct PalHandler *target_pal = prv_can_communication_get_pal_handler_by_node((enum CanCommunicationNode)i);
 
-    // PAL returns PAL_RC_QUEUE_EMPTY if nothing was staged
-    if ((rc1 != PAL_RC_OK && rc1 != PAL_RC_QUEUE_EMPTY) ||
-        (rc2 != PAL_RC_OK && rc2 != PAL_RC_QUEUE_EMPTY) ||
-        (rc3 != PAL_RC_OK && rc3 != PAL_RC_QUEUE_EMPTY)) {
-        return CAN_COMM_RC_TRANSMISSION_ERROR;
+        if (target_pal == NULL) {
+            continue;
+        }
+
+        enum PalReturnCode pal_rc = PAL_RC_OK;
+
+        // Keep popping from the PAL queue until it is completely empty
+        while (pal_rc != PAL_RC_QUEUE_EMPTY) {
+
+            pal_rc = pal_api_process_tx(target_pal);
+
+            // If it's not OK and not EMPTY, something went fundamentally wrong in the hardware
+            if (pal_rc != PAL_RC_OK && pal_rc != PAL_RC_QUEUE_EMPTY) {
+                return CAN_COMM_RC_ERROR;
+            }
+        }
     }
 
     return CAN_COMM_RC_OK;
