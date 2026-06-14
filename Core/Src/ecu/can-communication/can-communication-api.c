@@ -1,7 +1,7 @@
 /*!
  * \file can-communication-api.c
  * \author Dorijan Di Zepp
- * \date 2026-06-13
+ * \date 2026-06-14
  * \brief Core implementation for managing ECU CAN bus mailboxes via PAL.
  */
 
@@ -15,39 +15,39 @@
 EAGLETRT_STATIC struct CanCommunicationHandler can_comm_handler;
 
 /*!
- * \brief Helper function to resolve a specific CAN node index to its assigned PAL handle.
+ * \brief Helper function to resolve a specific CAN network index to its assigned PAL handle.
  */
-EAGLETRT_STATIC struct PalHandler *prv_can_communication_get_pal_handler_by_node(enum CanCommunicationNode node) {
-    switch (node) {
-        case CAN_COMM_NODE_1:
-            return can_comm_handler.pal_can1;
-        case CAN_COMM_NODE_2:
-            return can_comm_handler.pal_can2;
-        case CAN_COMM_NODE_3:
-            return can_comm_handler.pal_can3;
+EAGLETRT_STATIC struct PalHandler *prv_can_communication_get_pal_handler_by_network_id(enum CanCommunicationNetwork network_id) {
+    switch (network_id) {
+        case CAN_COMM_NET_PRIMARY:
+            return can_comm_handler.primary_pal;
+        case CAN_COMM_NET_SECONDARY:
+            return can_comm_handler.secondary_pal;
+        case CAN_COMM_NET_INVERTER:
+            return can_comm_handler.inverter_pal;
         default:
             return NULL;
     }
 }
 
-enum CanCommunicationReturnCode can_communication_api_init(struct PalHandler *can1,
-                                                           struct PalHandler *can2,
-                                                           struct PalHandler *can3) {
-    if (can1 == NULL || can2 == NULL || can3 == NULL) {
+enum CanCommunicationReturnCode can_communication_api_init(struct PalHandler *primary_pal,
+                                                           struct PalHandler *secondary_pal,
+                                                           struct PalHandler *inverter_pal) {
+    if (primary_pal == NULL || secondary_pal == NULL || inverter_pal == NULL) {
         return CAN_COMM_RC_NULL_POINTER;
     }
 
-    can_comm_handler.pal_can1 = can1;
-    can_comm_handler.pal_can2 = can2;
-    can_comm_handler.pal_can3 = can3;
+    can_comm_handler.primary_pal = primary_pal;
+    can_comm_handler.secondary_pal = secondary_pal;
+    can_comm_handler.inverter_pal = inverter_pal;
 
     return CAN_COMM_RC_OK;
 }
 
-enum CanCommunicationReturnCode can_communication_api_add_to_rx(enum CanCommunicationNode node,
+enum CanCommunicationReturnCode can_communication_api_add_to_rx(enum CanCommunicationNetwork network_id,
                                                                 const uint8_t *buffer,
                                                                 uint32_t length) {
-    if (node >= CAN_COMM_NODE_COUNT) {
+    if (network_id >= CAN_COMM_NET_COUNT) {
         return CAN_COMM_RC_INVALID_ARGUMENT;
     }
 
@@ -55,7 +55,7 @@ enum CanCommunicationReturnCode can_communication_api_add_to_rx(enum CanCommunic
         return CAN_COMM_RC_NULL_POINTER;
     }
 
-    struct PalHandler *target_pal = prv_can_communication_get_pal_handler_by_node(node);
+    struct PalHandler *target_pal = prv_can_communication_get_pal_handler_by_network_id(network_id);
     if (target_pal == NULL) {
         return CAN_COMM_RC_NULL_POINTER;
     }
@@ -73,14 +73,14 @@ enum CanCommunicationReturnCode can_communication_api_add_to_rx(enum CanCommunic
 }
 
 enum CanCommunicationReturnCode can_communication_api_process_rx(void *application_state) {
-    if (can_comm_handler.pal_can1 == NULL ||
-        can_comm_handler.pal_can2 == NULL ||
-        can_comm_handler.pal_can3 == NULL) {
+    if (can_comm_handler.primary_pal == NULL ||
+        can_comm_handler.secondary_pal == NULL ||
+        can_comm_handler.inverter_pal == NULL) {
         return CAN_COMM_RC_NULL_POINTER;
     }
 
-    for (int i = 0; i < (int)CAN_COMM_NODE_COUNT; ++i) {
-        struct PalHandler *target_pal = prv_can_communication_get_pal_handler_by_node((enum CanCommunicationNode)i);
+    for (int i = 0; i < (int)CAN_COMM_NET_COUNT; ++i) {
+        struct PalHandler *target_pal = prv_can_communication_get_pal_handler_by_network_id((enum CanCommunicationNetwork)i);
 
         if (target_pal == NULL) {
             continue;
@@ -104,10 +104,10 @@ enum CanCommunicationReturnCode can_communication_api_process_rx(void *applicati
     return CAN_COMM_RC_OK;
 }
 
-enum CanCommunicationReturnCode can_communication_api_add_to_tx(enum CanCommunicationNode node,
+enum CanCommunicationReturnCode can_communication_api_add_to_tx(enum CanCommunicationNetwork network_id,
                                                                 const uint8_t *buffer,
                                                                 uint32_t length) {
-    if (node >= CAN_COMM_NODE_COUNT) {
+    if (network_id >= CAN_COMM_NET_COUNT) {
         return CAN_COMM_RC_INVALID_ARGUMENT;
     }
 
@@ -115,7 +115,7 @@ enum CanCommunicationReturnCode can_communication_api_add_to_tx(enum CanCommunic
         return CAN_COMM_RC_NULL_POINTER;
     }
 
-    struct PalHandler *target_pal = prv_can_communication_get_pal_handler_by_node(node);
+    struct PalHandler *target_pal = prv_can_communication_get_pal_handler_by_network_id(network_id);
     if (target_pal == NULL) {
         return CAN_COMM_RC_NULL_POINTER;
     }
@@ -133,14 +133,14 @@ enum CanCommunicationReturnCode can_communication_api_add_to_tx(enum CanCommunic
 }
 
 enum CanCommunicationReturnCode can_communication_api_process_tx(void) {
-    if (can_comm_handler.pal_can1 == NULL ||
-        can_comm_handler.pal_can2 == NULL ||
-        can_comm_handler.pal_can3 == NULL) {
+    if (can_comm_handler.primary_pal == NULL ||
+        can_comm_handler.secondary_pal == NULL ||
+        can_comm_handler.inverter_pal == NULL) {
         return CAN_COMM_RC_NULL_POINTER;
     }
 
-    for (int i = 0; i < (int)CAN_COMM_NODE_COUNT; ++i) {
-        struct PalHandler *target_pal = prv_can_communication_get_pal_handler_by_node((enum CanCommunicationNode)i);
+    for (int i = 0; i < (int)CAN_COMM_NET_COUNT; ++i) {
+        struct PalHandler *target_pal = prv_can_communication_get_pal_handler_by_network_id((enum CanCommunicationNetwork)i);
 
         if (target_pal == NULL) {
             continue;

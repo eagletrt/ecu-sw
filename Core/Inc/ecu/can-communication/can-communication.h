@@ -1,7 +1,7 @@
 /*!
  * \file can-communication.h
  * \author Dorijan Di Zepp
- * \date 2026-06-13
+ * \date 2026-06-14
  * \brief Data types, enums and structures for the CAN communication module.
  */
 
@@ -23,24 +23,24 @@ enum CanCommunicationReturnCode {
 };
 
 /*!
- * \brief Identifiers for the physical CAN networks used by the ECU.
+ * \brief Identifiers for the physical CAN networks managed by the ECU.
  */
-enum CanCommunicationNode {
-    CAN_COMM_NODE_1,    /*!< Target the CAN 1 bus. */
-    CAN_COMM_NODE_2,    /*!< Target the CAN 2 bus. */
-    CAN_COMM_NODE_3,    /*!< Target the CAN 3 bus. */
-    CAN_COMM_NODE_COUNT /*!< Sentinel value used exclusively to verify enum parameter validity. */
+enum CanCommunicationNetwork {
+    CAN_COMM_NET_PRIMARY,   /*!< Target the Primary CAN bus. */
+    CAN_COMM_NET_SECONDARY, /*!< Target the Secondary CAN bus. */
+    CAN_COMM_NET_INVERTER,  /*!< Target the Inverters CAN bus. */
+    CAN_COMM_NET_COUNT      /*!< Sentinel value used exclusively to verify network parameter validity. */
 };
 
 /*!
  * \brief Internal context state handler container.
- * \note This struct maintains 3 distinct PAL pointers to ensure entirely 
- * separate TX/RX buffering queues for the 3 distinct CAN peripherals.
+ * \note This struct maintains distinct PAL pointers to ensure entirely 
+ * separate TX/RX buffering queues for the individual CAN networks.
  */
 struct CanCommunicationHandler {
-    struct PalHandler *pal_can1; /*!< Referenced PAL tracking instance for CAN 1 routing. */
-    struct PalHandler *pal_can2; /*!< Referenced PAL tracking instance for CAN 2 routing. */
-    struct PalHandler *pal_can3; /*!< Referenced PAL tracking instance for CAN 3 routing. */
+    struct PalHandler *primary_pal;   /*!< Referenced PAL tracking instance for the Primary network routing. */
+    struct PalHandler *secondary_pal; /*!< Referenced PAL tracking instance for the Secondary network routing. */
+    struct PalHandler *inverter_pal;  /*!< Referenced PAL tracking instance for the Inverter network routing. */
 };
 
 #endif
