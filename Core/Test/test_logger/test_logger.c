@@ -1,7 +1,7 @@
 /*!
  * \file test_logger.c
  * \author Dorijan Di Zepp
- * \date 2026-06-12
+ * \date 2026-06-14
  * \brief Unit tests using FFF for testing the logger module.
  */
 
@@ -15,7 +15,7 @@
 
 extern struct LoggerHandler logger_handler;
 
-// Global variables to manage a PAL usage
+// Global variables to manage PAL usage
 EAGLETRT_STATIC struct PalHandler pal_handler;
 EAGLETRT_STATIC struct ArenaAllocatorHandler arena_allocator_handler;
 
@@ -26,11 +26,11 @@ EAGLETRT_STATIC struct ArenaAllocatorHandler arena_allocator_handler;
 
 DEFINE_FFF_GLOBALS;
 
-// mocks for logger
+// Mocks for logger
 FAKE_VALUE_FUNC(enum PalReturnCode, mock_uart_hardware_transmit, const struct PalMessage *);
 
 void setUp(void) {
-    // initialize the arena allocator to allocate pal
+    // Initialize the arena allocator to allocate pal
     arena_allocator_api_init(&arena_allocator_handler);
 
     pal_api_init(&pal_handler,
@@ -43,10 +43,10 @@ void setUp(void) {
                  NULL,
                  &arena_allocator_handler);
 
-    // initialize the logger with default enabled state
-    logger_api_init(&pal_handler, LOGGER_STATE_ENABLED);
+    // Initialize the logger default enabled state
+    logger_api_init(&pal_handler, true);
 
-    // reset mock state
+    // Reset mock state
     RESET_FAKE(mock_uart_hardware_transmit);
 
     FFF_RESET_HISTORY();
@@ -62,7 +62,7 @@ void setUp(void) {
 void test_logger_api_init_should_fail_on_null_pointer(void) {
     logger_handler.pal_handler = NULL;
 
-    enum LoggerReturnCode rc = logger_api_init(NULL, LOGGER_STATE_ENABLED);
+    enum LoggerReturnCode rc = logger_api_init(NULL, true);
 
     TEST_ASSERT_EQUAL_MESSAGE(LOGGER_RC_NULL_POINTER, rc, "Initialization loop failed to return NULL_POINTER when passed a null hardware binding");
     TEST_ASSERT_NULL_MESSAGE(logger_handler.pal_handler,
@@ -72,11 +72,11 @@ void test_logger_api_init_should_fail_on_null_pointer(void) {
 void test_logger_api_init_should_succeed_with_correct_pal_handler(void) {
     logger_handler.pal_handler = NULL;
 
-    enum LoggerReturnCode rc = logger_api_init(&pal_handler, LOGGER_STATE_ENABLED);
+    enum LoggerReturnCode rc = logger_api_init(&pal_handler, true);
 
     TEST_ASSERT_EQUAL_MESSAGE(LOGGER_RC_OK, rc, "Initialization loop failed to return OK when passed valid peripheral dependencies");
     TEST_ASSERT_EQUAL_PTR_MESSAGE(&pal_handler, logger_handler.pal_handler, "Internal module hardware interface address binding mismatch");
-    TEST_ASSERT_EQUAL_MESSAGE(LOGGER_STATE_ENABLED, logger_handler.state, "Initial startup tracking state configuration mismatch");
+    TEST_ASSERT_TRUE_MESSAGE(logger_handler.logger_state, "Initial startup tracking state configuration mismatch");
 }
 /*! \} */
 
@@ -86,30 +86,21 @@ void test_logger_api_init_should_succeed_with_correct_pal_handler(void) {
  */
 
 void test_logger_api_set_state_should_successfully_change_to_disabled(void) {
-    logger_api_init(&pal_handler, LOGGER_STATE_ENABLED);
+    logger_api_init(&pal_handler, true);
 
-    enum LoggerReturnCode rc = logger_api_set_state(LOGGER_STATE_DISABLED);
+    // logger_api_set_state now returns void
+    logger_api_set_state(false);
 
-    TEST_ASSERT_EQUAL_MESSAGE(LOGGER_RC_OK, rc, "Setter failed to return OK when transitioning layout to DISABLED");
-    TEST_ASSERT_EQUAL_MESSAGE(LOGGER_STATE_DISABLED, logger_handler.state, "Logger tracking state attribute was not updated to DISABLED");
+    TEST_ASSERT_FALSE_MESSAGE(logger_handler.logger_state, "Logger tracking state attribute was not updated to false (DISABLED)");
 }
 
 void test_logger_api_set_state_should_successfully_change_to_enabled(void) {
-    logger_api_init(&pal_handler, LOGGER_STATE_DISABLED);
+    logger_api_init(&pal_handler, false);
 
-    enum LoggerReturnCode rc = logger_api_set_state(LOGGER_STATE_ENABLED);
+    // logger_api_set_state now returns void
+    logger_api_set_state(true);
 
-    TEST_ASSERT_EQUAL_MESSAGE(LOGGER_RC_OK, rc, "Setter failed to return OK when transitioning layout to ENABLED");
-    TEST_ASSERT_EQUAL_MESSAGE(LOGGER_STATE_ENABLED, logger_handler.state, "Logger tracking state attribute was not updated to ENABLED");
-}
-
-void test_logger_api_set_state_should_fail_on_out_of_bounds_sentinel(void) {
-    logger_api_init(&pal_handler, LOGGER_STATE_ENABLED);
-
-    enum LoggerReturnCode rc = logger_api_set_state(LOGGER_STATE_COUNT);
-
-    TEST_ASSERT_EQUAL_MESSAGE(LOGGER_RC_ERROR, rc, "Setter failed to reject out-of-bounds sentinel parameters with an ERROR return value");
-    TEST_ASSERT_EQUAL_MESSAGE(LOGGER_STATE_ENABLED, logger_handler.state, "Logger tracking state was corrupted or overwritten by an invalid enum boundary entry");
+    TEST_ASSERT_TRUE_MESSAGE(logger_handler.logger_state, "Logger tracking state attribute was not updated to true (ENABLED)");
 }
 /*! \} */
 
@@ -128,7 +119,7 @@ void test_logger_api_log_should_fail_if_module_not_initialized(void) {
 }
 
 void test_logger_api_log_should_silently_bypass_and_return_ok_when_disabled(void) {
-    logger_api_init(&pal_handler, LOGGER_STATE_DISABLED);
+    logger_api_init(&pal_handler, false);
 
     enum LoggerReturnCode rc = logger_api_log(LOGGER_LEVEL_ERROR, "Critical SDC Exception Code %d", 500);
 
@@ -199,7 +190,6 @@ int main(void) {
      */
     RUN_TEST(test_logger_api_set_state_should_successfully_change_to_disabled);
     RUN_TEST(test_logger_api_set_state_should_successfully_change_to_enabled);
-    RUN_TEST(test_logger_api_set_state_should_fail_on_out_of_bounds_sentinel);
     /*! \} */
 
     /*!

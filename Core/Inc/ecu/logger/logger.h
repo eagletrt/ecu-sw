@@ -1,14 +1,15 @@
 /*!
  * \file logger.h
  * \author Dorijan Di Zepp
- * \date 2026-06-12
- * \brief Data types, enums and structures for the system logger module.
+ * \date 2026-06-14
+ * \brief Data types and structures for the system logger module.
  */
 
 #ifndef LOGGER_H
 #define LOGGER_H
 
 #include <stdint.h>
+#include <stdbool.h>
 #include "pal-api.h"
 
 /*!
@@ -23,22 +24,14 @@ enum LoggerReturnCode {
 };
 
 /*!
- * \brief Operational states for the logger.
- */
-enum LoggerState {
-    LOGGER_STATE_DISABLED, /*!< The logger will ignore any logging request. */
-    LOGGER_STATE_ENABLED,  /*!< The logger will try to log any information passed. */
-    LOGGER_STATE_COUNT,    /*!< Sentinel value used exclusively to verify enum parameter validity. */
-};
-
-/*!
  * \brief Severity level for logging records.
  */
 enum LoggerLevel {
     LOGGER_LEVEL_DEBUG, /*!< Verbose diagnostics for developer use. */
     LOGGER_LEVEL_INFO,  /*!< Routine operational updates. */
     LOGGER_LEVEL_WARN,  /*!< Non-fatal anomalies or timing retries. */
-    LOGGER_LEVEL_ERROR  /*!< Fatal system faults. */
+    LOGGER_LEVEL_ERROR, /*!< Fatal system faults. */
+    LOGGER_LEVEL_COUNT  /*!< Sentinel value to validate the logger level. */
 };
 
 /*!
@@ -48,7 +41,7 @@ enum LoggerLevel {
  */
 struct LoggerHandler {
     struct PalHandler *pal_handler; /*!< Referenced PAL tracking instance for UART routing. */
-    enum LoggerState state;         /*!< Current runtime filtering state of the logger. */
+    bool logger_state;              /*!< Active execution flag: true to process logs, false to mute logging output. */
 };
 
 #endif
