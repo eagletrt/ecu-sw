@@ -291,5 +291,67 @@ void HAL_CAN_MspDeInit(CAN_HandleTypeDef *canHandle) {
 }
 
 /* USER CODE BEGIN 1 */
+enum CanCommunicationReturnCode can_send_primary(const struct CanCommunicationFrame *frame) {
+    CAN_TxHeaderTypeDef header = { 0 };
+    uint32_t tx_mailbox = 0U;
 
+    header.StdId = (frame->id <= 0x7FFU) ? frame->id : 0U;
+    header.ExtId = (frame->id > 0x7FFU) ? frame->id : 0U;
+    header.IDE = (frame->id > 0x7FFU) ? CAN_ID_EXT : CAN_ID_STD;
+    header.RTR = CAN_RTR_DATA;
+    header.DLC = frame->length;
+
+    if (HAL_CAN_AddTxMessage(&hcan1, &header, (uint8_t *)frame->data, &tx_mailbox) != HAL_OK) {
+        return CAN_COMM_RC_TRANSMISSION_ERROR;
+    }
+    return CAN_COMM_RC_OK;
+}
+
+enum CanCommunicationReturnCode can_send_secondary(const struct CanCommunicationFrame *frame) {
+    CAN_TxHeaderTypeDef header = { 0 };
+    uint32_t tx_mailbox = 0U;
+
+    header.StdId = (frame->id <= 0x7FFU) ? frame->id : 0U;
+    header.ExtId = (frame->id > 0x7FFU) ? frame->id : 0U;
+    header.IDE = (frame->id > 0x7FFU) ? CAN_ID_EXT : CAN_ID_STD;
+    header.RTR = CAN_RTR_DATA;
+    header.DLC = frame->length;
+
+    if (HAL_CAN_AddTxMessage(&hcan2, &header, (uint8_t *)frame->data, &tx_mailbox) != HAL_OK) {
+        return CAN_COMM_RC_TRANSMISSION_ERROR;
+    }
+    return CAN_COMM_RC_OK;
+}
+
+enum CanCommunicationReturnCode can_send_inverter(const struct CanCommunicationFrame *frame) {
+    CAN_TxHeaderTypeDef header = { 0 };
+    uint32_t tx_mailbox = 0U;
+
+    header.StdId = (frame->id <= 0x7FFU) ? frame->id : 0U;
+    header.ExtId = (frame->id > 0x7FFU) ? frame->id : 0U;
+    header.IDE = (frame->id > 0x7FFU) ? CAN_ID_EXT : CAN_ID_STD;
+    header.RTR = CAN_RTR_DATA;
+    header.DLC = frame->length;
+
+    if (HAL_CAN_AddTxMessage(&hcan3, &header, (uint8_t *)frame->data, &tx_mailbox) != HAL_OK) {
+        return CAN_COMM_RC_TRANSMISSION_ERROR;
+    }
+    return CAN_COMM_RC_OK;
+}
+
+void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan) {
+    CAN_RxHeaderTypeDef header = { 0 };
+    struct CanCommunicationFrame msg;
+
+    if (HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO0, &header, msg.data) == HAL_OK) {
+        msg.id = (header.IDE == CAN_ID_EXT) ? header.ExtId : header.StdId;
+        msg.length = (uint8_t)header.DLC;
+
+        /* Resolve network enum via a ternary mapping */
+        enum CanCommunicationNetwork net = (hcan == &hcan1) ? CAN_COMM_NET_PRIMARY : (hcan == &hcan2) ? CAN_COMM_NET_SECONDARY
+                                                                                                      : CAN_COMM_NET_INVERTER;
+
+        (void)can_communication_api_add_to_rx(net, &msg);
+    }
+}
 /* USER CODE END 1 */
