@@ -291,52 +291,96 @@ void HAL_CAN_MspDeInit(CAN_HandleTypeDef *canHandle) {
 }
 
 /* USER CODE BEGIN 1 */
-enum CanCommunicationReturnCode can_send_primary(const struct CanCommunicationFrame *frame) {
-    CAN_TxHeaderTypeDef header = { 0 };
+
+/*!
+ * \brief Returns the CAN network used based on the native ST HAL CAN handle.
+ * \warning If the \c hcan refers to an undefined instance, the returned value is a non-valid network (\c CAN_COMM_NET_COUNT).
+ * \param[in] hcan Pointer to the ST HAL CAN handle instance structure.
+ * \retval CAN_COMM_NET_PRIMARY If the handler refers to the primary network peripheral instance.
+ * \retval CAN_COMM_NET_SECONDARY If the handler refers to the secondary network peripheral instance.
+ * \retval CAN_COMM_NET_INVERTER If the handler refers to the inverter network peripheral instance.
+ * \retval CAN_COMM_NET_COUNT If the handler doesn't refer to any valid CAN network.
+ */
+EAGLETRT_STATIC_INLINE enum CanCommunicationNetwork prv_can_get_network(const CAN_HandleTypeDef *hcan) {
+    if (hcan == NULL || hcan->Instance == NULL) {
+        return CAN_COMM_NET_COUNT;
+    }
+
+    if (hcan->Instance == CAN1) {
+        return CAN_COMM_NET_PRIMARY;
+    }
+
+    if (hcan->Instance == CAN2) {
+        return CAN_COMM_NET_SECONDARY;
+    }
+
+    if (hcan->Instance == CAN3) {
+        return CAN_COMM_NET_INVERTER;
+    }
+
+    return CAN_COMM_NET_COUNT;
+}
+
+/*!
+ * \brief Returns the native ST HAL CAN handler based on the network enum.
+ * \param[in] network The target network track enum.
+ * \return Pointer to the matched global CAN_HandleTypeDef, or \c NULL if invalid.
+ */
+EAGLETRT_STATIC_INLINE CAN_HandleTypeDef *prv_can_get_handler(enum CanCommunicationNetwork network) {
+    switch (network) {
+        case CAN_COMM_NET_PRIMARY:
+            return &hcan1;
+        case CAN_COMM_NET_SECONDARY:
+            return &hcan2;
+        case CAN_COMM_NET_INVERTER:
+            return &hcan3;
+        default:
+            return NULL;
+    }
+}
+
+/*!
+ * \brief Internal unified helper to write an abstract frame out to an ST HAL CAN peripheral.
+ * \param[in] network The network track enum indicating which hardware peripheral to target.
+ * \param[in] frame Pointer to the abstract frame structure containing the payload.
+ */
+EAGLETRT_STATIC enum CanCommunicationReturnCode prv_can_send_to_hardware(enum CanCommunicationNetwork network, const struct CanCommunicationFrame *frame) {
+    CAN_HandleTypeDef *hcan = prv_can_get_handler(network);
+
+    if (hcan == NULL || frame == NULL) {
+        return CAN_COMM_RC_NULL_POINTER;
+    }
+    if (frame->length > CAN_COMM_FRAME_DATA_SIZE) {
+        return CAN_COMM_RC_INVALID_LENGTH;
+    }
+
+    CAN_TxHeaderTypeDef tx_header;
     uint32_t tx_mailbox = 0U;
 
-    header.StdId = (frame->id <= 0x7FFU) ? frame->id : 0U;
-    header.ExtId = (frame->id > 0x7FFU) ? frame->id : 0U;
-    header.IDE = (frame->id > 0x7FFU) ? CAN_ID_EXT : CAN_ID_STD;
-    header.RTR = CAN_RTR_DATA;
-    header.DLC = frame->length;
+    tx_header.StdId = frame->id;
+    tx_header.ExtId = 0U;
+    tx_header.IDE = CAN_ID_STD;
+    tx_header.RTR = CAN_RTR_DATA;
+    tx_header.DLC = frame->length;
+    tx_header.TransmitGlobalTime = DISABLE;
 
-    if (HAL_CAN_AddTxMessage(&hcan1, &header, (uint8_t *)frame->data, &tx_mailbox) != HAL_OK) {
+    if (HAL_CAN_AddTxMessage(hcan, &tx_header, (uint8_t *)frame->data, &tx_mailbox) != HAL_OK) {
         return CAN_COMM_RC_TRANSMISSION_ERROR;
     }
+
     return CAN_COMM_RC_OK;
+}
+
+enum CanCommunicationReturnCode can_send_primary(const struct CanCommunicationFrame *frame) {
+    return prv_can_send_to_hardware(CAN_COMM_NET_PRIMARY, frame);
 }
 
 enum CanCommunicationReturnCode can_send_secondary(const struct CanCommunicationFrame *frame) {
-    CAN_TxHeaderTypeDef header = { 0 };
-    uint32_t tx_mailbox = 0U;
-
-    header.StdId = (frame->id <= 0x7FFU) ? frame->id : 0U;
-    header.ExtId = (frame->id > 0x7FFU) ? frame->id : 0U;
-    header.IDE = (frame->id > 0x7FFU) ? CAN_ID_EXT : CAN_ID_STD;
-    header.RTR = CAN_RTR_DATA;
-    header.DLC = frame->length;
-
-    if (HAL_CAN_AddTxMessage(&hcan2, &header, (uint8_t *)frame->data, &tx_mailbox) != HAL_OK) {
-        return CAN_COMM_RC_TRANSMISSION_ERROR;
-    }
-    return CAN_COMM_RC_OK;
+    return prv_can_send_to_hardware(CAN_COMM_NET_SECONDARY, frame);
 }
 
 enum CanCommunicationReturnCode can_send_inverter(const struct CanCommunicationFrame *frame) {
-    CAN_TxHeaderTypeDef header = { 0 };
-    uint32_t tx_mailbox = 0U;
-
-    header.StdId = (frame->id <= 0x7FFU) ? frame->id : 0U;
-    header.ExtId = (frame->id > 0x7FFU) ? frame->id : 0U;
-    header.IDE = (frame->id > 0x7FFU) ? CAN_ID_EXT : CAN_ID_STD;
-    header.RTR = CAN_RTR_DATA;
-    header.DLC = frame->length;
-
-    if (HAL_CAN_AddTxMessage(&hcan3, &header, (uint8_t *)frame->data, &tx_mailbox) != HAL_OK) {
-        return CAN_COMM_RC_TRANSMISSION_ERROR;
-    }
-    return CAN_COMM_RC_OK;
+    return prv_can_send_to_hardware(CAN_COMM_NET_INVERTER, frame);
 }
 
 void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan) {
@@ -347,11 +391,18 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan) {
         msg.id = (header.IDE == CAN_ID_EXT) ? header.ExtId : header.StdId;
         msg.length = (uint8_t)header.DLC;
 
-        /* Resolve network enum via a ternary mapping */
-        enum CanCommunicationNetwork net = (hcan == &hcan1) ? CAN_COMM_NET_PRIMARY : (hcan == &hcan2) ? CAN_COMM_NET_SECONDARY
-                                                                                                      : CAN_COMM_NET_INVERTER;
+        // Based on the handler, retrieve the selected network
+        enum CanCommunicationNetwork network = prv_can_get_network(hcan);
 
-        (void)can_communication_api_add_to_rx(net, &msg);
+        if (network < CAN_COMM_NET_COUNT) {
+            /*
+            The return value of the call is not used as no action can be taken within the interrupt
+            such as retry, waiting or heavy error-handling.
+            It is possible, if needed, to add a logger line to let know the user that something
+            bad happened during the queueing of the frame.
+            */
+            EAGLETRT_API_UNUSED(can_communication_api_add_to_rx(network, &msg));
+        }
     }
 }
 /* USER CODE END 1 */

@@ -1,13 +1,13 @@
 /*!
- * \file can-communication-router.c
+ * \file can-communication-router-api.c
  * \author Dorijan Di Zepp
- * \date 2026-06-20
+ * \date 2026-06-22
  * \brief Routing and deserialization stubs for incoming ECU network traffic.
  */
 
-#include "can-communication-router.h"
+#include "can-communication-router-api.h"
 
-enum CanCommunicationReturnCode can_communication_router_receive_primary(const struct CanCommunicationFrame *frame) {
+enum CanCommunicationReturnCode can_communication_router_api_receive_primary(const struct CanCommunicationFrame *frame) {
     if (frame == NULL) {
         return CAN_COMM_RC_NULL_POINTER;
     }
@@ -18,7 +18,7 @@ enum CanCommunicationReturnCode can_communication_router_receive_primary(const s
     return CAN_COMM_RC_OK;
 }
 
-enum CanCommunicationReturnCode can_communication_router_receive_secondary(const struct CanCommunicationFrame *frame) {
+enum CanCommunicationReturnCode can_communication_router_api_receive_secondary(const struct CanCommunicationFrame *frame) {
     if (frame == NULL) {
         return CAN_COMM_RC_NULL_POINTER;
     }
@@ -29,7 +29,7 @@ enum CanCommunicationReturnCode can_communication_router_receive_secondary(const
     return CAN_COMM_RC_OK;
 }
 
-enum CanCommunicationReturnCode can_communication_router_receive_inverter(const struct CanCommunicationFrame *frame) {
+enum CanCommunicationReturnCode can_communication_router_api_receive_inverter(const struct CanCommunicationFrame *frame) {
     if (frame == NULL) {
         return CAN_COMM_RC_NULL_POINTER;
     }
