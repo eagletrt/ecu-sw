@@ -1,7 +1,7 @@
 /*!
  * \file can-communication-router-api.h
  * \author Dorijan Di Zepp
- * \date 2026-06-22
+ * \date 2026-06-24
  * \brief Routing and deserialization hooks for incoming ECU network traffic.
  */
 
@@ -13,24 +13,24 @@
 /*!
  * \brief Function for incoming CAN frames on primary network.
  * \param[in] frame The frame just removed from the RX queue.
- * \retval CAN_COMM_RC_OK on success.
- * \retval CAN_COMM_RC_RECEIVE_HANDLER_ERROR if dispatch fails.
+ * \retval CAN_COMMUNICATION_RC_OK on success.
+ * \retval CAN_COMMUNICATION_RC_RECEIVE_HANDLER_ERROR if dispatch fails.
  */
 enum CanCommunicationReturnCode can_communication_router_api_receive_primary(const struct CanCommunicationFrame *frame);
 
 /*!
  * \brief Function for incoming CAN frames on secondary network.
  * \param[in] frame The frame just removed from the RX queue.
- * \retval CAN_COMM_RC_OK on success.
- * \retval CAN_COMM_RC_RECEIVE_HANDLER_ERROR if dispatch fails.
+ * \retval CAN_COMMUNICATION_RC_OK on success.
+ * \retval CAN_COMMUNICATION_RC_RECEIVE_HANDLER_ERROR if dispatch fails.
  */
 enum CanCommunicationReturnCode can_communication_router_api_receive_secondary(const struct CanCommunicationFrame *frame);
 
 /*!
  * \brief Function for incoming CAN frames on inverter network.
  * \param[in] frame The frame just removed from the RX queue.
- * \retval CAN_COMM_RC_OK on success.
- * \retval CAN_COMM_RC_RECEIVE_HANDLER_ERROR if dispatch fails.
+ * \retval CAN_COMMUNICATION_RC_OK on success.
+ * \retval CAN_COMMUNICATION_RC_RECEIVE_HANDLER_ERROR if dispatch fails.
  */
 enum CanCommunicationReturnCode can_communication_router_api_receive_inverter(const struct CanCommunicationFrame *frame);
 

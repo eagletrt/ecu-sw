@@ -1,6 +1,6 @@
 /*!
  * \file can-communication-api.c
- * \date 2026-06-22
+ * \date 2026-06-24
  * \authors Dorijan Di Zepp
  * \brief Implementation of the CAN-bus communication module.
  */
@@ -40,7 +40,7 @@ EAGLETRT_STATIC enum PalReturnCode prv_pal_send_dispatch(enum CanCommunicationNe
     if (user_send == NULL) {
         return PAL_RC_NULL_POINTER;
     }
-    if (user_send(&frame) != CAN_COMM_RC_OK) {
+    if (user_send(&frame) != CAN_COMMUNICATION_RC_OK) {
         return PAL_RC_IO_ERROR;
     }
     return PAL_RC_OK;
@@ -74,17 +74,17 @@ EAGLETRT_STATIC enum PalReturnCode prv_pal_send_inverter(const struct PalMessage
  * \param[in] config   User-supplied callbacks for this network.
  * \param[in] pal_send PAL sending function to this network.
  *
- * \retval CAN_COMM_RC_OK on success.
- * \retval CAN_COMM_RC_NULL_POINTER if any required callback is \c NULL.
- * \retval CAN_COMM_RC_INVALID_NETWORK if \p network is out of range.
- * \retval CAN_COMM_RC_ERROR if PAL fails to initialise.
+ * \retval CAN_COMMUNICATION_RC_OK on success.
+ * \retval CAN_COMMUNICATION_RC_NULL_POINTER if any required callback is \c NULL.
+ * \retval CAN_COMMUNICATION_RC_INVALID_NETWORK if \p network is out of range.
+ * \retval CAN_COMMUNICATION_RC_ERROR if PAL fails to initialise.
  */
 EAGLETRT_STATIC enum CanCommunicationReturnCode prv_can_communication_api_init_network(enum CanCommunicationNetwork network, const struct CanCommunicationNetworkConfig config, pal_send_callback pal_send) {
     if (config.send == NULL || config.on_receive == NULL) {
-        return CAN_COMM_RC_NULL_POINTER;
+        return CAN_COMMUNICATION_RC_NULL_POINTER;
     }
     if (network >= CAN_COMM_NET_COUNT) {
-        return CAN_COMM_RC_INVALID_NETWORK;
+        return CAN_COMMUNICATION_RC_INVALID_NETWORK;
     }
     memset(&handler.networks[network], 0, sizeof(handler.networks[network]));
 
@@ -93,18 +93,18 @@ EAGLETRT_STATIC enum CanCommunicationReturnCode prv_can_communication_api_init_n
 
     if (pal_api_init(
             &handler.networks[network].pal,
-            CAN_COMM_RX_QUEUE_CAPACITY,
-            CAN_COMM_TX_QUEUE_CAPACITY,
+            CAN_COMMUNICATION_RX_QUEUE_CAPACITY,
+            CAN_COMMUNICATION_TX_QUEUE_CAPACITY,
             (uint32_t)sizeof(struct CanCommunicationFrame),
             NULL,
             pal_send,
             config.cs_enter,
             config.cs_exit,
             &handler.arena) != PAL_RC_OK) {
-        return CAN_COMM_RC_ERROR;
+        return CAN_COMMUNICATION_RC_ERROR;
     }
 
-    return CAN_COMM_RC_OK;
+    return CAN_COMMUNICATION_RC_OK;
 }
 
 /*!
@@ -112,13 +112,13 @@ EAGLETRT_STATIC enum CanCommunicationReturnCode prv_can_communication_api_init_n
  */
 EAGLETRT_STATIC enum CanCommunicationReturnCode prv_enqueue(enum CanCommunicationNetwork network, const struct CanCommunicationFrame *frame, bool to_tx) {
     if (frame == NULL) {
-        return CAN_COMM_RC_NULL_POINTER;
+        return CAN_COMMUNICATION_RC_NULL_POINTER;
     }
     if (network >= CAN_COMM_NET_COUNT) {
-        return CAN_COMM_RC_INVALID_NETWORK;
+        return CAN_COMMUNICATION_RC_INVALID_NETWORK;
     }
-    if (frame->length > CAN_COMM_FRAME_DATA_SIZE) {
-        return CAN_COMM_RC_INVALID_LENGTH;
+    if (frame->length > CAN_COMMUNICATION_FRAME_DATA_SIZE) {
+        return CAN_COMMUNICATION_RC_INVALID_LENGTH;
     }
 
     struct CanCommunicationFrame buffer = *frame;
@@ -128,19 +128,19 @@ EAGLETRT_STATIC enum CanCommunicationReturnCode prv_enqueue(enum CanCommunicatio
 
     switch (return_code) {
         case PAL_RC_OK:
-            return CAN_COMM_RC_OK;
+            return CAN_COMMUNICATION_RC_OK;
         case PAL_RC_QUEUE_FULL:
-            return CAN_COMM_RC_QUEUE_FULL;
+            return CAN_COMMUNICATION_RC_QUEUE_FULL;
         case PAL_RC_NULL_POINTER:
-            return CAN_COMM_RC_NULL_POINTER;
+            return CAN_COMMUNICATION_RC_NULL_POINTER;
         default:
-            return CAN_COMM_RC_ERROR;
+            return CAN_COMMUNICATION_RC_ERROR;
     }
 }
 
 enum CanCommunicationReturnCode can_communication_api_init(const struct CanCommunicationNetworkConfig configs[CAN_COMM_NET_COUNT]) {
     if (configs == NULL) {
-        return CAN_COMM_RC_NULL_POINTER;
+        return CAN_COMMUNICATION_RC_NULL_POINTER;
     }
 
     memset(&handler, 0, sizeof(handler));
@@ -154,12 +154,12 @@ enum CanCommunicationReturnCode can_communication_api_init(const struct CanCommu
 
     for (enum CanCommunicationNetwork network = 0; network < CAN_COMM_NET_COUNT; ++network) {
         const enum CanCommunicationReturnCode return_code = prv_can_communication_api_init_network(network, configs[network], pal_send_callbacks[network]);
-        if (return_code != CAN_COMM_RC_OK) {
+        if (return_code != CAN_COMMUNICATION_RC_OK) {
             return return_code;
         }
     }
 
-    return CAN_COMM_RC_OK;
+    return CAN_COMMUNICATION_RC_OK;
 }
 
 enum CanCommunicationReturnCode can_communication_api_add_to_tx(enum CanCommunicationNetwork network, const struct CanCommunicationFrame *frame) {
@@ -172,22 +172,22 @@ enum CanCommunicationReturnCode can_communication_api_add_to_rx(enum CanCommunic
 
 enum CanCommunicationReturnCode can_communications_api_process_tx(enum CanCommunicationNetwork network) {
     if (network >= CAN_COMM_NET_COUNT) {
-        return CAN_COMM_RC_INVALID_NETWORK;
+        return CAN_COMMUNICATION_RC_INVALID_NETWORK;
     }
 
-    enum CanCommunicationReturnCode result = CAN_COMM_RC_OK;
+    enum CanCommunicationReturnCode result = CAN_COMMUNICATION_RC_OK;
     enum PalReturnCode return_code;
 
     do {
         return_code = pal_api_process_tx(&handler.networks[network].pal);
 
         if (return_code == PAL_RC_IO_ERROR) {
-            result = CAN_COMM_RC_TRANSMISSION_ERROR;
+            result = CAN_COMMUNICATION_RC_TRANSMISSION_ERROR;
         }
     } while (return_code == PAL_RC_OK || return_code == PAL_RC_IO_ERROR);
 
     if (return_code != PAL_RC_OK && return_code != PAL_RC_QUEUE_EMPTY) {
-        return CAN_COMM_RC_ERROR;
+        return CAN_COMMUNICATION_RC_ERROR;
     }
 
     return result;
@@ -195,11 +195,11 @@ enum CanCommunicationReturnCode can_communications_api_process_tx(enum CanCommun
 
 enum CanCommunicationReturnCode can_communication_api_process_rx(enum CanCommunicationNetwork network) {
     if (network >= CAN_COMM_NET_COUNT) {
-        return CAN_COMM_RC_INVALID_NETWORK;
+        return CAN_COMMUNICATION_RC_INVALID_NETWORK;
     }
 
     const can_communication_receive_callback dispatch = handler.networks[network].on_receive;
-    enum CanCommunicationReturnCode result = CAN_COMM_RC_OK;
+    enum CanCommunicationReturnCode result = CAN_COMMUNICATION_RC_OK;
     enum PalReturnCode return_code;
 
     do {
@@ -207,14 +207,14 @@ enum CanCommunicationReturnCode can_communication_api_process_rx(enum CanCommuni
         return_code = pal_api_process_rx(&handler.networks[network].pal, &frame);
 
         if (return_code == PAL_RC_OK) {
-            if (dispatch(&frame) != CAN_COMM_RC_OK) {
-                result = CAN_COMM_RC_RECEIVE_HANDLER_ERROR;
+            if (dispatch(&frame) != CAN_COMMUNICATION_RC_OK) {
+                result = CAN_COMMUNICATION_RC_RECEIVE_HANDLER_ERROR;
             }
         }
     } while (return_code == PAL_RC_OK);
 
     if (return_code != PAL_RC_OK && return_code != PAL_RC_QUEUE_EMPTY) {
-        return CAN_COMM_RC_ERROR;
+        return CAN_COMMUNICATION_RC_ERROR;
     }
 
     return result;

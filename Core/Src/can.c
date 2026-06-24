@@ -291,7 +291,6 @@ void HAL_CAN_MspDeInit(CAN_HandleTypeDef *canHandle) {
 }
 
 /* USER CODE BEGIN 1 */
-
 /*!
  * \brief Returns the CAN network used based on the native ST HAL CAN handle.
  * \warning If the \c hcan refers to an undefined instance, the returned value is a non-valid network (\c CAN_COMM_NET_COUNT).
@@ -343,15 +342,20 @@ EAGLETRT_STATIC_INLINE CAN_HandleTypeDef *prv_can_get_handler(enum CanCommunicat
  * \brief Internal unified helper to write an abstract frame out to an ST HAL CAN peripheral.
  * \param[in] network The network track enum indicating which hardware peripheral to target.
  * \param[in] frame Pointer to the abstract frame structure containing the payload.
+ *
+ * \retval CAN_COMMUNICATION_RC_OK if the frame was sent successfully.
+ * \retval CAN_COMMUNICATION_RC_NULL_POINTER if a required pointer configuration is \c NULL.
+ * \retval CAN_COMMUNICATION_RC_INVALID_LENGTH if the frame length exceeds CAN_COMMUNICATION_FRAME_DATA_SIZE.
+ * \retval CAN_COMMUNICATION_RC_TRANSMISSION_ERROR if the native HAL layer rejects the transmission.
  */
 EAGLETRT_STATIC enum CanCommunicationReturnCode prv_can_send_to_hardware(enum CanCommunicationNetwork network, const struct CanCommunicationFrame *frame) {
     CAN_HandleTypeDef *hcan = prv_can_get_handler(network);
 
     if (hcan == NULL || frame == NULL) {
-        return CAN_COMM_RC_NULL_POINTER;
+        return CAN_COMMUNICATION_RC_NULL_POINTER;
     }
-    if (frame->length > CAN_COMM_FRAME_DATA_SIZE) {
-        return CAN_COMM_RC_INVALID_LENGTH;
+    if (frame->length > CAN_COMMUNICATION_FRAME_DATA_SIZE) {
+        return CAN_COMMUNICATION_RC_INVALID_LENGTH;
     }
 
     CAN_TxHeaderTypeDef tx_header;
@@ -365,10 +369,10 @@ EAGLETRT_STATIC enum CanCommunicationReturnCode prv_can_send_to_hardware(enum Ca
     tx_header.TransmitGlobalTime = DISABLE;
 
     if (HAL_CAN_AddTxMessage(hcan, &tx_header, (uint8_t *)frame->data, &tx_mailbox) != HAL_OK) {
-        return CAN_COMM_RC_TRANSMISSION_ERROR;
+        return CAN_COMMUNICATION_RC_TRANSMISSION_ERROR;
     }
 
-    return CAN_COMM_RC_OK;
+    return CAN_COMMUNICATION_RC_OK;
 }
 
 enum CanCommunicationReturnCode can_send_primary(const struct CanCommunicationFrame *frame) {

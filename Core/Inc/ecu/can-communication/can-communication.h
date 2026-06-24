@@ -1,7 +1,7 @@
 /*!
  * \file can-communication.h
  * \author Dorijan Di Zepp
- * \date 2026-06-22
+ * \date 2026-06-24
  * \brief Data types, enums and structures for the CAN communication module.
  */
 
@@ -20,31 +20,31 @@ Since the canlib is WIP, they are left here for the moment.
 /*!
  * \brief Maximum payload size of a classic-CAN frame, in bytes.
  */
-#define CAN_COMM_FRAME_DATA_SIZE (8U)
+#define CAN_COMMUNICATION_FRAME_DATA_SIZE (8U)
 
 /*!
  * \brief Size of the per-network reception queue.
  */
-#define CAN_COMM_RX_QUEUE_CAPACITY (128U)
+#define CAN_COMMUNICATION_RX_QUEUE_CAPACITY (128U)
 
 /*!
  * \brief Size of the per-network transmission queue.
  */
-#define CAN_COMM_TX_QUEUE_CAPACITY (128U)
+#define CAN_COMMUNICATION_TX_QUEUE_CAPACITY (128U)
 
 /*!
  * \brief System return and status codes for CAN communication operations.
  */
 enum CanCommunicationReturnCode {
-    CAN_COMM_RC_OK,                    /*!< Operation completed successfully. */
-    CAN_COMM_RC_NULL_POINTER,          /*!< A required pointer argument was NULL. */
-    CAN_COMM_RC_INVALID_NETWORK,       /*!< Network ID is out of range or already initialized. */
-    CAN_COMM_RC_INVALID_LENGTH,        /*!< Frame length is larger than CAN_COMM_FRAME_DATA_SIZE. */
-    CAN_COMM_RC_QUEUE_FULL,            /*!< Target queue has no space left. */
-    CAN_COMM_RC_QUEUE_EMPTY,           /*!< Target queue is empty. */
-    CAN_COMM_RC_TRANSMISSION_ERROR,    /*!< The user-supplied send callback reported failure. */
-    CAN_COMM_RC_RECEIVE_HANDLER_ERROR, /*!< The user-supplied receive callback reported failure. */
-    CAN_COMM_RC_ERROR,                 /*!< Generic failure (PAL/arena/internal). */
+    CAN_COMMUNICATION_RC_OK,                    /*!< Operation completed successfully. */
+    CAN_COMMUNICATION_RC_NULL_POINTER,          /*!< A required pointer argument was NULL. */
+    CAN_COMMUNICATION_RC_INVALID_NETWORK,       /*!< Network ID is out of range or already initialized. */
+    CAN_COMMUNICATION_RC_INVALID_LENGTH,        /*!< Frame length is larger than CAN_COMMUNICATION_FRAME_DATA_SIZE. */
+    CAN_COMMUNICATION_RC_QUEUE_FULL,            /*!< Target queue has no space left. */
+    CAN_COMMUNICATION_RC_QUEUE_EMPTY,           /*!< Target queue is empty. */
+    CAN_COMMUNICATION_RC_TRANSMISSION_ERROR,    /*!< The user-supplied send callback reported failure. */
+    CAN_COMMUNICATION_RC_RECEIVE_HANDLER_ERROR, /*!< The user-supplied receive callback reported failure. */
+    CAN_COMMUNICATION_RC_ERROR,                 /*!< Generic failure (PAL/arena/internal). */
 };
 
 /*!
@@ -61,18 +61,17 @@ enum CanCommunicationNetwork {
  * \brief Hardware-agnostic container representing a single raw CAN frame payload.
  */
 struct [[gnu::packed]] CanCommunicationFrame {
-    uint32_t id;                            /*!< CAN identifier (Standard 11-bit or Extended 29-bit) */
-    uint8_t length;                         /*!< Count of valid data bytes within the array (0..8) */
-    uint8_t data[CAN_COMM_FRAME_DATA_SIZE]; /*!< Raw payload byte buffer */
+    uint32_t id;                                     /*!< CAN identifier (Standard 11-bit or Extended 29-bit) */
+    uint8_t length;                                  /*!< Count of valid data bytes within the array (0..8) */
+    uint8_t data[CAN_COMMUNICATION_FRAME_DATA_SIZE]; /*!< Raw payload byte buffer */
 };
 
 /*!
  * \brief Callback invoked when a frame need to be sent through real hardware.
-
  * \param[in] frame The frame to transmit.
  *
- * \retval CAN_COMM_RC_OK on success.
- * \retval CAN_COMM_RC_TRANSMISSION_ERROR on a hardware-side failure.
+ * \retval CAN_COMMUNICATION_RC_OK on success.
+ * \retval CAN_COMMUNICATION_RC_TRANSMISSION_ERROR on a hardware-side failure.
  */
 typedef enum CanCommunicationReturnCode (*can_communication_send_callback)(const struct CanCommunicationFrame *frame);
 
@@ -83,8 +82,8 @@ typedef enum CanCommunicationReturnCode (*can_communication_send_callback)(const
  *
  * \param[in] frame The frame removed from the RX queue.
  *
- * \retval CAN_COMM_RC_OK on success.
- * \retval CAN_COMM_RC_RECEIVE_HANDLER_ERROR if dispatch fails.
+ * \retval CAN_COMMUNICATION_RC_OK on success.
+ * \retval CAN_COMMUNICATION_RC_RECEIVE_HANDLER_ERROR if dispatch fails.
  */
 typedef enum CanCommunicationReturnCode (*can_communication_receive_callback)(const struct CanCommunicationFrame *frame);
 
