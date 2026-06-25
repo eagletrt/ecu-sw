@@ -23,7 +23,10 @@ extern "C" {
 // USER includes ------------------
 #include "as-driver-api.h"
 #include "buzzer-api.h"
+#include "can-communication-api.h"
+#include "can-communication-router-api.h"
 #include "inverters-api.h"
+#include "logger-api.h"
 #include "pedals-api.h"
 #include "post-api.h"
 #include "raspberry-api.h"

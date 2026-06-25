@@ -26,11 +26,15 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "arena-allocator-api.h"
 #include "ecu_fsm.h"
 #include "eagletrt-api.h"
 #include "as-driver-api.h"
 #include "buzzer-api.h"
+#include "can-communication-api.h"
+#include "can-communication-router-api.h"
 #include "inverters-api.h"
+#include "logger-api.h"
 #include "pedals-api.h"
 #include "post-api.h"
 #include "raspberry-api.h"
@@ -44,7 +48,10 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
+#define LOGGER_ENABLED (true)          /*!< Logger status: true to enable active logging, false to mute entirely. */
+#define LOGGER_RX_CAPACITY (0U)        /*!< Receive queue depth. Set to 0 because the logger is transmit-only. */
+#define LOGGER_TX_CAPACITY (10U)       /*!< Maximum number of log message packets allowed to sit in the outbound transmission queue. */
+#define LOGGER_UART_MAX_MSG_SIZE (64U) /*!< Maximum allocation allowed for an individual log string. */
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -56,6 +63,9 @@
 
 /* USER CODE BEGIN PV */
 state_t current_state = STATE_INIT;
+
+struct ArenaAllocatorHandler arena_allocator_handler;
+struct PalHandler logger_pal_handler;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -119,14 +129,50 @@ int main(void) {
     MX_SPI3_Init();
     /* USER CODE BEGIN 2 */
 
+    // Initialize LOGGER configuration --------------------------------------------------
+    arena_allocator_api_init(&arena_allocator_handler);
+
+    pal_api_init(&logger_pal_handler,
+                 LOGGER_RX_CAPACITY,
+                 LOGGER_TX_CAPACITY,
+                 LOGGER_UART_MAX_MSG_SIZE,
+                 NULL,
+                 usart_logger_transmit,
+                 NULL,
+                 NULL,
+                 &arena_allocator_handler);
+
+    // If logger fails to initialize, keep going as it shouldn't compromise the behavior
+    // of the entire car
+    EAGLETRT_API_UNUSED(logger_api_init(&logger_pal_handler, LOGGER_ENABLED));
+
     // Initialize POST configuration ----------------------------------------------------
+    logger_api_log(LOGGER_LEVEL_DEBUG, "Initialize POST");
+    struct PostConfig post_configuration;
+
+    // Buzzer configuration ----------------------------------------------------
     buzzer_on_callback buzzer_ons[BUZZER_TYPE_COUNT] = { gpio_buzzer_on, tim_buzzer_on };
     buzzer_off_callback buzzer_offs[BUZZER_TYPE_COUNT] = { gpio_buzzer_off, tim_buzzer_off };
     buzzer_delay_callback buzzer_syncs[BUZZER_TYPE_COUNT] = { gpio_buzzer_play_sync, tim_buzzer_play_sync };
     buzzer_tick_callback buzzer_ticks[BUZZER_TYPE_COUNT] = { HAL_GetTick, HAL_GetTick };
 
-    struct PostConfig post_configuration;
+    // --- CAN communication configuration ---
+    post_configuration.can_networks[CAN_COMMUNICATION_NET_PRIMARY].send = can_send_primary;
+    post_configuration.can_networks[CAN_COMMUNICATION_NET_PRIMARY].on_receive = can_communication_router_api_receive_primary;
+    post_configuration.can_networks[CAN_COMMUNICATION_NET_PRIMARY].cs_enter = NULL;
+    post_configuration.can_networks[CAN_COMMUNICATION_NET_PRIMARY].cs_exit = NULL;
 
+    post_configuration.can_networks[CAN_COMMUNICATION_NET_SECONDARY].send = can_send_secondary;
+    post_configuration.can_networks[CAN_COMMUNICATION_NET_SECONDARY].on_receive = can_communication_router_api_receive_secondary;
+    post_configuration.can_networks[CAN_COMMUNICATION_NET_SECONDARY].cs_enter = NULL;
+    post_configuration.can_networks[CAN_COMMUNICATION_NET_SECONDARY].cs_exit = NULL;
+
+    post_configuration.can_networks[CAN_COMMUNICATION_NET_INVERTER].send = can_send_inverter;
+    post_configuration.can_networks[CAN_COMMUNICATION_NET_INVERTER].on_receive = can_communication_router_api_receive_inverter;
+    post_configuration.can_networks[CAN_COMMUNICATION_NET_INVERTER].cs_enter = NULL;
+    post_configuration.can_networks[CAN_COMMUNICATION_NET_INVERTER].cs_exit = NULL;
+
+    // --- Submodules configurations ---
     post_configuration.as_air_release = can_air_release_from_line;
 
     for (size_t i = 0; i < (size_t)BUZZER_TYPE_COUNT; i++) {
@@ -156,7 +202,7 @@ int main(void) {
 
         /* USER CODE BEGIN 3 */
 
-        //testing fsm state change
+        //run the fsm
         current_state = run_state(current_state, NULL);
     }
     /* USER CODE END 3 */

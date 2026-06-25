@@ -51,10 +51,10 @@ enum CanCommunicationReturnCode {
  * \brief Identifiers for the physical CAN networks managed by the ECU.
  */
 enum CanCommunicationNetwork {
-    CAN_COMM_NET_PRIMARY,   /*!< Target the Primary CAN bus. */
-    CAN_COMM_NET_SECONDARY, /*!< Target the Secondary CAN bus. */
-    CAN_COMM_NET_INVERTER,  /*!< Target the Inverters CAN bus. */
-    CAN_COMM_NET_COUNT      /*!< Sentinel value used exclusively to verify network parameter validity. */
+    CAN_COMMUNICATION_NET_PRIMARY,   /*!< Target the Primary CAN bus. */
+    CAN_COMMUNICATION_NET_SECONDARY, /*!< Target the Secondary CAN bus. */
+    CAN_COMMUNICATION_NET_INVERTER,  /*!< Target the Inverters CAN bus. */
+    CAN_COMMUNICATION_NET_COUNT      /*!< Sentinel value used exclusively to verify network parameter validity. */
 };
 
 /*!
@@ -116,8 +116,8 @@ struct CanCommunicationNetworkState {
  * \brief Internal context state handler container.
  */
 struct CanCommunicationHandler {
-    struct ArenaAllocatorHandler arena;                               /*!< Internal memory arena shared across network handlers */
-    struct CanCommunicationNetworkState networks[CAN_COMM_NET_COUNT]; /*!< State structures managing individual physical networks */
+    struct ArenaAllocatorHandler arena;                                        /*!< Internal memory arena shared across network handlers */
+    struct CanCommunicationNetworkState networks[CAN_COMMUNICATION_NET_COUNT]; /*!< State structures managing individual physical networks */
 };
 
 #endif

@@ -98,12 +98,14 @@ transition_func_t *const transition_table[NUM_STATES][NUM_STATES] = {
 state_t do_init(state_data_t *data) {
     state_t next_state = STATE_IDLE;
     /* Your Code Here */
+    logger_api_log(LOGGER_LEVEL_INFO, "FSM: INIT state");
 
     // convert state data into POST struct configuration
     struct PostConfig *post_configuration = (struct PostConfig *)data;
 
     if (post_api_do_init(post_configuration) != POST_RC_OK) {
         // Error during POST initialization
+        logger_api_log(LOGGER_LEVEL_ERROR, "FSM: POST failed. Going to FATAL");
         next_state = STATE_FATAL;
     }
     // If ok, transit to idle
@@ -127,6 +129,7 @@ state_t do_fatal(state_data_t *data) {
     EAGLETRT_API_UNUSED(data);
 
     // fatal state is a sink, no other operation should be made
+    logger_api_log(LOGGER_LEVEL_ERROR, "FSM: FATAL state");
 
     switch (next_state) {
         case NO_CHANGE:
@@ -145,6 +148,15 @@ state_t do_idle(state_data_t *data) {
     state_t next_state = NO_CHANGE;
     /* Your Code Here */
     EAGLETRT_API_UNUSED(data);
+    logger_api_log(LOGGER_LEVEL_INFO, "FSM: IDLE state");
+
+    can_communication_api_process_rx(CAN_COMMUNICATION_NET_PRIMARY);
+    can_communication_api_process_rx(CAN_COMMUNICATION_NET_SECONDARY);
+    can_communication_api_process_rx(CAN_COMMUNICATION_NET_INVERTER);
+
+    can_communication_api_process_tx(CAN_COMMUNICATION_NET_PRIMARY);
+    can_communication_api_process_tx(CAN_COMMUNICATION_NET_SECONDARY);
+    can_communication_api_process_tx(CAN_COMMUNICATION_NET_INVERTER);
 
     switch (next_state) {
         case NO_CHANGE:
@@ -168,9 +180,12 @@ state_t do_flash(state_data_t *data) {
     state_t next_state = NO_CHANGE;
     /* Your Code Here */
     EAGLETRT_API_UNUSED(data);
+    logger_api_log(LOGGER_LEVEL_INFO, "FSM: FLASH state");
 
     // Remain in flash until an external request is received
-    // to indicate that flashing is aborted
+    // to indicate that flashing is aborted/terminated
+    can_communication_api_process_rx(CAN_COMMUNICATION_NET_PRIMARY);
+    can_communication_api_process_rx(CAN_COMMUNICATION_NET_SECONDARY);
 
     switch (next_state) {
         case NO_CHANGE:
@@ -187,12 +202,12 @@ state_t do_flash(state_data_t *data) {
 // Function to be executed in state pause
 // valid return states: NO_CHANGE, STATE_PAUSE, STATE_IDLE
 state_t do_pause(state_data_t *data) {
+    // Pause won't be used during the 2026 season
+    // For this reason, hard-code the fallback to STATE_IDLE
     state_t next_state = STATE_IDLE;
     /* Your Code Here */
     EAGLETRT_API_UNUSED(data);
-
-    // Pause won't be used during the 2026 season
-    // For this reason, hard-code the fallback to STATE_IDLE
+    logger_api_log(LOGGER_LEVEL_INFO, "FSM: PAUSE state");
 
     switch (next_state) {
         case NO_CHANGE:
