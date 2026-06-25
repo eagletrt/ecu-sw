@@ -32,6 +32,8 @@ extern "C" {
 #include "as-driver.h"
 #include "inverters.h"
 #include "tractive-system.h"
+#include "can-communication-api.h"
+#include "eagletrt-api.h"
 /* USER CODE END Includes */
 
 extern CAN_HandleTypeDef hcan1;
@@ -49,7 +51,41 @@ void MX_CAN2_Init(void);
 void MX_CAN3_Init(void);
 
 /* USER CODE BEGIN Prototypes */
+/*!
+ * \brief Send a CAN frame on the primary CAN network.
+ *
+ * \param[in] frame The frame to send.
+ *
+ * \retval CAN_COMMUNICATION_RC_OK if the frame was sent successfully.
+ * \retval CAN_COMMUNICATION_RC_NULL_POINTER if the frame pointer was NULL.
+ * \retval CAN_COMMUNICATION_RC_INVALID_LENGTH if the frame length exceeds CAN_COMMUNICATION_FRAME_DATA_SIZE.
+ * \retval CAN_COMMUNICATION_RC_TRANSMISSION_ERROR if the underlying HAL call reported a failure.
+ */
+enum CanCommunicationReturnCode can_send_primary(const struct CanCommunicationFrame *frame);
 
+/*!
+ * \brief Send a CAN frame on the secondary CAN network.
+ *
+ * \param[in] frame The frame to send.
+ *
+ * \retval CAN_COMMUNICATION_RC_OK if the frame was sent successfully.
+ * \retval CAN_COMMUNICATION_RC_NULL_POINTER if the frame pointer was NULL.
+ * \retval CAN_COMMUNICATION_RC_INVALID_LENGTH if the frame length exceeds CAN_COMMUNICATION_FRAME_DATA_SIZE.
+ * \retval CAN_COMMUNICATION_RC_TRANSMISSION_ERROR if the underlying HAL call reported a failure.
+ */
+enum CanCommunicationReturnCode can_send_secondary(const struct CanCommunicationFrame *frame);
+
+/*!
+ * \brief Send a CAN frame on the inverter powertrain CAN network.
+ *
+ * \param[in] frame The frame to send.
+ *
+ * \retval CAN_COMMUNICATION_RC_OK if the frame was sent successfully.
+ * \retval CAN_COMMUNICATION_RC_NULL_POINTER if the frame pointer was NULL.
+ * \retval CAN_COMMUNICATION_RC_INVALID_LENGTH if the frame length exceeds CAN_COMMUNICATION_FRAME_DATA_SIZE.
+ * \retval CAN_COMMUNICATION_RC_TRANSMISSION_ERROR if the underlying HAL call reported a failure.
+ */
+enum CanCommunicationReturnCode can_send_inverter(const struct CanCommunicationFrame *frame);
 /*!
  * \brief Transmits an air release command over the CAN bus.
  *
