@@ -119,6 +119,18 @@ void HAL_UART_MspDeInit(UART_HandleTypeDef *uartHandle) {
 }
 
 /* USER CODE BEGIN 1 */
+/*!
+ * \brief Compute dynamically the timeout in milliseconds based on the message size.
+ * \param huart Pointer to the UART handler.
+ * \param size Size of the message to be sent.
+ * \return uint32_t Computed timeout in milliseconds.
+ */
+EAGLETRT_STATIC int32_t prv_usart_logger_timeout(UART_HandleTypeDef *huart, uint32_t size) {
+    // For each character we have 10 bits (1 start + 8 data + 1 stop)
+    // The formula is: (number of characters * 10 bit) / BaudRate + 5ms for safe margin
+    return (((uint32_t)size * 10U) / huart->Init.BaudRate) + 5U;
+}
+
 enum PalReturnCode usart_logger_transmit(const struct PalMessage *message) {
     if (message == NULL) {
         return PAL_RC_NULL_POINTER;
@@ -129,7 +141,7 @@ enum PalReturnCode usart_logger_transmit(const struct PalMessage *message) {
     }
 
     // Execute blocking transmission over the USART
-    HAL_StatusTypeDef status = HAL_UART_Transmit(&huart4, (uint8_t *)message->payload, (uint16_t)message->size, HAL_MAX_DELAY);
+    HAL_StatusTypeDef status = HAL_UART_Transmit(&huart4, (uint8_t *)message->payload, (uint16_t)message->size, prv_usart_logger_timeout(&huart4, message->size));
 
     if (status != HAL_OK) {
         return PAL_RC_IO_ERROR;

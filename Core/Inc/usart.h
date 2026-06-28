@@ -30,6 +30,7 @@ extern "C" {
 
 /* USER CODE BEGIN Includes */
 #include "logger-api.h"
+#include "eagletrt-api.h"
 /* USER CODE END Includes */
 
 extern UART_HandleTypeDef huart4;
