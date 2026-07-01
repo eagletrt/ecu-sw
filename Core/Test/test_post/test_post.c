@@ -1,7 +1,7 @@
 /*!
  * \file test_post.c
  * \author Dorijan Di Zepp
- * \date 2026-06-25
+ * \date 2026-07-01
  * \brief Unit tests using FFF for structural configuration verification of the POST module initialization.
  */
 
@@ -21,7 +21,7 @@ FAKE_VALUE_FUNC(enum BuzzerReturnCode, mock_buzzer_off);
 FAKE_VALUE_FUNC(enum BuzzerReturnCode, mock_buzzer_delay, uint32_t, float, uint32_t);
 FAKE_VALUE_FUNC(uint32_t, mock_buzzer_tick);
 FAKE_VALUE_FUNC(enum CanCommunicationReturnCode, mock_can_send, const struct CanCommunicationFrame *);
-FAKE_VALUE_FUNC(enum CanCommunicationReturnCode, mock_can_on_receive, const struct CanCommunicationFrame *);
+FAKE_VALUE_FUNC(enum CanCommunicationReturnCode, mock_can_on_receive, struct CanCommunicationFrame *);
 FAKE_VALUE_FUNC(enum InvertersReturnCode, mock_inverters_send_drive_command, enum InvertersDriveStatus, enum InvertersPosition);
 FAKE_VALUE_FUNC(enum InvertersReturnCode, mock_inverters_set_torque, float, enum InvertersPosition);
 FAKE_VALUE_FUNC(enum RaspberryReturnCode, mock_raspberry_pin_control, enum RaspberryControlPinState);

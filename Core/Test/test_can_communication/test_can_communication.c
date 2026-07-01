@@ -1,7 +1,7 @@
 /*!
  * \file test_can_communication.c
  * \author Dorijan Di Zepp
- * \date 2026-06-24
+ * \date 2026-07-01
  * \brief Unit tests using FFF and Unity for testing the CAN communication module.
  */
 
@@ -21,12 +21,12 @@ EAGLETRT_STATIC struct CanCommunicationFrame test_captured_rx_frames[TEST_TRACKI
 EAGLETRT_STATIC uint32_t test_captured_rx_count = 0U;
 
 FAKE_VALUE_FUNC(enum CanCommunicationReturnCode, mock_can_send, const struct CanCommunicationFrame *);
-FAKE_VALUE_FUNC(enum CanCommunicationReturnCode, mock_application_on_receive, const struct CanCommunicationFrame *);
+FAKE_VALUE_FUNC(enum CanCommunicationReturnCode, mock_application_on_receive, struct CanCommunicationFrame *);
 
 /* Configurations used to automatically initialize the module in setUp */
 EAGLETRT_STATIC struct CanCommunicationNetworkConfig test_valid_configs[CAN_COMMUNICATION_NET_COUNT];
 
-EAGLETRT_STATIC enum CanCommunicationReturnCode prv_custom_on_receive_capture(const struct CanCommunicationFrame *frame) {
+EAGLETRT_STATIC enum CanCommunicationReturnCode prv_custom_on_receive_capture(struct CanCommunicationFrame *frame) {
     if ((frame != NULL) && (test_captured_rx_count < TEST_TRACKING_BUFFER_SIZE)) {
         test_captured_rx_frames[test_captured_rx_count] = *frame;
         test_captured_rx_count++;
@@ -34,7 +34,7 @@ EAGLETRT_STATIC enum CanCommunicationReturnCode prv_custom_on_receive_capture(co
     return CAN_COMMUNICATION_RC_OK;
 }
 
-EAGLETRT_STATIC enum CanCommunicationReturnCode prv_custom_on_receive_failing(const struct CanCommunicationFrame *frame) {
+EAGLETRT_STATIC enum CanCommunicationReturnCode prv_custom_on_receive_failing(struct CanCommunicationFrame *frame) {
     EAGLETRT_API_UNUSED(frame);
     return CAN_COMMUNICATION_RC_ERROR;
 }

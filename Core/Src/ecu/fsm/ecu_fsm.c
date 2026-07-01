@@ -154,6 +154,16 @@ state_t do_idle(state_data_t *data) {
     can_communication_api_process_rx(CAN_COMMUNICATION_NET_SECONDARY);
     can_communication_api_process_rx(CAN_COMMUNICATION_NET_INVERTER);
 
+    if (vehicle_api_get_ts_on_requested()) {
+        if (!vehicle_api_get_voltage_higher_than_60v()) {
+            logger_api_log(LOGGER_LEVEL_INFO, "FSM: TS ON requested. Moving to PRECHARGE.");
+            next_state = STATE_MANUAL_WAIT_TS_PRECHARGE;
+        } else {
+            logger_api_log(LOGGER_LEVEL_ERROR, "FSM: Aborting Precharge. DC Link already >60V!");
+            next_state = STATE_FATAL;
+        }
+    }
+
     can_communication_api_process_tx(CAN_COMMUNICATION_NET_PRIMARY);
     can_communication_api_process_tx(CAN_COMMUNICATION_NET_SECONDARY);
     can_communication_api_process_tx(CAN_COMMUNICATION_NET_INVERTER);
@@ -177,7 +187,9 @@ state_t do_idle(state_data_t *data) {
 // Function to be executed in state flash
 // valid return states: NO_CHANGE, STATE_FLASH, STATE_IDLE
 state_t do_flash(state_data_t *data) {
-    state_t next_state = NO_CHANGE;
+    // No CAN frame is defined for the flash state
+    // for the moment it is left disabled
+    state_t next_state = STATE_IDLE;
     /* Your Code Here */
     EAGLETRT_API_UNUSED(data);
     logger_api_log(LOGGER_LEVEL_INFO, "FSM: FLASH state");

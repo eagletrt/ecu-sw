@@ -167,20 +167,20 @@ int main(void) {
             [CAN_COMMUNICATION_NET_PRIMARY] = {
                 .send = can_send_primary,
                 .on_receive = can_communication_router_api_receive_primary,
-                .cs_enter = nullptr,
-                .cs_exit = nullptr,
+                .cs_enter = __disable_irq,
+                .cs_exit = __enable_irq,
             },
             [CAN_COMMUNICATION_NET_SECONDARY] = {
                 .send = can_send_secondary,
                 .on_receive = can_communication_router_api_receive_secondary,
-                .cs_enter = nullptr,
-                .cs_exit = nullptr,
+                .cs_enter = __disable_irq,
+                .cs_exit = __enable_irq,
             },
             [CAN_COMMUNICATION_NET_INVERTER] = {
                 .send = can_send_inverter,
                 .on_receive = can_communication_router_api_receive_inverter,
-                .cs_enter = nullptr,
-                .cs_exit = nullptr,
+                .cs_enter = __disable_irq,
+                .cs_exit = __enable_irq,
             } },
 
         // Direct assignment of single members during initialization
@@ -203,6 +203,18 @@ int main(void) {
 
     // single call run_state to verify POST
     current_state = run_state(current_state, &post_configuration);
+
+    // enable can interrupts
+    HAL_CAN_Start(&hcan1);
+    HAL_CAN_Start(&hcan2);
+    HAL_CAN_Start(&hcan3);
+
+    HAL_CAN_ActivateNotification(&hcan1, CAN_IT_RX_FIFO0_MSG_PENDING);
+    HAL_CAN_ActivateNotification(&hcan1, CAN_IT_RX_FIFO1_MSG_PENDING);
+    HAL_CAN_ActivateNotification(&hcan2, CAN_IT_RX_FIFO0_MSG_PENDING);
+    HAL_CAN_ActivateNotification(&hcan2, CAN_IT_RX_FIFO1_MSG_PENDING);
+    HAL_CAN_ActivateNotification(&hcan3, CAN_IT_RX_FIFO0_MSG_PENDING);
+    HAL_CAN_ActivateNotification(&hcan3, CAN_IT_RX_FIFO1_MSG_PENDING);
     /* USER CODE END 2 */
 
     /* Infinite loop */

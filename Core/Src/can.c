@@ -411,7 +411,7 @@ enum TSReturnCode can_ts_send_command(enum TSCommand ts_command) {
 
 void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan) {
     CAN_RxHeaderTypeDef header = { 0 };
-    struct CanCommunicationFrame msg;
+    struct CanCommunicationFrame msg = { 0 };
 
     if (HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO0, &header, msg.data) == HAL_OK) {
         msg.id = (header.IDE == CAN_ID_EXT) ? header.ExtId : header.StdId;
@@ -430,5 +430,32 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan) {
             EAGLETRT_API_UNUSED(can_communication_api_add_to_rx(network, &msg));
         }
     }
+
+    HAL_CAN_ActivateNotification(hcan, CAN_IT_RX_FIFO0_MSG_PENDING);
+}
+
+void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef *hcan) {
+    CAN_RxHeaderTypeDef header = { 0 };
+    struct CanCommunicationFrame msg = { 0 };
+
+    if (HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO0, &header, msg.data) == HAL_OK) {
+        msg.id = (header.IDE == CAN_ID_EXT) ? header.ExtId : header.StdId;
+        msg.length = (uint8_t)header.DLC;
+
+        // Based on the handler, retrieve the selected network
+        enum CanCommunicationNetwork network = prv_can_get_network(hcan);
+
+        if (network < CAN_COMMUNICATION_NET_COUNT) {
+            /*
+            The return value of the call is not used as no action can be taken within the interrupt
+            such as retry, waiting or heavy error-handling.
+            It is possible, if needed, to add a logger line to let know the user that something
+            bad happened during the queueing of the frame.
+            */
+            EAGLETRT_API_UNUSED(can_communication_api_add_to_rx(network, &msg));
+        }
+    }
+
+    HAL_CAN_ActivateNotification(hcan, CAN_IT_RX_FIFO1_MSG_PENDING);
 }
 /* USER CODE END 1 */

@@ -1,7 +1,7 @@
 /*!
  * \file logger-api.c
  * \author Dorijan Di Zepp
- * \date 2026-06-14
+ * \date 2026-07-01
  * \brief API execution handling for logging records.
  */
 
@@ -77,6 +77,12 @@ enum LoggerReturnCode logger_api_log(enum LoggerLevel level, const char *format,
 
     // Measure the actual string safely populated inside the buffer boundary
     size_t actual_len = strlen(final_buffer);
+
+    if (actual_len < sizeof(final_buffer) - 3U) {
+        final_buffer[actual_len++] = '\n'; // Append newline if space allows
+        final_buffer[actual_len++] = '\r'; // Append carriage return if space allows
+        final_buffer[actual_len] = '\0';   // Ensure null termination
+    }
 
     // Determine transmission size including the string null terminator
     uint32_t tx_bytes = (uint32_t)(actual_len + 1U);

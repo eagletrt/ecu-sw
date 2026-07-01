@@ -1,7 +1,7 @@
 /*!
  * \file can-communication.h
  * \author Dorijan Di Zepp
- * \date 2026-06-24
+ * \date 2026-07-01
  * \brief Data types, enums and structures for the CAN communication module.
  */
 
@@ -85,7 +85,7 @@ typedef enum CanCommunicationReturnCode (*can_communication_send_callback)(const
  * \retval CAN_COMMUNICATION_RC_OK on success.
  * \retval CAN_COMMUNICATION_RC_RECEIVE_HANDLER_ERROR if dispatch fails.
  */
-typedef enum CanCommunicationReturnCode (*can_communication_receive_callback)(const struct CanCommunicationFrame *frame);
+typedef enum CanCommunicationReturnCode (*can_communication_receive_callback)(struct CanCommunicationFrame *frame);
 
 /*!
  * \brief Critical-section enter/exit callback.
