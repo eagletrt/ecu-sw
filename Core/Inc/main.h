@@ -61,6 +61,8 @@ void Error_Handler(void);
 #define SD_CLOSE_GPIO_Port GPIOE
 #define RPI_PowerButton_Pin GPIO_PIN_3
 #define RPI_PowerButton_GPIO_Port GPIOE
+#define Watchdog_Kick_Pin GPIO_PIN_1
+#define Watchdog_Kick_GPIO_Port GPIOH
 #define DBG_TX_Pin GPIO_PIN_0
 #define DBG_TX_GPIO_Port GPIOA
 #define DBG_RX_Pin GPIO_PIN_1
@@ -71,12 +73,32 @@ void Error_Handler(void);
 #define PTT_GPIO_Port GPIOB
 #define SPI3_CLK_Pin GPIO_PIN_10
 #define SPI3_CLK_GPIO_Port GPIOC
+#define FlipFlop_2_Output_Data_Pin GPIO_PIN_12
+#define FlipFlop_2_Output_Data_GPIO_Port GPIOC
+#define FlipFlop_1_Set_Pin GPIO_PIN_0
+#define FlipFlop_1_Set_GPIO_Port GPIOD
+#define FlipFlop_1_Clock_Pin GPIO_PIN_1
+#define FlipFlop_1_Clock_GPIO_Port GPIOD
+#define FlipFlop_1_Data_Input_Pin GPIO_PIN_2
+#define FlipFlop_1_Data_Input_GPIO_Port GPIOD
+#define FlipFlop_1_Reset_Pin GPIO_PIN_3
+#define FlipFlop_1_Reset_GPIO_Port GPIOD
+#define FlipFlop_Output_Data_Pin GPIO_PIN_4
+#define FlipFlop_Output_Data_GPIO_Port GPIOD
+#define FlipFlop_2_Set_Pin GPIO_PIN_5
+#define FlipFlop_2_Set_GPIO_Port GPIOD
+#define FlipFlop_2_Clock_Pin GPIO_PIN_6
+#define FlipFlop_2_Clock_GPIO_Port GPIOD
+#define FlipFlop_2_Data_Input_Pin GPIO_PIN_7
+#define FlipFlop_2_Data_Input_GPIO_Port GPIOD
 #define AUX_BUZZER_Pin GPIO_PIN_3
 #define AUX_BUZZER_GPIO_Port GPIOB
 #define RTD_BUZZER_Pin GPIO_PIN_4
 #define RTD_BUZZER_GPIO_Port GPIOB
-#define MICRO_CS_Pin GPIO_PIN_9
-#define MICRO_CS_GPIO_Port GPIOB
+#define FlipFlop_3_Reset_Pin GPIO_PIN_5
+#define FlipFlop_3_Reset_GPIO_Port GPIOB
+#define SPI2_CS_Pin GPIO_PIN_9
+#define SPI2_CS_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
 

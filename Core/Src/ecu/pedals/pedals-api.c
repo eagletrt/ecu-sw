@@ -21,7 +21,7 @@ enum PedalsReturnCode pedals_api_init() {
 }
 
 enum PedalsReturnCode pedals_api_set_throttle(float throttle) {
-    if (throttle < 0.0f || throttle > 1.0f) {
+    if (throttle < 0.0F || throttle > 1.0F) {
         return PEDALS_RC_ERROR;
     }
 
@@ -30,7 +30,7 @@ enum PedalsReturnCode pedals_api_set_throttle(float throttle) {
 }
 
 enum PedalsReturnCode pedals_api_set_brake(float brake) {
-    if (brake < 0.0f || brake > 1.0f) {
+    if (brake < 0.0F || brake > 1.0F) {
         return PEDALS_RC_ERROR;
     }
 
@@ -39,7 +39,7 @@ enum PedalsReturnCode pedals_api_set_brake(float brake) {
 }
 
 enum PedalsReturnCode pedals_api_set_brake_pressure(float brake_pressure) {
-    if (brake_pressure < 0.0f || brake_pressure > PEDALS_MAX_BRAKE_PRESSURE_BAR) {
+    if (brake_pressure < 0.0F || brake_pressure > PEDALS_MAX_BRAKE_PRESSURE_BAR) {
         return PEDALS_RC_ERROR;
     }
 

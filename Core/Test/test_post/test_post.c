@@ -1,7 +1,7 @@
 /*!
  * \file test_post.c
  * \author Dorijan Di Zepp
- * \date 2026-06-06
+ * \date 2026-07-01
  * \brief Unit tests using FFF for structural configuration verification of the POST module initialization.
  */
 
@@ -20,6 +20,8 @@ FAKE_VALUE_FUNC(enum BuzzerReturnCode, mock_buzzer_on, uint32_t, float);
 FAKE_VALUE_FUNC(enum BuzzerReturnCode, mock_buzzer_off);
 FAKE_VALUE_FUNC(enum BuzzerReturnCode, mock_buzzer_delay, uint32_t, float, uint32_t);
 FAKE_VALUE_FUNC(uint32_t, mock_buzzer_tick);
+FAKE_VALUE_FUNC(enum CanCommunicationReturnCode, mock_can_send, const struct CanCommunicationFrame *);
+FAKE_VALUE_FUNC(enum CanCommunicationReturnCode, mock_can_on_receive, struct CanCommunicationFrame *);
 FAKE_VALUE_FUNC(enum InvertersReturnCode, mock_inverters_send_drive_command, enum InvertersDriveStatus, enum InvertersPosition);
 FAKE_VALUE_FUNC(enum InvertersReturnCode, mock_inverters_set_torque, float, enum InvertersPosition);
 FAKE_VALUE_FUNC(enum RaspberryReturnCode, mock_raspberry_pin_control, enum RaspberryControlPinState);
@@ -39,6 +41,14 @@ EAGLETRT_STATIC struct PostConfig post_config;
  * \param[out] cfg Pointer to the target configuration structure initialization target block.
  */
 EAGLETRT_STATIC void build_default_valid_config(struct PostConfig *cfg) {
+    // prepare CAN communication network configs
+    for (size_t i = 0; i < CAN_COMMUNICATION_NET_COUNT; i++) {
+        cfg->can_networks[i].send = mock_can_send;
+        cfg->can_networks[i].on_receive = mock_can_on_receive;
+        cfg->can_networks[i].cs_enter = NULL;
+        cfg->can_networks[i].cs_exit = NULL;
+    }
+
     cfg->as_air_release = mock_air_release_from_line;
 
     // prepare buzzer callbacks arrays
@@ -68,7 +78,15 @@ void setUp(void) {
     RESET_FAKE(mock_raspberry_pin_control);
     RESET_FAKE(mock_ts_send_command);
 
+    // Reset CAN callbacks mocks
+    RESET_FAKE(mock_can_send);
+    RESET_FAKE(mock_can_on_receive);
+
     FFF_RESET_HISTORY();
+
+    // Default configuration simulation setups
+    mock_can_send_fake.return_val = CAN_COMMUNICATION_RC_OK;
+    mock_can_on_receive_fake.return_val = CAN_COMMUNICATION_RC_OK;
 
     // Prepare post configuration structure
     memset(&post_config, 0, sizeof(post_config));
@@ -124,6 +142,14 @@ void test_post_do_init_should_fail_if_a_buzzer_delay_pointer_is_null(void) {
     enum PostReturnCode rc = post_api_do_init(&post_config);
 
     TEST_ASSERT_EQUAL_INT_MESSAGE(POST_RC_ERROR, rc, "POST initialization should fail validation if any entry in the buzzer_delay_ptrs array is NULL.");
+}
+
+void test_post_do_init_should_fail_if_can_communication_callback_is_null(void) {
+    post_config.can_networks[CAN_COMMUNICATION_NET_PRIMARY].send = NULL;
+
+    enum PostReturnCode rc = post_api_do_init(&post_config);
+
+    TEST_ASSERT_EQUAL_INT_MESSAGE(POST_RC_ERROR, rc, "POST initialization should bubble up errors if underlying CAN network initialization metrics fail verification checks.");
 }
 
 void test_post_do_init_should_fail_if_inverters_send_drive_command_callback_is_null(void) {
@@ -182,6 +208,7 @@ int main(void) {
     RUN_TEST(test_post_do_init_should_fail_if_a_buzzer_on_pointer_is_null);
     RUN_TEST(test_post_do_init_should_fail_if_a_buzzer_off_pointer_is_null);
     RUN_TEST(test_post_do_init_should_fail_if_a_buzzer_delay_pointer_is_null);
+    RUN_TEST(test_post_do_init_should_fail_if_can_communication_callback_is_null);
     RUN_TEST(test_post_do_init_should_fail_if_inverters_send_drive_command_callback_is_null);
     RUN_TEST(test_post_do_init_should_fail_if_inverters_set_torque_callback_is_null);
     RUN_TEST(test_post_do_init_should_fail_if_raspberry_pin_control_callback_is_null);

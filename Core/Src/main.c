@@ -26,7 +26,19 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "arena-allocator-api.h"
 #include "ecu_fsm.h"
+#include "eagletrt-api.h"
+#include "as-driver-api.h"
+#include "buzzer-api.h"
+#include "can-communication-api.h"
+#include "can-communication-router-api.h"
+#include "inverters-api.h"
+#include "logger-api.h"
+#include "pedals-api.h"
+#include "post-api.h"
+#include "raspberry-api.h"
+#include "tractive-system-api.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -36,7 +48,11 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
+//TODO: Would be better to move the defines into a configuration file (e.g. ecu-config.h)
+#define LOGGER_ENABLED (true)          /*!< Logger status: true to enable active logging, false to mute entirely. */
+#define LOGGER_RX_CAPACITY (0U)        /*!< Receive queue depth. Set to 0 because the logger is transmit-only. */
+#define LOGGER_TX_CAPACITY (10U)       /*!< Maximum number of log message packets allowed to sit in the outbound transmission queue. */
+#define LOGGER_UART_MAX_MSG_SIZE (64U) /*!< Maximum allocation allowed for an individual log string. */
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -48,6 +64,9 @@
 
 /* USER CODE BEGIN PV */
 state_t current_state = STATE_INIT;
+
+EAGLETRT_STATIC struct ArenaAllocatorHandler arena_allocator_handler;
+EAGLETRT_STATIC struct PalHandler logger_pal_handler;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -59,7 +78,7 @@ static void MPU_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-static void VectorBase_Config(void) {
+EAGLETRT_STATIC void VectorBase_Config(void) {
     /* The constant array with vectors of the vector table is declared externally in the
   * c-startup code.
   */
@@ -67,6 +86,23 @@ static void VectorBase_Config(void) {
 
     /* Remap the vector table to where the vector table is located for this program. */
     SCB->VTOR = (unsigned long)&g_pfnVectors[0];
+}
+
+/*!
+ * \brief Initializes the low-level memory allocation and logging framework.
+ */
+EAGLETRT_STATIC void prv_main_init_logging_configuration() {
+    arena_allocator_api_init(&arena_allocator_handler);
+
+    EAGLETRT_API_UNUSED(pal_api_init(&logger_pal_handler,
+                                     LOGGER_RX_CAPACITY,
+                                     LOGGER_TX_CAPACITY,
+                                     LOGGER_UART_MAX_MSG_SIZE,
+                                     NULL,
+                                     usart_logger_transmit,
+                                     NULL,
+                                     NULL,
+                                     &arena_allocator_handler));
 }
 /* USER CODE END 0 */
 
@@ -110,6 +146,75 @@ int main(void) {
     MX_SPI3_Init();
     /* USER CODE BEGIN 2 */
 
+    // Initialize LOGGER configuration --------------------------------------------------
+    // If logger fails to initialize, keep going as it shouldn't compromise the behavior of the entire car
+    prv_main_init_logging_configuration();
+    EAGLETRT_API_UNUSED(logger_api_init(&logger_pal_handler, LOGGER_ENABLED));
+    // end of LOGGER configuration ------------------------------------------------------
+
+    // Initialize POST configuration ----------------------------------------------------
+    logger_api_log(LOGGER_LEVEL_DEBUG, "Initialize POST");
+
+    // Buzzer configuration ----------------------------------------------------
+    buzzer_on_callback buzzer_ons[BUZZER_TYPE_COUNT] = { gpio_buzzer_on, tim_buzzer_on };
+    buzzer_off_callback buzzer_offs[BUZZER_TYPE_COUNT] = { gpio_buzzer_off, tim_buzzer_off };
+    buzzer_delay_callback buzzer_syncs[BUZZER_TYPE_COUNT] = { gpio_buzzer_play_sync, tim_buzzer_play_sync };
+    buzzer_tick_callback buzzer_ticks[BUZZER_TYPE_COUNT] = { HAL_GetTick, HAL_GetTick };
+
+    // --- CAN communication configuration ---
+    struct PostConfig post_configuration = {
+        .can_networks = {
+            [CAN_COMMUNICATION_NET_PRIMARY] = {
+                .send = can_send_primary,
+                .on_receive = can_communication_router_api_receive_primary,
+                .cs_enter = __disable_irq,
+                .cs_exit = __enable_irq,
+            },
+            [CAN_COMMUNICATION_NET_SECONDARY] = {
+                .send = can_send_secondary,
+                .on_receive = can_communication_router_api_receive_secondary,
+                .cs_enter = __disable_irq,
+                .cs_exit = __enable_irq,
+            },
+            [CAN_COMMUNICATION_NET_INVERTER] = {
+                .send = can_send_inverter,
+                .on_receive = can_communication_router_api_receive_inverter,
+                .cs_enter = __disable_irq,
+                .cs_exit = __enable_irq,
+            } },
+
+        // Direct assignment of single members during initialization
+        .as_air_release = can_air_release_from_line,
+        .inverters_send_drive_command = can_inverters_send_drive_command,
+        .inverters_set_torque = can_inverters_set_torque,
+        .raspberry_pin_control = gpio_raspberry_set_pin,
+        .raspberry_initial_state = RASPBERRY_CONTROL_PIN_STATE_ON,
+        .ts_send_command = can_ts_send_command
+    };
+
+    // Populate buzzer configuration arrays
+    for (size_t i = 0; i < (size_t)BUZZER_TYPE_COUNT; i++) {
+        post_configuration.buzzer_on_ptrs[i] = buzzer_ons[i];
+        post_configuration.buzzer_off_ptrs[i] = buzzer_offs[i];
+        post_configuration.buzzer_delay_ptrs[i] = buzzer_syncs[i];
+        post_configuration.buzzer_tick_ptrs[i] = buzzer_ticks[i];
+    }
+    // end of POST configuration --------------------------------------------------------
+
+    // single call run_state to verify POST
+    current_state = run_state(current_state, &post_configuration);
+
+    // enable can interrupts
+    HAL_CAN_Start(&hcan1);
+    HAL_CAN_Start(&hcan2);
+    HAL_CAN_Start(&hcan3);
+
+    HAL_CAN_ActivateNotification(&hcan1, CAN_IT_RX_FIFO0_MSG_PENDING);
+    HAL_CAN_ActivateNotification(&hcan1, CAN_IT_RX_FIFO1_MSG_PENDING);
+    HAL_CAN_ActivateNotification(&hcan2, CAN_IT_RX_FIFO0_MSG_PENDING);
+    HAL_CAN_ActivateNotification(&hcan2, CAN_IT_RX_FIFO1_MSG_PENDING);
+    HAL_CAN_ActivateNotification(&hcan3, CAN_IT_RX_FIFO0_MSG_PENDING);
+    HAL_CAN_ActivateNotification(&hcan3, CAN_IT_RX_FIFO1_MSG_PENDING);
     /* USER CODE END 2 */
 
     /* Infinite loop */
@@ -119,7 +224,7 @@ int main(void) {
 
         /* USER CODE BEGIN 3 */
 
-        //testing fsm state change
+        //run the fsm
         current_state = run_state(current_state, NULL);
     }
     /* USER CODE END 3 */

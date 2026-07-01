@@ -96,8 +96,19 @@ transition_func_t *const transition_table[NUM_STATES][NUM_STATES] = {
 // Function to be executed in state init
 // valid return states: STATE_FATAL, STATE_IDLE
 state_t do_init(state_data_t *data) {
-    state_t next_state = STATE_FATAL;
+    state_t next_state = STATE_IDLE;
     /* Your Code Here */
+    logger_api_log(LOGGER_LEVEL_INFO, "FSM: INIT state");
+
+    // convert state data into POST struct configuration
+    struct PostConfig *post_configuration = (struct PostConfig *)data;
+
+    if (post_api_do_init(post_configuration) != POST_RC_OK) {
+        // Error during POST initialization
+        logger_api_log(LOGGER_LEVEL_ERROR, "FSM: POST failed. Going to FATAL");
+        next_state = STATE_FATAL;
+    }
+    // If ok, transit to idle
 
     switch (next_state) {
         case STATE_FATAL:
@@ -115,6 +126,10 @@ state_t do_init(state_data_t *data) {
 state_t do_fatal(state_data_t *data) {
     state_t next_state = NO_CHANGE;
     /* Your Code Here */
+    EAGLETRT_API_UNUSED(data);
+
+    // fatal state is a sink, no other operation should be made
+    logger_api_log(LOGGER_LEVEL_ERROR, "FSM: FATAL state");
 
     switch (next_state) {
         case NO_CHANGE:
@@ -132,6 +147,26 @@ state_t do_fatal(state_data_t *data) {
 state_t do_idle(state_data_t *data) {
     state_t next_state = NO_CHANGE;
     /* Your Code Here */
+    EAGLETRT_API_UNUSED(data);
+    logger_api_log(LOGGER_LEVEL_INFO, "FSM: IDLE state");
+
+    can_communication_api_process_rx(CAN_COMMUNICATION_NET_PRIMARY);
+    can_communication_api_process_rx(CAN_COMMUNICATION_NET_SECONDARY);
+    can_communication_api_process_rx(CAN_COMMUNICATION_NET_INVERTER);
+
+    if (vehicle_api_get_ts_on_requested()) {
+        if (!vehicle_api_get_voltage_higher_than_60v()) {
+            logger_api_log(LOGGER_LEVEL_INFO, "FSM: TS ON requested. Moving to PRECHARGE.");
+            next_state = STATE_MANUAL_WAIT_TS_PRECHARGE;
+        } else {
+            logger_api_log(LOGGER_LEVEL_ERROR, "FSM: Aborting Precharge. DC Link already >60V!");
+            next_state = STATE_FATAL;
+        }
+    }
+
+    can_communication_api_process_tx(CAN_COMMUNICATION_NET_PRIMARY);
+    can_communication_api_process_tx(CAN_COMMUNICATION_NET_SECONDARY);
+    can_communication_api_process_tx(CAN_COMMUNICATION_NET_INVERTER);
 
     switch (next_state) {
         case NO_CHANGE:
@@ -152,8 +187,17 @@ state_t do_idle(state_data_t *data) {
 // Function to be executed in state flash
 // valid return states: NO_CHANGE, STATE_FLASH, STATE_IDLE
 state_t do_flash(state_data_t *data) {
-    state_t next_state = NO_CHANGE;
+    // No CAN frame is defined for the flash state
+    // for the moment it is left disabled
+    state_t next_state = STATE_IDLE;
     /* Your Code Here */
+    EAGLETRT_API_UNUSED(data);
+    logger_api_log(LOGGER_LEVEL_INFO, "FSM: FLASH state");
+
+    // Remain in flash until an external request is received
+    // to indicate that flashing is aborted/terminated
+    can_communication_api_process_rx(CAN_COMMUNICATION_NET_PRIMARY);
+    can_communication_api_process_rx(CAN_COMMUNICATION_NET_SECONDARY);
 
     switch (next_state) {
         case NO_CHANGE:
@@ -170,8 +214,12 @@ state_t do_flash(state_data_t *data) {
 // Function to be executed in state pause
 // valid return states: NO_CHANGE, STATE_PAUSE, STATE_IDLE
 state_t do_pause(state_data_t *data) {
-    state_t next_state = NO_CHANGE;
+    // Pause won't be used during the 2026 season
+    // For this reason, hard-code the fallback to STATE_IDLE
+    state_t next_state = STATE_IDLE;
     /* Your Code Here */
+    EAGLETRT_API_UNUSED(data);
+    logger_api_log(LOGGER_LEVEL_INFO, "FSM: PAUSE state");
 
     switch (next_state) {
         case NO_CHANGE:
@@ -190,6 +238,7 @@ state_t do_pause(state_data_t *data) {
 state_t do_manual_wait_ts_precharge(state_data_t *data) {
     state_t next_state = NO_CHANGE;
     /* Your Code Here */
+    EAGLETRT_API_UNUSED(data);
 
     switch (next_state) {
         case NO_CHANGE:
@@ -209,6 +258,7 @@ state_t do_manual_wait_ts_precharge(state_data_t *data) {
 state_t do_as_off(state_data_t *data) {
     state_t next_state = NO_CHANGE;
     /* Your Code Here */
+    EAGLETRT_API_UNUSED(data);
 
     switch (next_state) {
         case NO_CHANGE:
@@ -229,6 +279,7 @@ state_t do_as_off(state_data_t *data) {
 state_t do_wait_driver(state_data_t *data) {
     state_t next_state = NO_CHANGE;
     /* Your Code Here */
+    EAGLETRT_API_UNUSED(data);
 
     switch (next_state) {
         case NO_CHANGE:
@@ -248,6 +299,7 @@ state_t do_wait_driver(state_data_t *data) {
 state_t do_manual_wait_ts_discharge(state_data_t *data) {
     state_t next_state = NO_CHANGE;
     /* Your Code Here */
+    EAGLETRT_API_UNUSED(data);
 
     switch (next_state) {
         case NO_CHANGE:
@@ -266,6 +318,7 @@ state_t do_manual_wait_ts_discharge(state_data_t *data) {
 state_t do_manual_wait_inv_enable(state_data_t *data) {
     state_t next_state = NO_CHANGE;
     /* Your Code Here */
+    EAGLETRT_API_UNUSED(data);
 
     switch (next_state) {
         case NO_CHANGE:
@@ -285,6 +338,7 @@ state_t do_manual_wait_inv_enable(state_data_t *data) {
 state_t do_driving(state_data_t *data) {
     state_t next_state = NO_CHANGE;
     /* Your Code Here */
+    EAGLETRT_API_UNUSED(data);
 
     switch (next_state) {
         case NO_CHANGE:
@@ -303,6 +357,7 @@ state_t do_driving(state_data_t *data) {
 state_t do_manual_wait_inv_disable(state_data_t *data) {
     state_t next_state = NO_CHANGE;
     /* Your Code Here */
+    EAGLETRT_API_UNUSED(data);
 
     switch (next_state) {
         case NO_CHANGE:
@@ -321,6 +376,7 @@ state_t do_manual_wait_inv_disable(state_data_t *data) {
 state_t do_as_off_wait_ts_precharge(state_data_t *data) {
     state_t next_state = NO_CHANGE;
     /* Your Code Here */
+    EAGLETRT_API_UNUSED(data);
 
     switch (next_state) {
         case NO_CHANGE:
@@ -340,6 +396,7 @@ state_t do_as_off_wait_ts_precharge(state_data_t *data) {
 state_t do_as_ready(state_data_t *data) {
     state_t next_state = NO_CHANGE;
     /* Your Code Here */
+    EAGLETRT_API_UNUSED(data);
 
     switch (next_state) {
         case NO_CHANGE:
@@ -359,6 +416,7 @@ state_t do_as_ready(state_data_t *data) {
 state_t do_as_ready_wait_inv_enable(state_data_t *data) {
     state_t next_state = NO_CHANGE;
     /* Your Code Here */
+    EAGLETRT_API_UNUSED(data);
 
     switch (next_state) {
         case NO_CHANGE:
@@ -378,6 +436,7 @@ state_t do_as_ready_wait_inv_enable(state_data_t *data) {
 state_t do_as_emergency(state_data_t *data) {
     state_t next_state = NO_CHANGE;
     /* Your Code Here */
+    EAGLETRT_API_UNUSED(data);
 
     switch (next_state) {
         case NO_CHANGE:
@@ -396,6 +455,7 @@ state_t do_as_emergency(state_data_t *data) {
 state_t do_as_r2d(state_data_t *data) {
     state_t next_state = STATE_AS_DRIVING;
     /* Your Code Here */
+    EAGLETRT_API_UNUSED(data);
 
     switch (next_state) {
         case STATE_AS_DRIVING:
@@ -413,6 +473,7 @@ state_t do_as_r2d(state_data_t *data) {
 state_t do_as_driving(state_data_t *data) {
     state_t next_state = NO_CHANGE;
     /* Your Code Here */
+    EAGLETRT_API_UNUSED(data);
 
     switch (next_state) {
         case NO_CHANGE:
@@ -432,6 +493,7 @@ state_t do_as_driving(state_data_t *data) {
 state_t do_as_finished(state_data_t *data) {
     state_t next_state = NO_CHANGE;
     /* Your Code Here */
+    EAGLETRT_API_UNUSED(data);
 
     switch (next_state) {
         case NO_CHANGE:
@@ -450,6 +512,7 @@ state_t do_as_finished(state_data_t *data) {
 state_t do_as_off_wait_ts_discharge(state_data_t *data) {
     state_t next_state = NO_CHANGE;
     /* Your Code Here */
+    EAGLETRT_API_UNUSED(data);
 
     switch (next_state) {
         case NO_CHANGE:
@@ -468,6 +531,7 @@ state_t do_as_off_wait_ts_discharge(state_data_t *data) {
 state_t do_as_ready_wait_inv_disable(state_data_t *data) {
     state_t next_state = NO_CHANGE;
     /* Your Code Here */
+    EAGLETRT_API_UNUSED(data);
 
     switch (next_state) {
         case NO_CHANGE:
@@ -486,6 +550,7 @@ state_t do_as_ready_wait_inv_disable(state_data_t *data) {
 state_t do_as_finished_wait_inv_disable(state_data_t *data) {
     state_t next_state = NO_CHANGE;
     /* Your Code Here */
+    EAGLETRT_API_UNUSED(data);
 
     switch (next_state) {
         case NO_CHANGE:
@@ -504,6 +569,7 @@ state_t do_as_finished_wait_inv_disable(state_data_t *data) {
 state_t do_as_finished_wait_ts_discharge(state_data_t *data) {
     state_t next_state = NO_CHANGE;
     /* Your Code Here */
+    EAGLETRT_API_UNUSED(data);
 
     switch (next_state) {
         case NO_CHANGE:
@@ -522,6 +588,7 @@ state_t do_as_finished_wait_ts_discharge(state_data_t *data) {
 state_t do_as_emergency_wait_inv_disable(state_data_t *data) {
     state_t next_state = NO_CHANGE;
     /* Your Code Here */
+    EAGLETRT_API_UNUSED(data);
 
     switch (next_state) {
         case NO_CHANGE:
@@ -540,6 +607,7 @@ state_t do_as_emergency_wait_inv_disable(state_data_t *data) {
 state_t do_as_emergency_wait_ts_discharge(state_data_t *data) {
     state_t next_state = NO_CHANGE;
     /* Your Code Here */
+    EAGLETRT_API_UNUSED(data);
 
     switch (next_state) {
         case NO_CHANGE:
@@ -571,6 +639,7 @@ state_t do_as_emergency_wait_ts_discharge(state_data_t *data) {
 // 2. from as_off to as_off_wait_ts_precharge
 void start_ts_precharge(state_data_t *data) {
     /* Your Code Here */
+    EAGLETRT_API_UNUSED(data);
 }
 
 // This function is called in 6 transitions:
@@ -582,6 +651,7 @@ void start_ts_precharge(state_data_t *data) {
 // 6. from as_emergency_wait_inv_disable to as_emergency_wait_ts_discharge
 void start_ts_discharge(state_data_t *data) {
     /* Your Code Here */
+    EAGLETRT_API_UNUSED(data);
 }
 
 // This function is called in 2 transitions:
@@ -589,6 +659,7 @@ void start_ts_discharge(state_data_t *data) {
 // 2. from as_ready to as_ready_wait_inv_enable
 void start_inv_enable(state_data_t *data) {
     /* Your Code Here */
+    EAGLETRT_API_UNUSED(data);
 }
 
 // This function is called in 5 transitions:
@@ -599,6 +670,7 @@ void start_inv_enable(state_data_t *data) {
 // 5. from as_emergency to as_emergency_wait_inv_disable
 void start_inv_disable(state_data_t *data) {
     /* Your Code Here */
+    EAGLETRT_API_UNUSED(data);
 }
 
 /*  ____  _        _        

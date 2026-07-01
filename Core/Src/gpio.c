@@ -45,15 +45,29 @@ void MX_GPIO_Init(void) {
 
     /* GPIO Ports Clock Enable */
     __HAL_RCC_GPIOE_CLK_ENABLE();
+    __HAL_RCC_GPIOH_CLK_ENABLE();
     __HAL_RCC_GPIOC_CLK_ENABLE();
     __HAL_RCC_GPIOA_CLK_ENABLE();
     __HAL_RCC_GPIOB_CLK_ENABLE();
+    __HAL_RCC_GPIOD_CLK_ENABLE();
 
     /*Configure GPIO pin Output Level */
     HAL_GPIO_WritePin(GPIOE, SD_CLOSE_Pin | RPI_PowerButton_Pin, GPIO_PIN_RESET);
 
     /*Configure GPIO pin Output Level */
+    HAL_GPIO_WritePin(Watchdog_Kick_GPIO_Port, Watchdog_Kick_Pin, GPIO_PIN_RESET);
+
+    /*Configure GPIO pin Output Level */
     HAL_GPIO_WritePin(GPIOB, PTT_Pin | RTD_BUZZER_Pin, GPIO_PIN_RESET);
+
+    /*Configure GPIO pin Output Level */
+    HAL_GPIO_WritePin(GPIOD, FlipFlop_1_Set_Pin | FlipFlop_1_Reset_Pin | FlipFlop_2_Set_Pin, GPIO_PIN_SET);
+
+    /*Configure GPIO pin Output Level */
+    HAL_GPIO_WritePin(GPIOD, FlipFlop_1_Clock_Pin | FlipFlop_1_Data_Input_Pin | FlipFlop_2_Clock_Pin | FlipFlop_2_Data_Input_Pin, GPIO_PIN_RESET);
+
+    /*Configure GPIO pin Output Level */
+    HAL_GPIO_WritePin(FlipFlop_3_Reset_GPIO_Port, FlipFlop_3_Reset_Pin, GPIO_PIN_SET);
 
     /*Configure GPIO pin : SD_CLOSE_Pin */
     GPIO_InitStruct.Pin = SD_CLOSE_Pin;
@@ -69,12 +83,39 @@ void MX_GPIO_Init(void) {
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
     HAL_GPIO_Init(RPI_PowerButton_GPIO_Port, &GPIO_InitStruct);
 
-    /*Configure GPIO pins : PTT_Pin RTD_BUZZER_Pin */
-    GPIO_InitStruct.Pin = PTT_Pin | RTD_BUZZER_Pin;
+    /*Configure GPIO pin : Watchdog_Kick_Pin */
+    GPIO_InitStruct.Pin = Watchdog_Kick_Pin;
+    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+    HAL_GPIO_Init(Watchdog_Kick_GPIO_Port, &GPIO_InitStruct);
+
+    /*Configure GPIO pins : PTT_Pin RTD_BUZZER_Pin FlipFlop_3_Reset_Pin */
+    GPIO_InitStruct.Pin = PTT_Pin | RTD_BUZZER_Pin | FlipFlop_3_Reset_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
     HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+    /*Configure GPIO pin : FlipFlop_2_Output_Data_Pin */
+    GPIO_InitStruct.Pin = FlipFlop_2_Output_Data_Pin;
+    GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    HAL_GPIO_Init(FlipFlop_2_Output_Data_GPIO_Port, &GPIO_InitStruct);
+
+    /*Configure GPIO pins : FlipFlop_1_Set_Pin FlipFlop_1_Clock_Pin FlipFlop_1_Data_Input_Pin FlipFlop_1_Reset_Pin
+                           FlipFlop_2_Set_Pin FlipFlop_2_Clock_Pin FlipFlop_2_Data_Input_Pin */
+    GPIO_InitStruct.Pin = FlipFlop_1_Set_Pin | FlipFlop_1_Clock_Pin | FlipFlop_1_Data_Input_Pin | FlipFlop_1_Reset_Pin | FlipFlop_2_Set_Pin | FlipFlop_2_Clock_Pin | FlipFlop_2_Data_Input_Pin;
+    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+    HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
+
+    /*Configure GPIO pin : FlipFlop_Output_Data_Pin */
+    GPIO_InitStruct.Pin = FlipFlop_Output_Data_Pin;
+    GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+    GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+    HAL_GPIO_Init(FlipFlop_Output_Data_GPIO_Port, &GPIO_InitStruct);
 }
 
 /* USER CODE BEGIN 2 */

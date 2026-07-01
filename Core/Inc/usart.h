@@ -29,7 +29,8 @@ extern "C" {
 #include "main.h"
 
 /* USER CODE BEGIN Includes */
-
+#include "logger-api.h"
+#include "eagletrt-api.h"
 /* USER CODE END Includes */
 
 extern UART_HandleTypeDef huart4;
@@ -41,7 +42,14 @@ extern UART_HandleTypeDef huart4;
 void MX_UART4_Init(void);
 
 /* USER CODE BEGIN Prototypes */
-
+/*!
+ * \brief Production hardware bridge to transmit messages over physical UART2 using the ST HAL.
+ * \param[in] message Pointer to the structured PAL message containing the data payload.
+ * \retval PAL_RC_OK on success.
+ * \retval PAL_RC_NULL_POINTER if message or its inner payload pointer is NULL.
+ * \retval PAL_RC_IO_ERROR if the underlying HAL layer reports a timeout or bus failure.
+ */
+enum PalReturnCode usart_logger_transmit(const struct PalMessage *message);
 /* USER CODE END Prototypes */
 
 #ifdef __cplusplus
@@ -49,4 +57,3 @@ void MX_UART4_Init(void);
 #endif
 
 #endif /* __USART_H__ */
-

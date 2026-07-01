@@ -1,7 +1,7 @@
 /*!
  * \file post.h
  * \author Dorijan Di Zepp
- * \date 2026-06-06
+ * \date 2026-06-25
  * \brief This file defines Power-On Self-Test (POST) structures for system initialization.
  */
 
@@ -10,6 +10,7 @@
 
 #include "as-driver.h"
 #include "buzzer.h"
+#include "can-communication.h"
 #include "inverters.h"
 #include "pedals.h"
 #include "raspberry.h"
@@ -35,6 +36,9 @@ struct PostConfig {
     buzzer_off_callback buzzer_off_ptrs[BUZZER_TYPE_COUNT];     /*!< Array of function pointers to deactivate specific buzzer variations. */
     buzzer_delay_callback buzzer_delay_ptrs[BUZZER_TYPE_COUNT]; /*!< Array of function pointers to execute timed buzzer operations. */
     buzzer_tick_callback buzzer_tick_ptrs[BUZZER_TYPE_COUNT];   /*!< Array of function pointers to poll or update the buzzer tick timers. */
+
+    /* --- CAN Communication configurations --- */
+    struct CanCommunicationNetworkConfig can_networks[CAN_COMMUNICATION_NET_COUNT]; /*!< Explicit configuration blocks for the system's physical CAN networks. */
 
     /* --- Inverters callbacks --- */
     inverters_send_drive_command_callback inverters_send_drive_command; /*!< Callback to dispatch runtime status or drive states to the inverters. */
