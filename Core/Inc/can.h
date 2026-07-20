@@ -134,3 +134,4 @@ enum TSReturnCode can_ts_send_command(enum TSCommand ts_command);
 #endif
 
 #endif /* __CAN_H__ */
+

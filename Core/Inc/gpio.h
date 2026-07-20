@@ -77,3 +77,4 @@ enum RaspberryReturnCode gpio_raspberry_set_pin(enum RaspberryControlPinState pi
 }
 #endif
 #endif /*__ GPIO_H__ */
+
