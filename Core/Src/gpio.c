@@ -53,7 +53,7 @@ void MX_GPIO_Init(void)
   __HAL_RCC_GPIOD_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOE, SD_CLOSE_Pin|GPIO_PIN_3|RASPI_CS_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOE, SD_CLOSE_Pin|RASPI_POWER_BUTTON_Pin|RASPI_CS_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(KICK_WATCHDOG_GPIO_Port, KICK_WATCHDOG_Pin, GPIO_PIN_RESET);
@@ -77,8 +77,8 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(SD_CLOSE_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : PE3 RASPI_CS_Pin */
-  GPIO_InitStruct.Pin = GPIO_PIN_3|RASPI_CS_Pin;
+  /*Configure GPIO pins : RASPI_POWER_BUTTON_Pin RASPI_CS_Pin */
+  GPIO_InitStruct.Pin = RASPI_POWER_BUTTON_Pin|RASPI_CS_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -129,13 +129,13 @@ enum BuzzerReturnCode gpio_buzzer_on(uint32_t frequency, float amplitude) {
     EAGLETRT_API_UNUSED(frequency);
     EAGLETRT_API_UNUSED(amplitude);
 
-    HAL_GPIO_WritePin(RTD_BUZZER_GPIO_Port, RTD_BUZZER_Pin, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(R2D_BUZZER_GPIO_Port, R2D_BUZZER_Pin, GPIO_PIN_SET);
     // GPIO doesn't return any code
     return BUZZER_RC_OK;
 }
 
 enum BuzzerReturnCode gpio_buzzer_off() {
-    HAL_GPIO_WritePin(RTD_BUZZER_GPIO_Port, RTD_BUZZER_Pin, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(R2D_BUZZER_GPIO_Port, R2D_BUZZER_Pin, GPIO_PIN_RESET);
     // GPIO doesn't return any code
     return BUZZER_RC_OK;
 }
@@ -152,11 +152,11 @@ enum BuzzerReturnCode gpio_buzzer_play_sync(uint32_t frequency, float amplitude,
 enum RaspberryReturnCode gpio_raspberry_set_pin(enum RaspberryControlPinState pin_state) {
     switch (pin_state) {
         case RASPBERRY_CONTROL_PIN_STATE_ON:
-            HAL_GPIO_WritePin(RPI_PowerButton_GPIO_Port, RPI_PowerButton_Pin, GPIO_PIN_SET);
+            HAL_GPIO_WritePin(RASPI_POWER_BUTTON_GPIO_Port, RASPI_POWER_BUTTON_Pin, GPIO_PIN_SET);
             break;
 
         case RASPBERRY_CONTROL_PIN_STATE_OFF:
-            HAL_GPIO_WritePin(RPI_PowerButton_GPIO_Port, RPI_PowerButton_Pin, GPIO_PIN_RESET);
+            HAL_GPIO_WritePin(RASPI_POWER_BUTTON_GPIO_Port, RASPI_POWER_BUTTON_Pin, GPIO_PIN_RESET);
             break;
 
         default:

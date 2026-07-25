@@ -59,6 +59,8 @@ void Error_Handler(void);
 /* Private defines -----------------------------------------------------------*/
 #define SD_CLOSE_Pin GPIO_PIN_2
 #define SD_CLOSE_GPIO_Port GPIOE
+#define RASPI_POWER_BUTTON_Pin GPIO_PIN_3
+#define RASPI_POWER_BUTTON_GPIO_Port GPIOE
 #define SD_OUT_READ_Pin GPIO_PIN_3
 #define SD_OUT_READ_GPIO_Port GPIOC
 #define DBG_TX_Pin GPIO_PIN_0
