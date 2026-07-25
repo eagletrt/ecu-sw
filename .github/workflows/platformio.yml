@@ -34,6 +34,18 @@ jobs:
       - name: Install PlatformIO Core
         run: pip install --upgrade platformio
 
+      - name: Generate GitHub App Token
+        id: generate-app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.PLATFORMIO_APP_ID }}
+          private-key: ${{ secrets.PLATFORMIO_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+
+      - name: Configure Git for Organization Cloning
+        run: |
+          git config --global url."https://x-access-token:${{ steps.generate-app-token.outputs.token }}@github.com/".insteadOf "https://github.com/"
+
       - name: Build
         run: pio run
 
