@@ -73,12 +73,17 @@ enum LoggerReturnCode logger_api_log(enum LoggerLevel level, const char *format,
     int body_len = vsnprintf(final_buffer + offset, (int16_t)LOGGER_MAX_LINE_SIZE - offset - length_of_closing_characters, format, args);
     va_end(args);
 
-    if (body_len < 0 || offset + body_len >= (int16_t)LOGGER_MAX_LINE_SIZE - length_of_closing_characters) {
+    int16_t wrote;
+    if (body_len < 0) {
         return LOGGER_RC_TRANSMISSION_ERROR; // Format parsing exception
+    } else if (body_len >= (int16_t)(LOGGER_MAX_LINE_SIZE - offset - length_of_closing_characters)) {
+        wrote = (int16_t)(LOGGER_MAX_LINE_SIZE - offset - length_of_closing_characters);
+    } else {
+        wrote = body_len;
     }
 
     // Measure the actual string safely populated inside the buffer boundary
-    int16_t actual_len = offset + body_len;
+    int16_t actual_len = offset + wrote;
 
     final_buffer[actual_len++] = '\n';
     final_buffer[actual_len++] = '\r';
