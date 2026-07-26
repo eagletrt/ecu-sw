@@ -7,7 +7,6 @@
 
 #include "can-communication-router-api.h"
 #include "can-primary-api.h"
-#include "can-bms-api.h"
 #include "can-inverters-api.h"
 #include "vehicle-api.h"
 #include "pedals-api.h"
@@ -21,19 +20,11 @@ enum CanCommunicationReturnCode can_communication_router_api_receive_primary(str
         return CAN_COMMUNICATION_RC_INVALID_NETWORK;
     }
 
-    // 1. Convert the runtime CAN ID to the corresponding enum message index
-    int message_index = can_primary_api_index_from_id(frame->id);
-    if (message_index < 0) {
-        return CAN_COMMUNICATION_RC_ERROR;
-    }
-
-    // 2. Deserialize exactly ONCE here using the resolved index
     union CanPrimaryMessages message = { 0 };
-    if (can_primary_api_deserialize_from_index(message_index, frame->data, &message) != 0) {
+    if (can_primary_api_deserialize_from_id(frame->id, frame->data, &message) != 0) {
         return CAN_COMMUNICATION_RC_ERROR;
     }
 
-    // 3. Jump straight into the business logic clean and fast
     switch (frame->id) {
         case CAN_PRIMARY_MESSAGE_FRAME_ID_STEERING_WHEEL_SET_ECU_STATUS: {
             if (message.steering_wheel_set_ecu_status.targetstatus ==
