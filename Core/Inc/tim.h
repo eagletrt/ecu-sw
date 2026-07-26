@@ -72,4 +72,3 @@ enum BuzzerReturnCode tim_buzzer_play_sync(uint32_t frequency, float amplitude, 
 #endif
 
 #endif /* __TIM_H__ */
-
