@@ -17,8 +17,9 @@
 EAGLETRT_STATIC struct TsHandler ts_handler;
 
 enum TSReturnCode ts_api_init(ts_command_callback send_ts_command) {
-    if (send_ts_command == NULL)
+    if (send_ts_command == NULL) {
         return TS_RC_ERROR;
+    }
 
     ts_handler.send_ts_command = send_ts_command;
     return TS_RC_OK;

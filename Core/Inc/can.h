@@ -29,8 +29,11 @@ extern "C" {
 #include "main.h"
 
 /* USER CODE BEGIN Includes */
-#include "eagletrt-api.h"
+#include "as-driver.h"
+#include "inverters.h"
+#include "tractive-system.h"
 #include "can-communication-api.h"
+#include "eagletrt-api.h"
 /* USER CODE END Includes */
 
 extern CAN_HandleTypeDef hcan1;
@@ -83,6 +86,47 @@ enum CanCommunicationReturnCode can_send_secondary(const struct CanCommunication
  * \retval CAN_COMMUNICATION_RC_TRANSMISSION_ERROR if the underlying HAL call reported a failure.
  */
 enum CanCommunicationReturnCode can_send_inverter(const struct CanCommunicationFrame *frame);
+/*!
+ * \brief Transmits an air release command over the CAN bus.
+ *
+ * \param[in] air_line The targeted physical or logical AS air line variation to actuate.
+ *
+ * \retval AS_DRIVER_RC_OK if the CAN frame was successfully queued for transmission.
+ * \retval AS_DRIVER_RC_ERROR if the frame could not be sent or actuation failed.
+ */
+enum ASDriverReturnCode can_air_release_from_line(enum ASDriverAirLine air_line);
+
+/*!
+ * \brief Dispatches a drive state command to the motor inverters.
+ *
+ * \param[in] drive_status The requested operational status target for the inverters.
+ * \param[in] position The specific target inverter.
+ *
+ * \retval INVERTERS_RC_OK if the command was dispatched onto the network bus successfully.
+ * \retval INVERTERS_RC_ERROR if the frame could not be sent.
+ */
+enum InvertersReturnCode can_inverters_send_drive_command(enum InvertersDriveStatus drive_status, enum InvertersPosition position);
+
+/*!
+ * \brief Modifies and transmits the commanded reference torque targets to the designated inverter.
+ *
+ * \param[in] target_torque The target physical torque reference value requested by the throttle pedal.
+ * \param[in] position The specific target inverter.
+ *
+ * \retval INVERTERS_RC_OK if the torque setpoint update was successfully transmitted.
+ * \retval INVERTERS_RC_ERROR if frame could not be sent or it was not possible to change the torque.
+ */
+enum InvertersReturnCode can_inverters_set_torque(float target_torque, enum InvertersPosition position);
+
+/*!
+ * \brief Transmits TS commands over the CAN bus.
+ *
+ * \param[in] ts_command The explicit Tractive System command state to broadcast.
+ *
+ * \retval TS_RC_OK if the frame was successfully transmitted.
+ * \retval TS_RC_ERROR if the frame could not be sent.
+ */
+enum TSReturnCode can_ts_send_command(enum TSCommand ts_command);
 /* USER CODE END Prototypes */
 
 #ifdef __cplusplus

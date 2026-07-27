@@ -1,7 +1,7 @@
 /*!
  * \file post-api.c
  * \author Dorijan Di Zepp
- * \date 2026-06-06
+ * \date 2026-06-25
  * \brief This file defines Power-On Self-Test (POST) functions for system initialization.
  */
 
@@ -9,6 +9,7 @@
 #include "eagletrt-api.h"
 #include "as-driver-api.h"
 #include "buzzer-api.h"
+#include "can-communication-api.h"
 #include "inverters-api.h"
 #include "pedals-api.h"
 #include "raspberry-api.h"
@@ -49,6 +50,11 @@ enum PostReturnCode post_api_do_init(struct PostConfig *post_config) {
                         post_config->buzzer_off_ptrs,
                         post_config->buzzer_delay_ptrs,
                         post_config->buzzer_tick_ptrs) != BUZZER_RC_OK) {
+        final_status = POST_RC_ERROR;
+    }
+
+    // Initialize the CAN Communication Module using the network configurations
+    if (can_communication_api_init(post_config->can_networks) != CAN_COMMUNICATION_RC_OK) {
         final_status = POST_RC_ERROR;
     }
 

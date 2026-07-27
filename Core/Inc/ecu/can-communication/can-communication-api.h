@@ -18,7 +18,7 @@
  * \retval CAN_COMMUNICATION_RC_INVALID_NETWORK if a network ID within the initialization sequence is out of range.
  * \retval CAN_COMMUNICATION_RC_ERROR if PAL or the arena fail to set up.
  */
-enum CanCommunicationReturnCode can_communication_api_init(const struct CanCommunicationNetworkConfig configs[CAN_COMM_NET_COUNT]);
+enum CanCommunicationReturnCode can_communication_api_init(const struct CanCommunicationNetworkConfig configs[CAN_COMMUNICATION_NET_COUNT]);
 
 /*!
  * \brief Pushes an abstracted data frame into a specific network's local TX buffer queue.
@@ -28,7 +28,7 @@ enum CanCommunicationReturnCode can_communication_api_init(const struct CanCommu
  *
  * \retval CAN_COMMUNICATION_RC_OK If the frame was successfully appended to the queue.
  * \retval CAN_COMMUNICATION_RC_NULL_POINTER If the provided \p frame pointer evaluates to NULL.
- * \retval CAN_COMMUNICATION_RC_INVALID_NETWORK If \p network matches or exceeds CAN_COMM_NET_COUNT.
+ * \retval CAN_COMMUNICATION_RC_INVALID_NETWORK If \p network matches or exceeds CAN_COMMUNICATION_NET_COUNT.
  * \retval CAN_COMMUNICATION_RC_INVALID_LENGTH If \p frame->length exceeds CAN_COMMUNICATION_FRAME_DATA_SIZE.
  * \retval CAN_COMMUNICATION_RC_QUEUE_FULL If the underlying transmission queue is completely saturated.
  * \retval CAN_COMMUNICATION_RC_ERROR If a low-level structural exception occurs inside the PAL ring buffer.
@@ -45,7 +45,7 @@ enum CanCommunicationReturnCode can_communication_api_add_to_tx(enum CanCommunic
  *
  * \retval CAN_COMMUNICATION_RC_OK If the frame was safely staged for future state processing.
  * \retval CAN_COMMUNICATION_RC_NULL_POINTER If the provided \p frame pointer evaluates to NULL.
- * \retval CAN_COMMUNICATION_RC_INVALID_NETWORK If \p network matches or exceeds CAN_COMM_NET_COUNT.
+ * \retval CAN_COMMUNICATION_RC_INVALID_NETWORK If \p network matches or exceeds CAN_COMMUNICATION_NET_COUNT.
  * \retval CAN_COMMUNICATION_RC_INVALID_LENGTH If \p frame->length exceeds CAN_COMMUNICATION_FRAME_DATA_SIZE.
  * \retval CAN_COMMUNICATION_RC_QUEUE_FULL If the reception queue is saturated.
  * \retval CAN_COMMUNICATION_RC_ERROR If an internal verification error occurs within the PAL layer.
@@ -62,11 +62,11 @@ enum CanCommunicationReturnCode can_communication_api_add_to_rx(enum CanCommunic
  * \param[in] network The physical CAN network whose transmission queue should be flushed.
  *
  * \retval CAN_COMMUNICATION_RC_OK If all queued elements were completely flushed out.
- * \retval CAN_COMMUNICATION_RC_INVALID_NETWORK If \p network matches or exceeds CAN_COMM_NET_COUNT.
+ * \retval CAN_COMMUNICATION_RC_INVALID_NETWORK If \p network matches or exceeds CAN_COMMUNICATION_NET_COUNT.
  * \retval CAN_COMMUNICATION_RC_TRANSMISSION_ERROR If the underlying hardware driver callback reports an operation failure.
  * \retval CAN_COMMUNICATION_RC_ERROR If a low-level internal driver fault occurs.
  */
-enum CanCommunicationReturnCode can_communications_api_process_tx(enum CanCommunicationNetwork network);
+enum CanCommunicationReturnCode can_communication_api_process_tx(enum CanCommunicationNetwork network);
 
 /*!
  * \brief Drains the entire RX queue of a specific network, dispatching frames to the application layer.
@@ -77,7 +77,7 @@ enum CanCommunicationReturnCode can_communications_api_process_tx(enum CanCommun
  * \param[in] network The physical CAN network whose reception queue should be processed.
  *
  * \retval CAN_COMMUNICATION_RC_OK If all received messages were popped and processed cleanly.
- * \retval CAN_COMMUNICATION_RC_INVALID_NETWORK If \p network matches or exceeds CAN_COMM_NET_COUNT.
+ * \retval CAN_COMMUNICATION_RC_INVALID_NETWORK If \p network matches or exceeds CAN_COMMUNICATION_NET_COUNT.
  * \retval CAN_COMMUNICATION_RC_RECEIVE_HANDLER_ERROR If the user routing callback fails to process an extracted frame.
  * \retval CAN_COMMUNICATION_RC_ERROR If a PAL internal pipeline fault is encountered.
  */

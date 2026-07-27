@@ -1,7 +1,7 @@
 /*!
  * \file test_logger.c
  * \author Dorijan Di Zepp
- * \date 2026-06-14
+ * \date 2026-07-01
  * \brief Unit tests using FFF for testing the logger module.
  */
 
@@ -137,7 +137,7 @@ void test_logger_api_log_should_format_and_pass_successfully_to_hardware(void) {
 
     const struct PalMessage *sent_msg = mock_uart_hardware_transmit_fake.arg0_val;
     TEST_ASSERT_NOT_NULL_MESSAGE(sent_msg, "Passed physical hardware message structure pointer evaluates to NULL");
-    TEST_ASSERT_EQUAL_STRING_MESSAGE("[INFO] Volt: 12", (const char *)sent_msg->payload, "Formatted metadata tag generation or payload sequence mismatch");
+    TEST_ASSERT_EQUAL_STRING_MESSAGE("[INFO] Volt: 12\n\r", (const char *)sent_msg->payload, "Formatted metadata tag generation or payload sequence mismatch");
 }
 
 void test_logger_api_log_should_bubble_error_if_hardware_fails(void) {

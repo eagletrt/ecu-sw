@@ -20,6 +20,21 @@ extern "C" {
 #endif
 #include <stdlib.h>
 
+// USER includes ------------------
+#include "as-driver-api.h"
+#include "buzzer-api.h"
+#include "can-communication-api.h"
+#include "can-communication-router-api.h"
+#include "inverters-api.h"
+#include "logger-api.h"
+#include "pedals-api.h"
+#include "post-api.h"
+#include "raspberry-api.h"
+#include "tractive-system-api.h"
+#include "vehicle-api.h"
+#include "eagletrt-api.h"
+// END USER includes --------------
+
 // State data object
 // By default set to void; override this typedef or load the proper
 // header if you need

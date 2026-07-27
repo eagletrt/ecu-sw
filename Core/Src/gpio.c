@@ -45,15 +45,29 @@ void MX_GPIO_Init(void) {
 
     /* GPIO Ports Clock Enable */
     __HAL_RCC_GPIOE_CLK_ENABLE();
+    __HAL_RCC_GPIOH_CLK_ENABLE();
     __HAL_RCC_GPIOC_CLK_ENABLE();
     __HAL_RCC_GPIOA_CLK_ENABLE();
     __HAL_RCC_GPIOB_CLK_ENABLE();
+    __HAL_RCC_GPIOD_CLK_ENABLE();
 
     /*Configure GPIO pin Output Level */
-    HAL_GPIO_WritePin(GPIOE, SD_CLOSE_Pin | RPI_PowerButton_Pin, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(GPIOE, SD_CLOSE_Pin | RASPI_POWER_BUTTON_Pin | RASPI_CS_Pin, GPIO_PIN_RESET);
 
     /*Configure GPIO pin Output Level */
-    HAL_GPIO_WritePin(GPIOB, PTT_Pin | RTD_BUZZER_Pin, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(KICK_WATCHDOG_GPIO_Port, KICK_WATCHDOG_Pin, GPIO_PIN_RESET);
+
+    /*Configure GPIO pin Output Level */
+    HAL_GPIO_WritePin(GPIOC, PTT_Pin | ASSI_G_Pin, GPIO_PIN_RESET);
+
+    /*Configure GPIO pin Output Level */
+    HAL_GPIO_WritePin(GPIOB, ASSI_R_Pin | ASSI_B_Pin | BRAKE_LIGHT_Pin, GPIO_PIN_RESET);
+
+    /*Configure GPIO pin Output Level */
+    HAL_GPIO_WritePin(FLIPFLOP_2Q_GPIO_Port, FLIPFLOP_2Q_Pin, GPIO_PIN_SET);
+
+    /*Configure GPIO pin Output Level */
+    HAL_GPIO_WritePin(GPIOD, FLIPFLOP_2CP_Pin | FLIPFLOP_2D_Pin | FLIPFLOP_1CP_Pin | FLIPFLOP_1D_Pin, GPIO_PIN_RESET);
 
     /*Configure GPIO pin : SD_CLOSE_Pin */
     GPIO_InitStruct.Pin = SD_CLOSE_Pin;
@@ -62,19 +76,47 @@ void MX_GPIO_Init(void) {
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
     HAL_GPIO_Init(SD_CLOSE_GPIO_Port, &GPIO_InitStruct);
 
-    /*Configure GPIO pin : RPI_PowerButton_Pin */
-    GPIO_InitStruct.Pin = RPI_PowerButton_Pin;
+    /*Configure GPIO pins : RASPI_POWER_BUTTON_Pin RASPI_CS_Pin */
+    GPIO_InitStruct.Pin = RASPI_POWER_BUTTON_Pin | RASPI_CS_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-    HAL_GPIO_Init(RPI_PowerButton_GPIO_Port, &GPIO_InitStruct);
+    HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
-    /*Configure GPIO pins : PTT_Pin RTD_BUZZER_Pin */
-    GPIO_InitStruct.Pin = PTT_Pin | RTD_BUZZER_Pin;
+    /*Configure GPIO pin : KICK_WATCHDOG_Pin */
+    GPIO_InitStruct.Pin = KICK_WATCHDOG_Pin;
+    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+    HAL_GPIO_Init(KICK_WATCHDOG_GPIO_Port, &GPIO_InitStruct);
+
+    /*Configure GPIO pins : PTT_Pin ASSI_G_Pin */
+    GPIO_InitStruct.Pin = PTT_Pin | ASSI_G_Pin;
+    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+    HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+    /*Configure GPIO pins : ASSI_R_Pin ASSI_B_Pin BRAKE_LIGHT_Pin */
+    GPIO_InitStruct.Pin = ASSI_R_Pin | ASSI_B_Pin | BRAKE_LIGHT_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
     HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+    /*Configure GPIO pins : FLIPFLOP_2Q_Pin FLIPFLOP_2CP_Pin FLIPFLOP_2D_Pin FLIPFLOP_1CP_Pin
+                           FLIPFLOP_1D_Pin */
+    GPIO_InitStruct.Pin = FLIPFLOP_2Q_Pin | FLIPFLOP_2CP_Pin | FLIPFLOP_2D_Pin | FLIPFLOP_1CP_Pin | FLIPFLOP_1D_Pin;
+    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+    HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
+
+    /*Configure GPIO pin : FLIPFLOP_1Q_Pin */
+    GPIO_InitStruct.Pin = FLIPFLOP_1Q_Pin;
+    GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+    GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+    HAL_GPIO_Init(FLIPFLOP_1Q_GPIO_Port, &GPIO_InitStruct);
 }
 
 /* USER CODE BEGIN 2 */
@@ -84,13 +126,13 @@ enum BuzzerReturnCode gpio_buzzer_on(uint32_t frequency, float amplitude) {
     EAGLETRT_API_UNUSED(frequency);
     EAGLETRT_API_UNUSED(amplitude);
 
-    HAL_GPIO_WritePin(RTD_BUZZER_GPIO_Port, RTD_BUZZER_Pin, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(R2D_BUZZER_GPIO_Port, R2D_BUZZER_Pin, GPIO_PIN_SET);
     // GPIO doesn't return any code
     return BUZZER_RC_OK;
 }
 
 enum BuzzerReturnCode gpio_buzzer_off() {
-    HAL_GPIO_WritePin(RTD_BUZZER_GPIO_Port, RTD_BUZZER_Pin, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(R2D_BUZZER_GPIO_Port, R2D_BUZZER_Pin, GPIO_PIN_RESET);
     // GPIO doesn't return any code
     return BUZZER_RC_OK;
 }
@@ -107,11 +149,11 @@ enum BuzzerReturnCode gpio_buzzer_play_sync(uint32_t frequency, float amplitude,
 enum RaspberryReturnCode gpio_raspberry_set_pin(enum RaspberryControlPinState pin_state) {
     switch (pin_state) {
         case RASPBERRY_CONTROL_PIN_STATE_ON:
-            HAL_GPIO_WritePin(RPI_PowerButton_GPIO_Port, RPI_PowerButton_Pin, GPIO_PIN_SET);
+            HAL_GPIO_WritePin(RASPI_POWER_BUTTON_GPIO_Port, RASPI_POWER_BUTTON_Pin, GPIO_PIN_SET);
             break;
 
         case RASPBERRY_CONTROL_PIN_STATE_OFF:
-            HAL_GPIO_WritePin(RPI_PowerButton_GPIO_Port, RPI_PowerButton_Pin, GPIO_PIN_RESET);
+            HAL_GPIO_WritePin(RASPI_POWER_BUTTON_GPIO_Port, RASPI_POWER_BUTTON_Pin, GPIO_PIN_RESET);
             break;
 
         default:

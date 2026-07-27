@@ -1,12 +1,12 @@
 /*!
  * \file logger-api.c
  * \author Dorijan Di Zepp
- * \date 2026-06-14
+ * \date 2026-07-01
  * \brief API execution handling for logging records.
  */
 
 #include "logger-api.h"
-#include "eagletrt-api.h"
+#include "eagletrt.h"
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
@@ -35,6 +35,8 @@ void logger_api_set_state(bool logger_state) {
 }
 
 enum LoggerReturnCode logger_api_log(enum LoggerLevel level, const char *format, ...) {
+    constexpr int16_t length_of_closing_characters = 3; // '\n', '\r', and '\0'
+
     if (logger_handler.pal_handler == NULL || format == NULL) {
         return LOGGER_RC_NULL_POINTER;
     }
@@ -58,31 +60,37 @@ enum LoggerReturnCode logger_api_log(enum LoggerLevel level, const char *format,
     // For default [LOG] will be left in case the logger level specified is not valid
     const char *header = (level < LOGGER_LEVEL_COUNT) ? log_headers[level] : "[LOG]";
 
-    int offset = snprintf(final_buffer, sizeof(final_buffer), "%s ", header);
+    int16_t offset = snprintf(final_buffer, sizeof(final_buffer), "%s ", header);
 
     // Verify no anomalies or truncations occurred during tag placement
-    if (offset < 0 || offset >= (int)sizeof(final_buffer)) {
+    if (offset < 0 || offset >= (int16_t)LOGGER_MAX_LINE_SIZE) {
         return LOGGER_RC_TRANSMISSION_ERROR;
     }
 
     // Process variable args into the remaining space of the local buffer
     va_list args;
     va_start(args, format);
-    int body_len = vsnprintf(final_buffer + offset, sizeof(final_buffer) - (size_t)offset, format, args);
+    int body_len = vsnprintf(final_buffer + offset, (int16_t)LOGGER_MAX_LINE_SIZE - offset - length_of_closing_characters, format, args);
     va_end(args);
 
+    int16_t wrote;
     if (body_len < 0) {
         return LOGGER_RC_TRANSMISSION_ERROR; // Format parsing exception
+    } else if (body_len >= (int16_t)(LOGGER_MAX_LINE_SIZE - offset - length_of_closing_characters)) {
+        wrote = (int16_t)(LOGGER_MAX_LINE_SIZE - offset - length_of_closing_characters);
+    } else {
+        wrote = body_len;
     }
 
     // Measure the actual string safely populated inside the buffer boundary
-    size_t actual_len = strlen(final_buffer);
+    int16_t actual_len = offset + wrote;
 
-    // Determine transmission size including the string null terminator
-    uint32_t tx_bytes = (uint32_t)(actual_len + 1U);
+    final_buffer[actual_len++] = '\n';
+    final_buffer[actual_len++] = '\r';
+    final_buffer[actual_len++] = '\0';
 
     // Queue the formatted record into PAL
-    enum PalReturnCode pal_rc = pal_api_add_to_tx_queue(logger_handler.pal_handler, final_buffer, tx_bytes);
+    enum PalReturnCode pal_rc = pal_api_add_to_tx_queue(logger_handler.pal_handler, final_buffer, actual_len);
     if (pal_rc != PAL_RC_OK) {
         if (pal_rc == PAL_RC_QUEUE_FULL) {
             return LOGGER_RC_BUFFER_FULL;
