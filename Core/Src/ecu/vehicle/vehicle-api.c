@@ -5,7 +5,7 @@
  */
 
 #include "vehicle-api.h"
-#include "eagletrt-api.h"
+#include "eagletrt.h"
 
 /*!
  * \brief Private module-scope instance handling state data.
@@ -13,18 +13,18 @@
 EAGLETRT_STATIC struct VehicleHandler vehicle_handler;
 
 enum VehicleReturnCode vehicle_api_init(void) {
-    vehicle_handler.ts_on_requested = false;
+    vehicle_handler.ts_on_button_pressed = false;
     vehicle_handler.voltage_higher_than_60v = false;
     return VEHICLE_RC_OK;
 }
 
-enum VehicleReturnCode vehicle_api_set_ts_on_requested(bool requested) {
-    vehicle_handler.ts_on_requested = requested;
+enum VehicleReturnCode vehicle_api_set_ts_on_button_pressed(bool pressed) {
+    vehicle_handler.ts_on_button_pressed = pressed;
     return VEHICLE_RC_OK;
 }
 
-bool vehicle_api_get_ts_on_requested(void) {
-    return vehicle_handler.ts_on_requested;
+bool vehicle_api_get_ts_on_button_pressed(void) {
+    return vehicle_handler.ts_on_button_pressed;
 }
 
 enum VehicleReturnCode vehicle_api_set_voltage_higher_than_60v(bool is_higher) {

@@ -18,16 +18,16 @@ enum VehicleReturnCode vehicle_api_init(void);
 
 /*!
  * \brief Sets the internal edge-triggered Tractive System activation request flag.
- * \param requested The boolean state to apply to the trigger flag.
+ * \param pressed The boolean state to apply to the trigger flag.
  * \retval VEHICLE_RC_OK on success.
  */
-enum VehicleReturnCode vehicle_api_set_ts_on_requested(bool requested);
+enum VehicleReturnCode vehicle_api_set_ts_on_button_pressed(bool pressed);
 
 /*!
  * \brief Gets the current state of the internal Tractive System activation request flag.
  * \return The current boolean state of the flag.
  */
-bool vehicle_api_get_ts_on_requested(void);
+bool vehicle_api_get_ts_on_button_pressed(void);
 
 /*!
  * \brief Sets the internal tractive system voltage safety evaluation flag.

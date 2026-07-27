@@ -154,7 +154,7 @@ state_t do_idle(state_data_t *data) {
     can_communication_api_process_rx(CAN_COMMUNICATION_NET_SECONDARY);
     can_communication_api_process_rx(CAN_COMMUNICATION_NET_INVERTER);
 
-    if (vehicle_api_get_ts_on_requested()) {
+    if (vehicle_api_get_ts_on_button_pressed()) {
         if (!vehicle_api_get_voltage_higher_than_60v()) {
             logger_api_log(LOGGER_LEVEL_INFO, "FSM: TS ON requested. Moving to PRECHARGE.");
             next_state = STATE_MANUAL_WAIT_TS_PRECHARGE;

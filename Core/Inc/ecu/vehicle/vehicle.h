@@ -29,10 +29,9 @@ struct VehicleHandler {
 
     /*! 
      * \brief Edge-triggered activation command from the steering wheel.
-     * \details Evaluates to true when a valid Tractive System (TS) ON request 
-     * frame is received via CAN while the vehicle is idling.
+     * \details Evaluates to true when the button is pressed on the steering wheel.
      */
-    bool ts_on_requested;
+    bool ts_on_button_pressed;
 
     /*! 
      * \brief Tractive system safety voltage threshold flag.

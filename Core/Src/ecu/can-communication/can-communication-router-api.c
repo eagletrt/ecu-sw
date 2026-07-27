@@ -29,7 +29,8 @@ enum CanCommunicationReturnCode can_communication_router_api_receive_primary(str
         case CAN_PRIMARY_MESSAGE_FRAME_ID_STEERING_WHEEL_SET_ECU_STATUS: {
             if (message.steering_wheel_set_ecu_status.targetstatus ==
                 CAN_PRIMARY_STEERING_WHEEL_SET_ECU_STATUS_TARGETSTATUS_READY) {
-                vehicle_api_set_ts_on_requested(true);
+                // TODO: change message from enum to boolean in libcan
+                vehicle_api_set_ts_on_button_pressed(true);
             }
             break;
         }
