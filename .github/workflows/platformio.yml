@@ -9,9 +9,6 @@ on:
       - master
       - dev
 
-permissions:
-  contents: read
-
 jobs:
   build:
     runs-on:
@@ -21,6 +18,20 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Generate GitHub App Token
+        id: generate-app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.PLATFORMIO_APP_ID }}
+          private-key: ${{ secrets.PLATFORMIO_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+
+      - name: Configure Git for Organization Cloning
+        run: |
+          git config --global --get-regexp 'url\..*\.insteadof' | cut -d' ' -f1 | xargs -I {} git config --global --unset-all {} || true
+          git config --global url."https://x-access-token:${{ steps.generate-app-token.outputs.token }}@github.com/".insteadOf "https://github.com/"
+
       - uses: actions/cache@v4
         with:
           path: |
@@ -33,18 +44,6 @@ jobs:
 
       - name: Install PlatformIO Core
         run: pip install --upgrade platformio
-
-      - name: Generate GitHub App Token
-        id: generate-app-token
-        uses: actions/create-github-app-token@v1
-        with:
-          app-id: ${{ secrets.PLATFORMIO_APP_ID }}
-          private-key: ${{ secrets.PLATFORMIO_APP_PRIVATE_KEY }}
-          owner: ${{ github.repository_owner }}
-
-      - name: Configure Git for Organization Cloning
-        run: |
-          git config --global url."https://x-access-token:${{ steps.generate-app-token.outputs.token }}@github.com/".insteadOf "https://github.com/"
 
       - name: Build
         run: pio run
