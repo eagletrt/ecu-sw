@@ -6,7 +6,6 @@
  */
 
 #include "post-api.h"
-#include "eagletrt-api.h"
 #include "as-driver-api.h"
 #include "buzzer-api.h"
 #include "can-communication-api.h"

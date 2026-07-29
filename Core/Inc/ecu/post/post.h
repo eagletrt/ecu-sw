@@ -12,9 +12,9 @@
 #include "buzzer.h"
 #include "can-communication.h"
 #include "inverters.h"
-#include "pedals.h"
 #include "raspberry.h"
 #include "tractive-system.h"
+#include "shutdown.h"
 
 /*!
  * \brief Return codes for the post module APIs
@@ -50,6 +50,9 @@ struct PostConfig {
 
     /* --- Tractive System (TS) callbacks --- */
     ts_command_callback ts_send_command; /*!< Callback to transmit high-voltage tractive system orchestration commands. */
+
+    /* --- Shutdown callbacks --- */
+    shutdown_set_state_callback shutdown_set_state; /*!< Callback to set the system's shutdown state. */
 };
 
 #endif
