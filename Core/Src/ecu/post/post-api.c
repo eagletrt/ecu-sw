@@ -6,7 +6,6 @@
  */
 
 #include "post-api.h"
-#include "eagletrt-api.h"
 #include "as-driver-api.h"
 #include "buzzer-api.h"
 #include "can-communication-api.h"
@@ -14,6 +13,7 @@
 #include "pedals-api.h"
 #include "raspberry-api.h"
 #include "tractive-system-api.h"
+#include "shutdown-api.h"
 
 enum PostReturnCode post_api_do_init(struct PostConfig *post_config) {
     if (post_config == NULL) {
@@ -25,7 +25,8 @@ enum PostReturnCode post_api_do_init(struct PostConfig *post_config) {
         post_config->inverters_send_drive_command == NULL ||
         post_config->inverters_set_torque == NULL ||
         post_config->raspberry_pin_control == NULL ||
-        post_config->ts_send_command == NULL) {
+        post_config->ts_send_command == NULL ||
+        post_config->shutdown_control_relay == NULL) {
         return POST_RC_ERROR;
     }
 
@@ -75,6 +76,10 @@ enum PostReturnCode post_api_do_init(struct PostConfig *post_config) {
     }
 
     if (ts_api_init(post_config->ts_send_command) != TS_RC_OK) {
+        final_status = POST_RC_ERROR;
+    }
+
+    if (shutdown_api_init(post_config->shutdown_control_relay) != SHUTDOWN_RC_OK) {
         final_status = POST_RC_ERROR;
     }
 

@@ -163,4 +163,11 @@ enum RaspberryReturnCode gpio_raspberry_set_pin(enum RaspberryControlPinState pi
 
     return RASPBERRY_RC_OK;
 }
+
+enum ShutdownReturnCode gpio_shutdown_control_relay(bool state) {
+    HAL_GPIO_WritePin(SD_CLOSE_GPIO_Port, SD_CLOSE_Pin, state);
+
+    return SHUTDOWN_RC_OK;
+}
+
 /* USER CODE END 2 */

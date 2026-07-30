@@ -20,6 +20,7 @@
 #include "main.h"
 #include "adc.h"
 #include "can.h"
+#include "dma.h"
 #include "spi.h"
 #include "tim.h"
 #include "usart.h"
@@ -138,6 +139,7 @@ int main(void) {
 
     /* Initialize all configured peripherals */
     MX_GPIO_Init();
+    MX_DMA_Init();
     MX_CAN1_Init();
     MX_CAN2_Init();
     MX_CAN3_Init();
@@ -192,7 +194,8 @@ int main(void) {
         .inverters_set_torque = can_inverters_set_torque,
         .raspberry_pin_control = gpio_raspberry_set_pin,
         .raspberry_initial_state = RASPBERRY_CONTROL_PIN_STATE_ON,
-        .ts_send_command = can_ts_send_command
+        .ts_send_command = can_ts_send_command,
+        .shutdown_control_relay = gpio_shutdown_control_relay
     };
 
     // Populate buzzer configuration arrays
