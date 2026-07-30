@@ -52,7 +52,7 @@ struct PostConfig {
     ts_command_callback ts_send_command; /*!< Callback to transmit high-voltage tractive system orchestration commands. */
 
     /* --- Shutdown callbacks --- */
-    shutdown_set_state_callback shutdown_set_state; /*!< Callback to set the system's shutdown state. */
+    shutdown_control_relay_callback shutdown_control_relay; /*!< Callback to set the system's shutdown state. */
 };
 
 #endif

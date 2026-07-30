@@ -76,12 +76,12 @@ enum RaspberryReturnCode gpio_raspberry_set_pin(enum RaspberryControlPinState pi
 /*!
  * \brief Hardware-level implementation to set the shutdown state of the system.
  *
- * \param[in] state The desired shutdown state to set.
+ * \param[in] state The desired shutdown state (true for closed, false for open).
  *
  * \retval SHUTDOWN_RC_OK if the shutdown state was successfully set.
  * \retval SHUTDOWN_RC_ERROR if an undefined or UNKNOWN state was requested.
  */
-enum ShutdownReturnCode gpio_shutdown_set_state(enum ShutdownState state);
+enum ShutdownReturnCode gpio_shutdown_control_relay(bool state);
 /* USER CODE END Prototypes */
 
 #ifdef __cplusplus

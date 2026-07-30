@@ -12,41 +12,52 @@
 /*!
  * \brief Initializes the shutdown line management using the provided handler.
  *
- * \param[in] set_state_callback A callback function to set the state of the shutdown line.
+ * \param[in] control_relay_callback A callback function to set the state of the shutdown line.
  *
  * \retval SHUTDOWN_RC_OK if the shutdown line management was initialized successfully.
- * \retval SHUTDOWN_RC_ERROR if any error occurred during initialization.
+ * \retval SHUTDOWN_RC_ERROR if any error occurred during initialization (e.g. NULL callback).
  */
-enum ShutdownReturnCode shutdown_api_init(shutdown_set_state_callback set_state_callback);
+enum ShutdownReturnCode shutdown_api_init(shutdown_control_relay_callback control_relay_callback);
 
 /*!
- * \brief Sets the state of the shutdown line using the provided state.
+ * \brief Controls the state of the shutdown line relay.
  *
- * \param[in] state The desired state of the shutdown line.
+ * \param[in] relay_state The desired state of the shutdown line (true for closed, false for open).
  *
- * \retval SHUTDOWN_RC_OK if the shutdown line state was set successfully.
- * \retval SHUTDOWN_RC_ERROR if an error occurred while setting the shutdown line state.
+ * \retval SHUTDOWN_RC_OK if the shutdown line relay state was set successfully.
+ * \retval SHUTDOWN_RC_ERROR if an error occurred while setting the shutdown line relay state.
  */
-enum ShutdownReturnCode shutdown_api_set_state(enum ShutdownState state);
+enum ShutdownReturnCode shutdown_api_control_relay(bool relay_state);
 
 /*!
- * \brief Sets the state of the shutdown line for a specific reading position.
+ * \brief Sets the voltage reading for the specified shutdown line position.
  *
- * \param[in] reading The reading position for which to set the shutdown line state.
- * \param[in] state The desired state of the shutdown line.
+ * \param[in] name    The reading position for which to set the shutdown line state.
+ * \param[in] voltage The voltage reading to set for the specified reading position.
  *
- * \retval SHUTDOWN_RC_OK if the shutdown line state was set successfully for the specified reading position.
- * \retval SHUTDOWN_RC_ERROR if an error occurred while setting the shutdown line state for
+ * \retval SHUTDOWN_RC_OK if the voltage reading was set successfully.
+ * \retval SHUTDOWN_RC_ERROR if an error occurred while setting the voltage reading (e.g. invalid reading position).
  */
-enum ShutdownReturnCode shutdown_api_set_reding_state(enum ShutdownReading reading, enum ShutdownState state);
+enum ShutdownReturnCode shutdown_api_set_voltage(enum ShutdownName name, float voltage);
 
 /*!
- * \brief Gets the current state of the shutdown line based on the specified reading position.
+ * \brief Gets the current state of the shutdown line for the specified reading position.
  *
- * \param[in] reading The reading position for which to get the shutdown line state.
+ * \param[in] name The reading position for which to get the shutdown line state.
  *
- * \return The current state of the shutdown line at the specified reading position.
+ * \retval SHUTDOWN_STATE_OPEN if the shutdown line is open (voltage below the lower threshold).
+ * \retval SHUTDOWN_STATE_CLOSED if the shutdown line is closed (voltage above the upper threshold).
+ * \retval SHUTDOWN_STATE_ERROR if the shutdown line is in an implausible state (voltage between the lower and upper thresholds).
  */
-enum ShutdownState shutdown_api_get_reading_state(enum ShutdownReading reading);
+enum ShutdownState shutdown_api_get_state(enum ShutdownName name);
+
+/*!
+ * \brief Gets the voltage reading for the specified shutdown line position.
+ *
+ * \param[in] name The reading position for which to get the voltage reading.
+ *
+ * \return The voltage reading for the specified reading position.
+ */
+float shutdown_api_get_voltage(enum ShutdownName name);
 
 #endif // SHUTDOWN_API_H

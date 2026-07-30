@@ -195,7 +195,7 @@ int main(void) {
         .raspberry_pin_control = gpio_raspberry_set_pin,
         .raspberry_initial_state = RASPBERRY_CONTROL_PIN_STATE_ON,
         .ts_send_command = can_ts_send_command,
-        .shutdown_set_state = gpio_shutdown_set_state
+        .shutdown_control_relay = gpio_shutdown_control_relay
     };
 
     // Populate buzzer configuration arrays

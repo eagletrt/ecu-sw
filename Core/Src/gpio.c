@@ -164,18 +164,8 @@ enum RaspberryReturnCode gpio_raspberry_set_pin(enum RaspberryControlPinState pi
     return RASPBERRY_RC_OK;
 }
 
-enum ShutdownReturnCode gpio_shutdown_set_state(enum ShutdownState state) {
-    switch (state) {
-        case SHUTDOWN_STATE_OPEN:
-            HAL_GPIO_WritePin(SD_CLOSE_GPIO_Port, SD_CLOSE_Pin, GPIO_PIN_RESET);
-            break;
-        case SHUTDOWN_STATE_CLOSED:
-            HAL_GPIO_WritePin(SD_CLOSE_GPIO_Port, SD_CLOSE_Pin, GPIO_PIN_SET);
-            break;
-        default:
-            // unknown state requested, return an error
-            return SHUTDOWN_RC_ERROR;
-    }
+enum ShutdownReturnCode gpio_shutdown_control_relay(bool state) {
+    HAL_GPIO_WritePin(SD_CLOSE_GPIO_Port, SD_CLOSE_Pin, state);
 
     return SHUTDOWN_RC_OK;
 }

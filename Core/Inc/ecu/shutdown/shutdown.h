@@ -9,6 +9,9 @@
 
 #include <stdint.h>
 
+#define SHUTDOWN_VOLTAGE_THRESHOLD_UPPER (16.0F)
+#define SHUTDOWN_VOLTAGE_THRESHOLD_LOWER (0.5F)
+
 /*!
  * \brief Return codes for the shutdown_set_state_callback function.
  */
@@ -20,10 +23,10 @@ enum ShutdownReturnCode : uint8_t {
 /*!
  * \brief Possible reading positions for the shutdown line.
  */
-enum ShutdownReading : uint8_t {
-    SHUTDOWN_READING_BEFORE_ECU, /*!< The shutdown line is being read before the ECU. */
-    SHUTDOWN_READING_AFTER_ECU,  /*!< The shutdown line is being read after the ECU. */
-    SHUTDOWN_READING_COUNT       /*!< The number of possible reading positions for the shutdown line. */
+enum ShutdownName : uint8_t {
+    SHUTDOWN_NAME_BEFORE_ECU, /*!< The shutdown line is being read before the ECU. */
+    SHUTDOWN_NAME_AFTER_ECU,  /*!< The shutdown line is being read after the ECU. */
+    SHUTDOWN_NAME_COUNT       /*!< The number of possible reading positions for the shutdown line. */
 };
 
 /*!
@@ -32,23 +35,26 @@ enum ShutdownReading : uint8_t {
 enum ShutdownState : uint8_t {
     SHUTDOWN_STATE_OPEN,   /*!< The shutdown line is open. */
     SHUTDOWN_STATE_CLOSED, /*!< The shutdown line is closed. */
+    SHUTDOWN_STATE_ERROR,  /*!< The shutdown line is an implausible state. */
     SHUTDOWN_STATE_COUNT   /*!< The number of possible states for the shutdown line. */
 };
 
 /*!
  * \brief Callback function type for setting the state of the shutdown line.
  *
- * \param[in] state The desired state of the shutdown line.
+ * \param[in] relay_state The desired state of the shutdown line (true for closed, false for open).
  *
  * \retval SHUTDOWN_RC_OK if the shutdown line state was set successfully.
  * \retval SHUTDOWN_RC_ERROR if an error occurred while setting the shutdown line state.
  */
-typedef enum ShutdownReturnCode (*shutdown_set_state_callback)(enum ShutdownState state);
+typedef enum ShutdownReturnCode (*shutdown_control_relay_callback)(bool relay_state);
 
+/*!
+ * \brief Handler that hold status of the shutdown line.
+ */
 struct ShutdownHandler {
-    shutdown_set_state_callback set_state; /*!< Callback function to set the state of the shutdown line. */
-    enum ShutdownState state_before;       /*!< Current state of the shutdown line before ECU. */
-    enum ShutdownState state_after;        /*!< Current state of the shutdown line after ECU. */
+    shutdown_control_relay_callback control_relay; /*!< Callback function to set the state of the shutdown line. */
+    float voltages[SHUTDOWN_NAME_COUNT];           /*!< Array to hold the voltage readings for each shutdown line position. */
 };
 
 #endif // SHUTDOWN_H

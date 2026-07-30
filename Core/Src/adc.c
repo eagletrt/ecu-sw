@@ -167,7 +167,10 @@ void HAL_ADC_MspDeInit(ADC_HandleTypeDef *adcHandle) {
 
 EAGLETRT_STATIC uint16_t raw_values[2];
 
-#define SHUTDOWN_THRESHOLD_CLOSED (3500U)
+constexpr float vref = 3.3f;
+constexpr float adc_max = 4095.0f;
+constexpr float divider_ratio = (10000 + 1300) / 1300.0f; // Voltage divider with 10k and 1.3k resistors
+constexpr float adc_to_voltage = (vref / adc_max) * divider_ratio;
 
 enum ShutdownReturnCode start_adc_conversion() {
     if (HAL_ADC_Start_DMA(&hadc1, (uint32_t *)raw_values, 2) != HAL_OK) {
@@ -178,12 +181,9 @@ enum ShutdownReturnCode start_adc_conversion() {
 
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc) {
     if (hadc->Instance == ADC1) {
-        for (enum ShutdownReading i = 0; i < 2; i++) {
-            if (raw_values[i] > SHUTDOWN_THRESHOLD_CLOSED) {
-                shutdown_api_set_reding_state(i, SHUTDOWN_STATE_CLOSED);
-            } else {
-                shutdown_api_set_reding_state(i, SHUTDOWN_STATE_OPEN);
-            }
+        for (enum ShutdownName i = 0; i < 2; i++) {
+            float voltage = raw_values[i] * adc_to_voltage;
+            shutdown_api_set_voltage(i, voltage);
         }
     }
 }

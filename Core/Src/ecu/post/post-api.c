@@ -26,7 +26,7 @@ enum PostReturnCode post_api_do_init(struct PostConfig *post_config) {
         post_config->inverters_set_torque == NULL ||
         post_config->raspberry_pin_control == NULL ||
         post_config->ts_send_command == NULL ||
-        post_config->shutdown_set_state == NULL) {
+        post_config->shutdown_control_relay == NULL) {
         return POST_RC_ERROR;
     }
 
@@ -79,7 +79,7 @@ enum PostReturnCode post_api_do_init(struct PostConfig *post_config) {
         final_status = POST_RC_ERROR;
     }
 
-    if (shutdown_api_init(post_config->shutdown_set_state) != SHUTDOWN_RC_OK) {
+    if (shutdown_api_init(post_config->shutdown_control_relay) != SHUTDOWN_RC_OK) {
         final_status = POST_RC_ERROR;
     }
 

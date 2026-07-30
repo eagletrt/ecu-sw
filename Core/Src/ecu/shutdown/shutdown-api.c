@@ -2,46 +2,49 @@
 #include "eagletrt.h"
 #include <string.h>
 
-EAGLETRT_STATIC struct ShutdownHandler shutdown_handler = { 0 };
+EAGLETRT_STATIC struct ShutdownHandler shutdown_handler;
 
-enum ShutdownReturnCode shutdown_api_init(shutdown_set_state_callback set_state_callback) {
-    memset(&shutdown_handler, 0, sizeof(shutdown_handler));
-    shutdown_handler.set_state = set_state_callback;
+enum ShutdownReturnCode shutdown_api_init(shutdown_control_relay_callback control_relay_callback) {
+    if (control_relay_callback == NULL) {
+        return SHUTDOWN_RC_ERROR; // Invalid callback
+    }
+    shutdown_handler.control_relay = control_relay_callback;
+    memset(shutdown_handler.voltages, 0, sizeof(shutdown_handler.voltages));
     return SHUTDOWN_RC_OK;
 }
 
-enum ShutdownReturnCode shutdown_api_set_state(enum ShutdownState state) {
-    if (shutdown_handler.set_state == NULL || state >= SHUTDOWN_STATE_COUNT) {
-        return SHUTDOWN_RC_ERROR;
+enum ShutdownReturnCode shutdown_api_control_relay(bool relay_state) {
+    if (shutdown_handler.control_relay == NULL) {
+        return SHUTDOWN_RC_ERROR; // Callback not set
     }
-    return shutdown_handler.set_state(state);
+    return shutdown_handler.control_relay(relay_state);
 }
 
-enum ShutdownReturnCode shutdown_api_set_reding_state(enum ShutdownReading reading, enum ShutdownState state) {
-    if (state >= SHUTDOWN_STATE_COUNT) {
-        return SHUTDOWN_RC_ERROR; // Invalid state
+enum ShutdownReturnCode shutdown_api_set_voltage(enum ShutdownName name, float voltage) {
+    if (name >= SHUTDOWN_NAME_COUNT) {
+        return SHUTDOWN_RC_ERROR; // Invalid reading position
     }
-
-    switch (reading) {
-        case SHUTDOWN_READING_BEFORE_ECU:
-            shutdown_handler.state_before = state;
-            break;
-        case SHUTDOWN_READING_AFTER_ECU:
-            shutdown_handler.state_after = state;
-            break;
-        default:
-            return SHUTDOWN_RC_ERROR; // Invalid reading
-    }
+    shutdown_handler.voltages[name] = voltage;
     return SHUTDOWN_RC_OK;
 }
 
-enum ShutdownState shutdown_api_get_reading_state(enum ShutdownReading reading) {
-    switch (reading) {
-        case SHUTDOWN_READING_BEFORE_ECU:
-            return shutdown_handler.state_before;
-        case SHUTDOWN_READING_AFTER_ECU:
-            return shutdown_handler.state_after;
-        default:
-            return SHUTDOWN_STATE_OPEN; // Default to open if reading is invalid
+enum ShutdownState shutdown_api_get_state(enum ShutdownName name) {
+    if (name >= SHUTDOWN_NAME_COUNT) {
+        return SHUTDOWN_STATE_ERROR; // Invalid reading position
     }
+    float voltage = shutdown_handler.voltages[name];
+    if (voltage < SHUTDOWN_VOLTAGE_THRESHOLD_LOWER) {
+        return SHUTDOWN_STATE_OPEN;
+    }
+    if (voltage > SHUTDOWN_VOLTAGE_THRESHOLD_UPPER) {
+        return SHUTDOWN_STATE_CLOSED;
+    }
+    return SHUTDOWN_STATE_ERROR; // Implausible state
+}
+
+float shutdown_api_get_voltage(enum ShutdownName name) {
+    if (name >= SHUTDOWN_NAME_COUNT) {
+        return 0.0F; // Invalid reading position
+    }
+    return shutdown_handler.voltages[name];
 }

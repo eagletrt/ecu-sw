@@ -26,6 +26,7 @@ FAKE_VALUE_FUNC(enum InvertersReturnCode, mock_inverters_send_drive_command, enu
 FAKE_VALUE_FUNC(enum InvertersReturnCode, mock_inverters_set_torque, float, enum InvertersPosition);
 FAKE_VALUE_FUNC(enum RaspberryReturnCode, mock_raspberry_pin_control, enum RaspberryControlPinState);
 FAKE_VALUE_FUNC(enum TSReturnCode, mock_ts_send_command, enum TSCommand);
+FAKE_VALUE_FUNC(enum ShutdownReturnCode, mock_shutdown_control_relay, bool);
 
 /*!
  * \brief Global configuration block instance managed per-test scenario execution frame.
@@ -64,6 +65,7 @@ EAGLETRT_STATIC void build_default_valid_config(struct PostConfig *cfg) {
     cfg->raspberry_pin_control = mock_raspberry_pin_control;
     cfg->raspberry_initial_state = RASPBERRY_CONTROL_PIN_STATE_ON;
     cfg->ts_send_command = mock_ts_send_command;
+    cfg->shutdown_control_relay = mock_shutdown_control_relay;
 }
 
 void setUp(void) {
