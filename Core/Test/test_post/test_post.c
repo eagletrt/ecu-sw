@@ -22,8 +22,6 @@ FAKE_VALUE_FUNC(enum BuzzerReturnCode, mock_buzzer_delay, uint32_t, float, uint3
 FAKE_VALUE_FUNC(uint32_t, mock_buzzer_tick);
 FAKE_VALUE_FUNC(enum CanCommunicationReturnCode, mock_can_send, const struct CanCommunicationFrame *);
 FAKE_VALUE_FUNC(enum CanCommunicationReturnCode, mock_can_on_receive, struct CanCommunicationFrame *);
-FAKE_VALUE_FUNC(enum InvertersReturnCode, mock_inverters_send_drive_command, enum InvertersDriveStatus, enum InvertersPosition);
-FAKE_VALUE_FUNC(enum InvertersReturnCode, mock_inverters_set_torque, float, enum InvertersPosition);
 FAKE_VALUE_FUNC(enum RaspberryReturnCode, mock_raspberry_pin_control, enum RaspberryControlPinState);
 FAKE_VALUE_FUNC(enum TSReturnCode, mock_ts_send_command, enum TSCommand);
 FAKE_VALUE_FUNC(enum ShutdownReturnCode, mock_shutdown_control_relay, bool);
@@ -60,8 +58,6 @@ EAGLETRT_STATIC void build_default_valid_config(struct PostConfig *cfg) {
         cfg->buzzer_tick_ptrs[i] = mock_buzzer_tick;
     }
 
-    cfg->inverters_send_drive_command = mock_inverters_send_drive_command;
-    cfg->inverters_set_torque = mock_inverters_set_torque;
     cfg->raspberry_pin_control = mock_raspberry_pin_control;
     cfg->raspberry_initial_state = RASPBERRY_CONTROL_PIN_STATE_ON;
     cfg->ts_send_command = mock_ts_send_command;
@@ -75,8 +71,6 @@ void setUp(void) {
     RESET_FAKE(mock_buzzer_off);
     RESET_FAKE(mock_buzzer_delay);
     RESET_FAKE(mock_buzzer_tick);
-    RESET_FAKE(mock_inverters_send_drive_command);
-    RESET_FAKE(mock_inverters_set_torque);
     RESET_FAKE(mock_raspberry_pin_control);
     RESET_FAKE(mock_ts_send_command);
 
@@ -154,22 +148,6 @@ void test_post_do_init_should_fail_if_can_communication_callback_is_null(void) {
     TEST_ASSERT_EQUAL_INT_MESSAGE(POST_RC_ERROR, rc, "POST initialization should bubble up errors if underlying CAN network initialization metrics fail verification checks.");
 }
 
-void test_post_do_init_should_fail_if_inverters_send_drive_command_callback_is_null(void) {
-    post_config.inverters_send_drive_command = NULL;
-
-    enum PostReturnCode rc = post_api_do_init(&post_config);
-
-    TEST_ASSERT_EQUAL_INT_MESSAGE(POST_RC_ERROR, rc, "POST initialization should fail validation if the inverters send drive command callback is missing.");
-}
-
-void test_post_do_init_should_fail_if_inverters_set_torque_callback_is_null(void) {
-    post_config.inverters_set_torque = NULL;
-
-    enum PostReturnCode rc = post_api_do_init(&post_config);
-
-    TEST_ASSERT_EQUAL_INT_MESSAGE(POST_RC_ERROR, rc, "POST initialization should fail validation if the inverters set torque callback is missing.");
-}
-
 void test_post_do_init_should_fail_if_raspberry_pin_control_callback_is_null(void) {
     post_config.raspberry_pin_control = NULL;
 
@@ -211,8 +189,6 @@ int main(void) {
     RUN_TEST(test_post_do_init_should_fail_if_a_buzzer_off_pointer_is_null);
     RUN_TEST(test_post_do_init_should_fail_if_a_buzzer_delay_pointer_is_null);
     RUN_TEST(test_post_do_init_should_fail_if_can_communication_callback_is_null);
-    RUN_TEST(test_post_do_init_should_fail_if_inverters_send_drive_command_callback_is_null);
-    RUN_TEST(test_post_do_init_should_fail_if_inverters_set_torque_callback_is_null);
     RUN_TEST(test_post_do_init_should_fail_if_raspberry_pin_control_callback_is_null);
     RUN_TEST(test_post_do_init_should_fail_if_tractive_system_callback_is_null);
 

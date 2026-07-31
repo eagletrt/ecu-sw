@@ -190,8 +190,6 @@ int main(void) {
 
         // Direct assignment of single members during initialization
         .as_air_release = can_air_release_from_line,
-        .inverters_send_drive_command = can_inverters_send_drive_command,
-        .inverters_set_torque = can_inverters_set_torque,
         .raspberry_pin_control = gpio_raspberry_set_pin,
         .raspberry_initial_state = RASPBERRY_CONTROL_PIN_STATE_ON,
         .ts_send_command = can_ts_send_command,

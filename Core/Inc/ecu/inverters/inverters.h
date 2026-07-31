@@ -1,16 +1,14 @@
 /*!
  * \file inverters.h
- * \author Dorijan Di Zepp
- * \date 2026-05-21
- * \brief Hardware-agnostic module for inverters control.
+ * \author Dorijan Di Zepp, Alessandro Bridi
+ * \date 2026-07-31
+ * \brief Generic inverters layer over the concrete Ephorus driver.
  *
- * This module defines the inverters handler, the return codes and the callbacks signatures
- * 
  * \note The inverter-specific constants are derived from the "HV-Board_5" model
  * <a href="https://drive.google.com/file/d/1tRlrvqwPYmyLJJesLxHMAl7y99A7nsL0/view?usp=sharing">datasheet</a>.
- * 
- * \note The motor constants defined are derived from the technical specifications of the Fischer TI085 series motors. 
- * These motors are the manufacturer-recommended drive units for the HV-Board_5 inverter 
+ *
+ * \note The motor constants defined are derived from the technical specifications of the Fischer TI085 series motors.
+ * These motors are the manufacturer-recommended drive units for the HV-Board_5 inverter
  * system as specified in the "Recommended Motor" documentation.
  */
 
@@ -19,6 +17,10 @@
 
 #define _USE_MATH_DEFINES // NOLINT
 #include <math.h>
+#include <stdint.h>
+
+#include "ephorus.h"
+#include "can-communication.h"
 
 #define INVERTERS_HV_MAX_POWER_W (80000.0F) /*!< Maximum battery power allowed by Formula Student rules (80kW). */
 
@@ -53,60 +55,28 @@ to see if the values associated are valid
 
 #define INVERTERS_HV_CELLS_PARALLEL_COUNT (3) /*!< Number of individual battery cells connected in parallel */
 
+/*! \brief The single CAN network every inverter lives on. */
+#define INVERTERS_NETWORK CAN_COMMUNICATION_NET_INVERTER
+
 /*!
  * \brief Return codes for the inverters module APIs.
  */
 enum InvertersReturnCode {
-    INVERTERS_RC_OK,    /*!< Operation completed successfully */
-    INVERTERS_RC_ERROR, /*!< Operation NOT completed successfully */
+    INVERTERS_RC_OK,            /*!< Operation completed successfully. */
+    INVERTERS_RC_NULL_POINTER,  /*!< A null pointer was passed to a function. */
+    INVERTERS_RC_INVALID_WHEEL, /*!< Wheel index out of range. */
+    INVERTERS_RC_TX_ERROR,      /*!< Queueing a setpoint frame for transmission failed. */
 };
 
 /*!
- * \brief Drive command status for the inverter.
- */
-enum InvertersDriveStatus {
-    INVERTERS_DRIVE_STATUS_ENABLE,  /*!< Request inverter activation */
-    INVERTERS_DRIVE_STATUS_DISABLE, /*!< Request inverter deactivation */
-    INVERTERS_DRIVE_STATUS_COUNT,   /*!< Sentinel value used for input validation */
-};
-
-/*!
- * \brief Physical mounting positions of the inverters within the vehicle.
- */
-enum InvertersPosition {
-    INVERTERS_POSITION_FRONT_LEFT = 0, /*!< Front axle, left hand side. */
-    INVERTERS_POSITION_FRONT_RIGHT,    /*!< Front axle, right hand side. */
-    INVERTERS_POSITION_REAR_LEFT,      /*!< Rear axle, left hand side. */
-    INVERTERS_POSITION_REAR_RIGHT,     /*!< Rear axle, right hand side. */
-    INVERTERS_POSITION_COUNT,          /*!< Sentinel value used for input validation */
-};
-
-/*!
- * \brief Callback to send operational drive commands.
- * \param[in] InvertersDriveStatus The desired operational status.
- * \param[in] InvertersPosition The inverter to command.
- * \retval INVERTERS_RC_OK The command has been sent.
- * \retval INVERTERS_RC_ERROR A problem occurred where the command couldn't be forwarded.
- */
-typedef enum InvertersReturnCode (*inverters_send_drive_command_callback)(enum InvertersDriveStatus, enum InvertersPosition);
-
-/*!
- * \brief Callback to set target torque.
- * \param[in] float Target torque in Newton-meters.
- * \param[in] InvertersPosition The inverter to command.
- * \retval INVERTERS_RC_OK The requested torque has been set.
- * \retval INVERTERS_RC_ERROR It was not possible to change the torque because of an error
- */
-typedef enum InvertersReturnCode (*inverters_set_torque_callback)(float, enum InvertersPosition);
-
-/*!
- * \brief Handler structure for inverter operations.
+ * \brief File-static state of the inverters module: the driver, the pending
+ *     torque requests, the battery SoC used by the limits and the TX timing.
  */
 struct InvertersHandler {
-    inverters_send_drive_command_callback send_drive_command; /*!< Pointer to the function that sends commands to a given inverter */
-    inverters_set_torque_callback set_torque;                 /*!< Pointer to the function that writes torque requests to a given inverter */
-    float rpm_motors[INVERTERS_POSITION_COUNT];               /*!< Array containing the latest rpm of all motors */
-    float hv_bms_soc;                                         /*!< The latest State of Charge of the battery pack */
+    struct EphorusHandler driver;                   /*!< Concrete inverter driver (held by value, typed). */
+    float requested_torque_nm[EPHORUS_WHEEL_COUNT]; /*!< Latest raw torque request per wheel [Nm], before cut-off. */
+    float hv_bms_soc;                               /*!< Latest State of Charge of the battery pack [0.0, 1.0]. */
+    uint32_t last_tx_tick;                          /*!< Tick of the last setpoint broadcast. */
 };
 
-#endif
+#endif // INVERTERS_H

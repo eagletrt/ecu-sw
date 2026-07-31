@@ -40,10 +40,6 @@ struct PostConfig {
     /* --- CAN Communication configurations --- */
     struct CanCommunicationNetworkConfig can_networks[CAN_COMMUNICATION_NET_COUNT]; /*!< Explicit configuration blocks for the system's physical CAN networks. */
 
-    /* --- Inverters callbacks --- */
-    inverters_send_drive_command_callback inverters_send_drive_command; /*!< Callback to dispatch runtime status or drive states to the inverters. */
-    inverters_set_torque_callback inverters_set_torque;                 /*!< Callback to update commanded reference torque targets on the inverters. */
-
     /* --- RaspberryPi callbacks --- */
     raspberry_pin_control_callback raspberry_pin_control;  /*!< Callback to control physical hardware state pins on the Raspberry Pi interface. */
     enum RaspberryControlPinState raspberry_initial_state; /*!< Dynamic initialization state requested for the RaspberryPi at boot. */

@@ -22,8 +22,6 @@ enum PostReturnCode post_api_do_init(struct PostConfig *post_config) {
 
     // NULL pointer validation of all required dependency members
     if (post_config->as_air_release == NULL ||
-        post_config->inverters_send_drive_command == NULL ||
-        post_config->inverters_set_torque == NULL ||
         post_config->raspberry_pin_control == NULL ||
         post_config->ts_send_command == NULL ||
         post_config->shutdown_control_relay == NULL) {
@@ -59,8 +57,7 @@ enum PostReturnCode post_api_do_init(struct PostConfig *post_config) {
         final_status = POST_RC_ERROR;
     }
 
-    if (inverters_api_init(post_config->inverters_send_drive_command,
-                           post_config->inverters_set_torque) != INVERTERS_RC_OK) {
+    if (inverters_api_init() != INVERTERS_RC_OK) {
         final_status = POST_RC_ERROR;
     }
 
