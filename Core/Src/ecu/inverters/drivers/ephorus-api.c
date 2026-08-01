@@ -14,24 +14,34 @@
 #include "eagletrt-api.h"
 #include "ephorus.h"
 
-/*!
- * \brief Per-wheel fault mask for inverter \c N (token-pasted field names).
- *
- * \details Defined once and stamped out per inverter so the fault list lives in
- *     a single place: (2) -> err_inverter2_overcurrent, ...
- */
-#define EPHORUS_WHEEL_FAULT_MASK(e, N)                                                                                    \
-    (((e)->err_inverter##N##_timeout_comm ? EAGLETRT_API_BIT_SET(0, EPHORUS_WHEEL_FAULT_TIMEOUT_COMM) : 0U) |             \
-     ((e)->err_inverter##N##_disable_under_load ? EAGLETRT_API_BIT_SET(0, EPHORUS_WHEEL_FAULT_DISABLE_UNDER_LOAD) : 0U) | \
-     ((e)->err_inverter##N##_position_sensor ? EAGLETRT_API_BIT_SET(0, EPHORUS_WHEEL_FAULT_POSITION_SENSOR) : 0U) |       \
-     ((e)->err_inverter##N##_motortemperature ? EAGLETRT_API_BIT_SET(0, EPHORUS_WHEEL_FAULT_MOTOR_TEMPERATURE) : 0U) |    \
-     ((e)->err_inverter##N##_overtemperature ? EAGLETRT_API_BIT_SET(0, EPHORUS_WHEEL_FAULT_OVERTEMPERATURE) : 0U) |       \
-     ((e)->err_inverter##N##_overspeed ? EAGLETRT_API_BIT_SET(0, EPHORUS_WHEEL_FAULT_OVERSPEED) : 0U) |                   \
-     ((e)->err_inverter##N##_controlerror ? EAGLETRT_API_BIT_SET(0, EPHORUS_WHEEL_FAULT_CONTROL_ERROR) : 0U) |            \
-     ((e)->err_inverter##N##_overcurrent ? EAGLETRT_API_BIT_SET(0, EPHORUS_WHEEL_FAULT_OVERCURRENT) : 0U) |               \
-     ((e)->err_inverter##N##_short_circuit ? EAGLETRT_API_BIT_SET(0, EPHORUS_WHEEL_FAULT_SHORT_CIRCUIT) : 0U) |           \
-     ((e)->err_inverter##N##_sum_phase_currents ? EAGLETRT_API_BIT_SET(0, EPHORUS_WHEEL_FAULT_SUM_PHASE_CURRENTS) : 0U) | \
-     ((e)->err_inverter##N##_internal_fault ? EAGLETRT_API_BIT_SET(0, EPHORUS_WHEEL_FAULT_INTERNAL_FAULT) : 0U))
+struct EphorusWheelCanIds {
+    uint32_t tx_id;
+    uint32_t outbound_a_id;
+    uint32_t outbound_b_id;
+};
+
+EAGLETRT_STATIC const struct EphorusWheelCanIds ephorus_wheels_can_ids[EPHORUS_WHEEL_COUNT] = {
+    [EPHORUS_WHEEL_FRONT_LEFT] = {
+        .tx_id = CAN_INVERTERS_MESSAGE_FRAME_ID_INVERTER1SETPOINTS,
+        .outbound_a_id = CAN_INVERTERS_MESSAGE_FRAME_ID_INVERTER1OUTBOUNDA,
+        .outbound_b_id = CAN_INVERTERS_MESSAGE_FRAME_ID_INVERTER1OUTBOUNDB,
+    },
+    [EPHORUS_WHEEL_FRONT_RIGHT] = {
+        .tx_id = CAN_INVERTERS_MESSAGE_FRAME_ID_INVERTER2SETPOINTS,
+        .outbound_a_id = CAN_INVERTERS_MESSAGE_FRAME_ID_INVERTER2OUTBOUNDA,
+        .outbound_b_id = CAN_INVERTERS_MESSAGE_FRAME_ID_INVERTER2OUTBOUNDB,
+    },
+    [EPHORUS_WHEEL_REAR_LEFT] = {
+        .tx_id = CAN_INVERTERS_MESSAGE_FRAME_ID_INVERTER3SETPOINTS,
+        .outbound_a_id = CAN_INVERTERS_MESSAGE_FRAME_ID_INVERTER3OUTBOUNDA,
+        .outbound_b_id = CAN_INVERTERS_MESSAGE_FRAME_ID_INVERTER3OUTBOUNDB,
+    },
+    [EPHORUS_WHEEL_REAR_RIGHT] = {
+        .tx_id = CAN_INVERTERS_MESSAGE_FRAME_ID_INVERTER4SETPOINTS,
+        .outbound_a_id = CAN_INVERTERS_MESSAGE_FRAME_ID_INVERTER4OUTBOUNDA,
+        .outbound_b_id = CAN_INVERTERS_MESSAGE_FRAME_ID_INVERTER4OUTBOUNDB,
+    },
+};
 
 /*!
  * \brief true if the wheel sits on the "12" DC bus (front), else the "34" bus.
@@ -52,31 +62,15 @@ EAGLETRT_STATIC bool ephorus_wheel_is_pair_12(enum EphorusWheel wheel) {
  * \param outbound_a_id Pointer to receive the OutboundA frame id.
  * \param outbound_b_id Pointer to receive the OutboundB frame id.
  */
-EAGLETRT_STATIC void ephorus_wheel_frame_ids(enum EphorusWheel wheel, uint32_t *tx_id, uint32_t *outbound_a_id, uint32_t *outbound_b_id) {
-    switch (wheel) {
-        case EPHORUS_WHEEL_FRONT_LEFT:
-            *tx_id = CAN_INVERTERS_MESSAGE_FRAME_ID_INVERTER1SETPOINTS;
-            *outbound_a_id = CAN_INVERTERS_MESSAGE_FRAME_ID_INVERTER1OUTBOUNDA;
-            *outbound_b_id = CAN_INVERTERS_MESSAGE_FRAME_ID_INVERTER1OUTBOUNDB;
-            break;
-        case EPHORUS_WHEEL_FRONT_RIGHT:
-            *tx_id = CAN_INVERTERS_MESSAGE_FRAME_ID_INVERTER2SETPOINTS;
-            *outbound_a_id = CAN_INVERTERS_MESSAGE_FRAME_ID_INVERTER2OUTBOUNDA;
-            *outbound_b_id = CAN_INVERTERS_MESSAGE_FRAME_ID_INVERTER2OUTBOUNDB;
-            break;
-        case EPHORUS_WHEEL_REAR_LEFT:
-            *tx_id = CAN_INVERTERS_MESSAGE_FRAME_ID_INVERTER3SETPOINTS;
-            *outbound_a_id = CAN_INVERTERS_MESSAGE_FRAME_ID_INVERTER3OUTBOUNDA;
-            *outbound_b_id = CAN_INVERTERS_MESSAGE_FRAME_ID_INVERTER3OUTBOUNDB;
-            break;
-        case EPHORUS_WHEEL_REAR_RIGHT:
-            *tx_id = CAN_INVERTERS_MESSAGE_FRAME_ID_INVERTER4SETPOINTS;
-            *outbound_a_id = CAN_INVERTERS_MESSAGE_FRAME_ID_INVERTER4OUTBOUNDA;
-            *outbound_b_id = CAN_INVERTERS_MESSAGE_FRAME_ID_INVERTER4OUTBOUNDB;
-            break;
-        default:
-            break;
+EAGLETRT_STATIC enum EphorusReturnCode ephorus_wheel_frame_ids(enum EphorusWheel wheel, uint32_t *tx_id, uint32_t *outbound_a_id, uint32_t *outbound_b_id) {
+    if (wheel >= EPHORUS_WHEEL_COUNT || tx_id == NULL || outbound_a_id == NULL || outbound_b_id == NULL) {
+        return EPHORUS_RC_NULL_POINTER;
     }
+
+    *tx_id = ephorus_wheels_can_ids[wheel].tx_id;
+    *outbound_a_id = ephorus_wheels_can_ids[wheel].outbound_a_id;
+    *outbound_b_id = ephorus_wheels_can_ids[wheel].outbound_b_id;
+    return EPHORUS_RC_OK;
 }
 
 /*!
@@ -123,74 +117,100 @@ EAGLETRT_STATIC enum EphorusState ephorus_state_from_raw(uint8_t raw) {
  * \return Bitmask of EphorusWheelFault currently latched for this wheel.
  */
 EAGLETRT_STATIC uint32_t ephorus_wheel_fault_bits(const struct CanInvertersGeneralerrorbits *general_error, enum EphorusWheel wheel) {
+    if (general_error == NULL) {
+        return 0;
+    }
+
+    /* Temporary container for the targeted wheel's error flags */
+    struct InverterErrorFlags {
+        bool control_error;
+        bool timeout_comm;
+        bool disable_under_load;
+        bool position_sensor;
+        bool motor_temperature;
+        bool overtemperature;
+        bool overspeed;
+        bool overcurrent;
+        bool short_circuit;
+        bool sum_phase_currents;
+        bool internal_fault;
+    } err = { 0 };
+
     switch (wheel) {
-        case EPHORUS_WHEEL_FRONT_LEFT: {
-            uint32_t fault_bits = 0;
-            fault_bits = EAGLETRT_API_BIT_SET_IF(fault_bits, EPHORUS_WHEEL_FAULT_CONTROL_ERROR, general_error->err_inverter1_controlerror == 1);
-            fault_bits = EAGLETRT_API_BIT_SET_IF(fault_bits, EPHORUS_WHEEL_FAULT_TIMEOUT_COMM, general_error->err_inverter1_timeout_comm == 1);
-            fault_bits = EAGLETRT_API_BIT_SET_IF(fault_bits, EPHORUS_WHEEL_FAULT_DISABLE_UNDER_LOAD, general_error->err_inverter1_disable_under_load == 1);
-            fault_bits = EAGLETRT_API_BIT_SET_IF(fault_bits, EPHORUS_WHEEL_FAULT_POSITION_SENSOR, general_error->err_inverter1_position_sensor == 1);
-            fault_bits = EAGLETRT_API_BIT_SET_IF(fault_bits, EPHORUS_WHEEL_FAULT_MOTOR_TEMPERATURE, general_error->err_inverter1_motortemperature == 1);
-            fault_bits = EAGLETRT_API_BIT_SET_IF(fault_bits, EPHORUS_WHEEL_FAULT_OVERTEMPERATURE, general_error->err_inverter1_overtemperature == 1);
-            fault_bits = EAGLETRT_API_BIT_SET_IF(fault_bits, EPHORUS_WHEEL_FAULT_OVERSPEED, general_error->err_inverter1_overspeed == 1);
-            fault_bits = EAGLETRT_API_BIT_SET_IF(fault_bits, EPHORUS_WHEEL_FAULT_CONTROL_ERROR, general_error->err_inverter1_controlerror == 1);
-            fault_bits = EAGLETRT_API_BIT_SET_IF(fault_bits, EPHORUS_WHEEL_FAULT_OVERCURRENT, general_error->err_inverter1_overcurrent == 1);
-            fault_bits = EAGLETRT_API_BIT_SET_IF(fault_bits, EPHORUS_WHEEL_FAULT_SHORT_CIRCUIT, general_error->err_inverter1_short_circuit == 1);
-            fault_bits = EAGLETRT_API_BIT_SET_IF(fault_bits, EPHORUS_WHEEL_FAULT_SUM_PHASE_CURRENTS, general_error->err_inverter1_sum_phase_currents == 1);
-            fault_bits = EAGLETRT_API_BIT_SET_IF(fault_bits, EPHORUS_WHEEL_FAULT_INTERNAL_FAULT, general_error->err_inverter1_internal_fault == 1);
-            return fault_bits;
-        }
-        case EPHORUS_WHEEL_FRONT_RIGHT: {
-            uint32_t fault_bits = 0;
-            fault_bits = EAGLETRT_API_BIT_SET_IF(fault_bits, EPHORUS_WHEEL_FAULT_CONTROL_ERROR, general_error->err_inverter2_controlerror == 1);
-            fault_bits = EAGLETRT_API_BIT_SET_IF(fault_bits, EPHORUS_WHEEL_FAULT_TIMEOUT_COMM, general_error->err_inverter2_timeout_comm == 1);
-            fault_bits = EAGLETRT_API_BIT_SET_IF(fault_bits, EPHORUS_WHEEL_FAULT_DISABLE_UNDER_LOAD, general_error->err_inverter2_disable_under_load == 1);
-            fault_bits = EAGLETRT_API_BIT_SET_IF(fault_bits, EPHORUS_WHEEL_FAULT_POSITION_SENSOR, general_error->err_inverter2_position_sensor == 1);
-            fault_bits = EAGLETRT_API_BIT_SET_IF(fault_bits, EPHORUS_WHEEL_FAULT_MOTOR_TEMPERATURE, general_error->err_inverter2_motortemperature == 1);
-            fault_bits = EAGLETRT_API_BIT_SET_IF(fault_bits, EPHORUS_WHEEL_FAULT_OVERTEMPERATURE, general_error->err_inverter2_overtemperature == 1);
-            fault_bits = EAGLETRT_API_BIT_SET_IF(fault_bits, EPHORUS_WHEEL_FAULT_OVERSPEED, general_error->err_inverter2_overspeed == 1);
-            fault_bits = EAGLETRT_API_BIT_SET_IF(fault_bits, EPHORUS_WHEEL_FAULT_CONTROL_ERROR, general_error->err_inverter2_controlerror == 1);
-            fault_bits = EAGLETRT_API_BIT_SET_IF(fault_bits, EPHORUS_WHEEL_FAULT_OVERCURRENT, general_error->err_inverter2_overcurrent == 1);
-            fault_bits = EAGLETRT_API_BIT_SET_IF(fault_bits, EPHORUS_WHEEL_FAULT_SHORT_CIRCUIT, general_error->err_inverter2_short_circuit == 1);
-            fault_bits = EAGLETRT_API_BIT_SET_IF(fault_bits, EPHORUS_WHEEL_FAULT_SUM_PHASE_CURRENTS, general_error->err_inverter2_sum_phase_currents == 1);
-            fault_bits = EAGLETRT_API_BIT_SET_IF(fault_bits, EPHORUS_WHEEL_FAULT_INTERNAL_FAULT, general_error->err_inverter2_internal_fault == 1);
-            return fault_bits;
-        }
-        case EPHORUS_WHEEL_REAR_LEFT: {
-            uint32_t fault_bits = 0;
-            fault_bits = EAGLETRT_API_BIT_SET_IF(fault_bits, EPHORUS_WHEEL_FAULT_CONTROL_ERROR, general_error->err_inverter3_controlerror == 1);
-            fault_bits = EAGLETRT_API_BIT_SET_IF(fault_bits, EPHORUS_WHEEL_FAULT_TIMEOUT_COMM, general_error->err_inverter3_timeout_comm == 1);
-            fault_bits = EAGLETRT_API_BIT_SET_IF(fault_bits, EPHORUS_WHEEL_FAULT_DISABLE_UNDER_LOAD, general_error->err_inverter3_disable_under_load == 1);
-            fault_bits = EAGLETRT_API_BIT_SET_IF(fault_bits, EPHORUS_WHEEL_FAULT_POSITION_SENSOR, general_error->err_inverter3_position_sensor == 1);
-            fault_bits = EAGLETRT_API_BIT_SET_IF(fault_bits, EPHORUS_WHEEL_FAULT_MOTOR_TEMPERATURE, general_error->err_inverter3_motortemperature == 1);
-            fault_bits = EAGLETRT_API_BIT_SET_IF(fault_bits, EPHORUS_WHEEL_FAULT_OVERTEMPERATURE, general_error->err_inverter3_overtemperature == 1);
-            fault_bits = EAGLETRT_API_BIT_SET_IF(fault_bits, EPHORUS_WHEEL_FAULT_OVERSPEED, general_error->err_inverter3_overspeed == 1);
-            fault_bits = EAGLETRT_API_BIT_SET_IF(fault_bits, EPHORUS_WHEEL_FAULT_CONTROL_ERROR, general_error->err_inverter3_controlerror == 1);
-            fault_bits = EAGLETRT_API_BIT_SET_IF(fault_bits, EPHORUS_WHEEL_FAULT_OVERCURRENT, general_error->err_inverter3_overcurrent == 1);
-            fault_bits = EAGLETRT_API_BIT_SET_IF(fault_bits, EPHORUS_WHEEL_FAULT_SHORT_CIRCUIT, general_error->err_inverter3_short_circuit == 1);
-            fault_bits = EAGLETRT_API_BIT_SET_IF(fault_bits, EPHORUS_WHEEL_FAULT_SUM_PHASE_CURRENTS, general_error->err_inverter3_sum_phase_currents == 1);
-            fault_bits = EAGLETRT_API_BIT_SET_IF(fault_bits, EPHORUS_WHEEL_FAULT_INTERNAL_FAULT, general_error->err_inverter3_internal_fault == 1);
-            return fault_bits;
-        }
-        case EPHORUS_WHEEL_REAR_RIGHT: {
-            uint32_t fault_bits = 0;
-            fault_bits = EAGLETRT_API_BIT_SET_IF(fault_bits, EPHORUS_WHEEL_FAULT_CONTROL_ERROR, general_error->err_inverter4_controlerror == 1);
-            fault_bits = EAGLETRT_API_BIT_SET_IF(fault_bits, EPHORUS_WHEEL_FAULT_TIMEOUT_COMM, general_error->err_inverter4_timeout_comm == 1);
-            fault_bits = EAGLETRT_API_BIT_SET_IF(fault_bits, EPHORUS_WHEEL_FAULT_DISABLE_UNDER_LOAD, general_error->err_inverter4_disable_under_load == 1);
-            fault_bits = EAGLETRT_API_BIT_SET_IF(fault_bits, EPHORUS_WHEEL_FAULT_POSITION_SENSOR, general_error->err_inverter4_position_sensor == 1);
-            fault_bits = EAGLETRT_API_BIT_SET_IF(fault_bits, EPHORUS_WHEEL_FAULT_MOTOR_TEMPERATURE, general_error->err_inverter4_motortemperature == 1);
-            fault_bits = EAGLETRT_API_BIT_SET_IF(fault_bits, EPHORUS_WHEEL_FAULT_OVERTEMPERATURE, general_error->err_inverter4_overtemperature == 1);
-            fault_bits = EAGLETRT_API_BIT_SET_IF(fault_bits, EPHORUS_WHEEL_FAULT_OVERSPEED, general_error->err_inverter4_overspeed == 1);
-            fault_bits = EAGLETRT_API_BIT_SET_IF(fault_bits, EPHORUS_WHEEL_FAULT_CONTROL_ERROR, general_error->err_inverter4_controlerror == 1);
-            fault_bits = EAGLETRT_API_BIT_SET_IF(fault_bits, EPHORUS_WHEEL_FAULT_OVERCURRENT, general_error->err_inverter4_overcurrent == 1);
-            fault_bits = EAGLETRT_API_BIT_SET_IF(fault_bits, EPHORUS_WHEEL_FAULT_SHORT_CIRCUIT, general_error->err_inverter4_short_circuit == 1);
-            fault_bits = EAGLETRT_API_BIT_SET_IF(fault_bits, EPHORUS_WHEEL_FAULT_SUM_PHASE_CURRENTS, general_error->err_inverter4_sum_phase_currents == 1);
-            fault_bits = EAGLETRT_API_BIT_SET_IF(fault_bits, EPHORUS_WHEEL_FAULT_INTERNAL_FAULT, general_error->err_inverter4_internal_fault == 1);
-            return fault_bits;
-        }
+        case EPHORUS_WHEEL_FRONT_LEFT:
+            err.control_error = (general_error->err_inverter1_controlerror != 0);
+            err.timeout_comm = (general_error->err_inverter1_timeout_comm != 0);
+            err.disable_under_load = (general_error->err_inverter1_disable_under_load != 0);
+            err.position_sensor = (general_error->err_inverter1_position_sensor != 0);
+            err.motor_temperature = (general_error->err_inverter1_motortemperature != 0);
+            err.overtemperature = (general_error->err_inverter1_overtemperature != 0);
+            err.overspeed = (general_error->err_inverter1_overspeed != 0);
+            err.overcurrent = (general_error->err_inverter1_overcurrent != 0);
+            err.short_circuit = (general_error->err_inverter1_short_circuit != 0);
+            err.sum_phase_currents = (general_error->err_inverter1_sum_phase_currents != 0);
+            err.internal_fault = (general_error->err_inverter1_internal_fault != 0);
+            break;
+
+        case EPHORUS_WHEEL_FRONT_RIGHT:
+            err.control_error = (general_error->err_inverter2_controlerror != 0);
+            err.timeout_comm = (general_error->err_inverter2_timeout_comm != 0);
+            err.disable_under_load = (general_error->err_inverter2_disable_under_load != 0);
+            err.position_sensor = (general_error->err_inverter2_position_sensor != 0);
+            err.motor_temperature = (general_error->err_inverter2_motortemperature != 0);
+            err.overtemperature = (general_error->err_inverter2_overtemperature != 0);
+            err.overspeed = (general_error->err_inverter2_overspeed != 0);
+            err.overcurrent = (general_error->err_inverter2_overcurrent != 0);
+            err.short_circuit = (general_error->err_inverter2_short_circuit != 0);
+            err.sum_phase_currents = (general_error->err_inverter2_sum_phase_currents != 0);
+            err.internal_fault = (general_error->err_inverter2_internal_fault != 0);
+            break;
+
+        case EPHORUS_WHEEL_REAR_LEFT:
+            err.control_error = (general_error->err_inverter3_controlerror != 0);
+            err.timeout_comm = (general_error->err_inverter3_timeout_comm != 0);
+            err.disable_under_load = (general_error->err_inverter3_disable_under_load != 0);
+            err.position_sensor = (general_error->err_inverter3_position_sensor != 0);
+            err.motor_temperature = (general_error->err_inverter3_motortemperature != 0);
+            err.overtemperature = (general_error->err_inverter3_overtemperature != 0);
+            err.overspeed = (general_error->err_inverter3_overspeed != 0);
+            err.overcurrent = (general_error->err_inverter3_overcurrent != 0);
+            err.short_circuit = (general_error->err_inverter3_short_circuit != 0);
+            err.sum_phase_currents = (general_error->err_inverter3_sum_phase_currents != 0);
+            err.internal_fault = (general_error->err_inverter3_internal_fault != 0);
+            break;
+
+        case EPHORUS_WHEEL_REAR_RIGHT:
+            err.control_error = (general_error->err_inverter4_controlerror != 0);
+            err.timeout_comm = (general_error->err_inverter4_timeout_comm != 0);
+            err.disable_under_load = (general_error->err_inverter4_disable_under_load != 0);
+            err.position_sensor = (general_error->err_inverter4_position_sensor != 0);
+            err.motor_temperature = (general_error->err_inverter4_motortemperature != 0);
+            err.overtemperature = (general_error->err_inverter4_overtemperature != 0);
+            err.overspeed = (general_error->err_inverter4_overspeed != 0);
+            err.overcurrent = (general_error->err_inverter4_overcurrent != 0);
+            err.short_circuit = (general_error->err_inverter4_short_circuit != 0);
+            err.sum_phase_currents = (general_error->err_inverter4_sum_phase_currents != 0);
+            err.internal_fault = (general_error->err_inverter4_internal_fault != 0);
+            break;
+
         default:
             return 0;
     }
+
+    uint32_t fault_bits = 0;
+    fault_bits = EAGLETRT_API_BIT_SET_IF(fault_bits, EPHORUS_WHEEL_FAULT_CONTROL_ERROR, err.control_error);
+    fault_bits = EAGLETRT_API_BIT_SET_IF(fault_bits, EPHORUS_WHEEL_FAULT_TIMEOUT_COMM, err.timeout_comm);
+    fault_bits = EAGLETRT_API_BIT_SET_IF(fault_bits, EPHORUS_WHEEL_FAULT_DISABLE_UNDER_LOAD, err.disable_under_load);
+    fault_bits = EAGLETRT_API_BIT_SET_IF(fault_bits, EPHORUS_WHEEL_FAULT_POSITION_SENSOR, err.position_sensor);
+    fault_bits = EAGLETRT_API_BIT_SET_IF(fault_bits, EPHORUS_WHEEL_FAULT_MOTOR_TEMPERATURE, err.motor_temperature);
+    fault_bits = EAGLETRT_API_BIT_SET_IF(fault_bits, EPHORUS_WHEEL_FAULT_OVERTEMPERATURE, err.overtemperature);
+    fault_bits = EAGLETRT_API_BIT_SET_IF(fault_bits, EPHORUS_WHEEL_FAULT_OVERSPEED, err.overspeed);
+    fault_bits = EAGLETRT_API_BIT_SET_IF(fault_bits, EPHORUS_WHEEL_FAULT_OVERCURRENT, err.overcurrent);
+    fault_bits = EAGLETRT_API_BIT_SET_IF(fault_bits, EPHORUS_WHEEL_FAULT_SHORT_CIRCUIT, err.short_circuit);
+    fault_bits = EAGLETRT_API_BIT_SET_IF(fault_bits, EPHORUS_WHEEL_FAULT_SUM_PHASE_CURRENTS, err.sum_phase_currents);
+    fault_bits = EAGLETRT_API_BIT_SET_IF(fault_bits, EPHORUS_WHEEL_FAULT_INTERNAL_FAULT, err.internal_fault);
+
+    return fault_bits;
 }
 
 /*!
@@ -364,7 +384,8 @@ void ephorus_api_toggle_run(struct EphorusHandler *handle, enum EphorusWheel whe
 void ephorus_api_set_torque(struct EphorusHandler *handle, enum EphorusWheel wheel, float torque_nm) {
     struct EphorusWheelState *wheel_state = ephorus_active_wheel(handle, wheel);
     if (wheel_state != NULL) {
-        wheel_state->torque_nm = EAGLETRT_API_CLAMP(torque_nm, -EPHORUS_MAX_TORQUE_NM, EPHORUS_MAX_TORQUE_NM);
+        constexpr float max_torque = EPHORUS_MAX_TORQUE_NM;
+        wheel_state->torque_nm = EAGLETRT_API_CLAMP(torque_nm, -max_torque, max_torque);
     }
 }
 

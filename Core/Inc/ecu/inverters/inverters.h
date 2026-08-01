@@ -31,11 +31,6 @@
 
 #define INVERTERS_INVERTER_PEAK_CURRENT_A (90.0F) /*!< Absolute peak phase current (Arms). */
 
-/*
-TODO:
-the following constants require verification
-to see if the values associated are valid
-*/
 #define INVERTERS_MOTOR_PEAK_TORQUE_NM (29.1F) /*!< Maximum mechanical torque allowed per motor. */
 
 #define INVERTERS_MOTOR_TORQUE_PER_CURRENT_NM_A (0.492F) /*!< Torque constant (Kt) in Nm/Arms. */

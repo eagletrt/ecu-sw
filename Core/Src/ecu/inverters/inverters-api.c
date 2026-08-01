@@ -101,7 +101,8 @@ EAGLETRT_STATIC float prv_inverters_get_motor_torque_limit(const float rpm) {
 
     // Ensure rpm is not zero to avoid division by zero
     float absolute_rpm = fabsf(rpm);
-    absolute_rpm = EAGLETRT_API_MAX(absolute_rpm, INVERTERS_RPM_SPEED_THRESHOLD);
+    constexpr float low_rpm_threshold = INVERTERS_RPM_SPEED_THRESHOLD;
+    absolute_rpm = EAGLETRT_API_MAX(absolute_rpm, low_rpm_threshold);
 
     // Motor power limit (Torque = Power / Omega)
     const float current_max_torque = INVERTERS_MOTOR_MAX_MECHANICAL_POWER_W / (absolute_rpm * INVERTERS_RPM_TO_RAD_COEFFICIENT);
@@ -199,7 +200,8 @@ EAGLETRT_STATIC void prv_inverters_limit_torque_by_power(float power_max, float 
         reduction_ratio = EAGLETRT_API_MIN(EAGLETRT_API_MAX(power_max / total_mechanical_power, 0.0F), 1.0F);
     } else if (total_mechanical_power < INVERTERS_HV_MAX_REGEN_POWER_W && total_mechanical_power < 0.0F) {
         // regen scaling, avoid  "pushing" more than the cells can absorb
-        reduction_ratio = EAGLETRT_API_MIN(EAGLETRT_API_MAX(INVERTERS_HV_MAX_REGEN_POWER_W / total_mechanical_power, 0.0F), 1.0F);
+        constexpr float inv_max_regen_power = INVERTERS_HV_MAX_REGEN_POWER_W;
+        reduction_ratio = EAGLETRT_API_MIN(EAGLETRT_API_MAX(inv_max_regen_power / total_mechanical_power, 0.0F), 1.0F);
     }
 
     // Apply the same ratio to all motors
@@ -258,7 +260,8 @@ EAGLETRT_STATIC void prv_inverters_minimum_cell_voltage_limit(float rpm_front_le
     float w_rear_right = rpm_rear_right * INVERTERS_RPM_TO_RAD_COEFFICIENT;
 
     float voc = prv_inverters_pack_voc_model();
-    float d_v = EAGLETRT_API_MAX(voc - INVERTERS_HV_MIN_CELL_VOLTAGE_V, 0.0);
+    constexpr float low_voltage_threshold = INVERTERS_HV_MIN_CELL_VOLTAGE_V;
+    float d_v = EAGLETRT_API_MAX(voc - low_voltage_threshold, 0.0);
     float resistance = prv_inverters_internal_resistance_model();
     float i_max = d_v / resistance;
     i_max *= INVERTERS_HV_CELLS_PARALLEL_COUNT;
