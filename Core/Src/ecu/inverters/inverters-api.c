@@ -191,7 +191,8 @@ EAGLETRT_STATIC void prv_inverters_limit_torque_by_power(float power_max, float 
     // This ensures we respect both the 80kW rule and the 140A battery limit
     power_max = EAGLETRT_API_MIN(power_max, physical_limit);
 
-    if (fabsf(power_max) < 0.5F) {
+    constexpr float low_power_threshold = 0.5F; // Watts, below which we consider the battery "dead"
+    if (fabsf(power_max) < low_power_threshold) {
         reduction_ratio = 0.0F; // kill torque if battery is almost "dead"
     } else if (total_mechanical_power > power_max && total_mechanical_power >= 0.0F) {
         // discharge and power limit scaling
