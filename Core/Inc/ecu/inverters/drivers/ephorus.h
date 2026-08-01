@@ -30,7 +30,6 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-/*! \brief Payload size of an inverters-network frame (classic CAN, fixed 8). */
 #define EPHORUS_FRAME_DATA_SIZE (8U)
 
 /* Shared general frames (carry all four inverters at once). */

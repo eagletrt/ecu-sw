@@ -27,7 +27,13 @@ static_assert(EPHORUS_FRAME_DATA_SIZE <= CAN_COMMUNICATION_FRAME_DATA_SIZE, "inv
  */
 EAGLETRT_STATIC struct InvertersHandler inverters_handler;
 
-/*! \brief Current (measured) speed of a wheel [RPM], sourced from decoded telemetry. */
+/*!
+ * \brief Current (measured) speed of a wheel [RPM], sourced from decoded telemetry.
+ *
+ * \param[in] wheel The wheel to query.
+ *
+ * \return The current speed of the wheel in RPM, as a float.
+ */
 EAGLETRT_STATIC float prv_inverters_wheel_rpm(enum EphorusWheel wheel) {
     return (float)inverters_handler.driver.wheels[wheel].tlm.speed_rpm;
 }
@@ -123,7 +129,7 @@ EAGLETRT_STATIC float prv_inverters_get_motor_torque_limit(const float rpm) {
  *
  * \return float Estimated voltage per cell (V). Clamped between the model's 0% and 100% values.
  */
-float prv_inverters_pack_voc_model(void) {
+EAGLETRT_STATIC float prv_inverters_pack_voc_model(void) {
     float soc = inverters_handler.hv_bms_soc;
     //TODO: verify the values as they correspond to the characteristics of the old pack
     // which should be "recycled" for kraken.
@@ -134,7 +140,7 @@ float prv_inverters_pack_voc_model(void) {
     constexpr float voc_poly_1_order = 4.04805239F;
     constexpr float voc_poly_0_order = 2.82544823F;
 
-    return voc_poly_4_order * powf(soc, 4) + voc_poly_3_order * powf(soc, 3) - voc_poly_2_order * powf(soc, 2) + voc_poly_1_order * soc + voc_poly_0_order;
+    return voc_poly_4_order * powf(soc, 4) + voc_poly_3_order * powf(soc, 3) + voc_poly_2_order * powf(soc, 2) + voc_poly_1_order * soc + voc_poly_0_order;
 }
 
 /*!
@@ -148,7 +154,7 @@ float prv_inverters_pack_voc_model(void) {
  *
  * \return float The estimated internal resistance of a single cell in Ohms (Ω).
  */
-float prv_inverters_internal_resistance_model(void) {
+EAGLETRT_STATIC float prv_inverters_internal_resistance_model(void) {
     float soc = inverters_handler.hv_bms_soc;
     //TODO: verify the values as they correspond to the characteristics of the old pack
     // which should be "recycled" for kraken.
