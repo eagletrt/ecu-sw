@@ -42,7 +42,7 @@ to see if the values associated are valid
 
 #define INVERTERS_MOTOR_MAX_MECHANICAL_POWER_W (35400.0F) /*!< Maximum mechanical power allowed per motor. */
 
-#define INVERTERS_HV_MAX_REGEN_CURRENT_A (-24.0F) /*!< Maximum allowable regenerative current into the battery. */
+#define INVERTERS_HV_MAX_REGEN_CURRENT_A (-40.0F) /*!< Maximum allowable regenerative current into the battery. */
 
 #define INVERTERS_HV_MIN_CELL_VOLTAGE_V (2.8F) /*!< Minimum safe voltage for a single battery cell (V). */
 
@@ -50,7 +50,7 @@ to see if the values associated are valid
 
 #define INVERTERS_HV_MAX_REGEN_POWER_W (INVERTERS_HV_MAX_REGEN_CURRENT_A * INVERTERS_HV_MIN_CELL_VOLTAGE_V * INVERTERS_HV_CELL_COUNT) /*!< Maximum regenerative power allowed into the battery. */
 
-#define INVERTERS_HV_MAX_CURRENT_A (140.0F) /*!< Maximum DC current allowed to be drawn from the battery. */
+#define INVERTERS_HV_MAX_CURRENT_A (130.0F) /*!< Maximum DC current allowed to be drawn from the battery. */
 
 #define INVERTERS_HV_CELLS_PARALLEL_COUNT (3) /*!< Number of individual battery cells connected in parallel */
 
