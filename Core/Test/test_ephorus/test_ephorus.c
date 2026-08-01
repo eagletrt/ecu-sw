@@ -189,7 +189,7 @@ void test_build_setpoints_disarmed_is_disabled_and_zero(void) {
     struct CanInvertersInverter1setpoints s = build_decode(EPHORUS_WHEEL_FRONT_LEFT);
     TEST_ASSERT_EQUAL_UINT8_MESSAGE(0, s.enableinverter, "disarmed wheel must not enable");
     TEST_ASSERT_FLOAT_WITHIN(0.01f, 0.0f, s.torquelimitpositive);
-    TEST_ASSERT_EQUAL_INT16(0, s.speedsetpoint);
+    TEST_ASSERT_EQUAL_INT16_MESSAGE(20000, s.speedsetpoint, "disarmed wheel must still emit max speed rail");
 }
 
 void test_build_setpoints_armed_but_not_running_is_enabled_but_zero_torque(void) {
@@ -202,7 +202,7 @@ void test_build_setpoints_armed_but_not_running_is_enabled_but_zero_torque(void)
     struct CanInvertersInverter1setpoints s = build_decode(EPHORUS_WHEEL_FRONT_LEFT);
     TEST_ASSERT_EQUAL_UINT8_MESSAGE(1, s.enableinverter, "armed wheel is enabled even when not running");
     TEST_ASSERT_FLOAT_WITHIN_MESSAGE(0.01f, 0.0f, s.torquelimitpositive, "no torque window while not running");
-    TEST_ASSERT_EQUAL_INT16_MESSAGE(0, s.speedsetpoint, "no speed rail while not running");
+    TEST_ASSERT_EQUAL_INT16_MESSAGE(20000, s.speedsetpoint, "armed wheel must still emit max speed rail even when not running");
 }
 
 void test_build_setpoints_consumes_ack_and_reset_pulses_once(void) {

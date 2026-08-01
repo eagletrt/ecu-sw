@@ -285,7 +285,8 @@ static struct CanInvertersInverter1setpoints build_and_decode(enum EphorusWheel 
     ephorus_api_build_setpoints(drv, wheel, &id, data);
 
     union CanInvertersMessages msg = { 0 };
-    can_inverters_api_deserialize_from_id((enum CanInvertersMessageFrameId)id, data, &msg);
+    // done just because it's defined as [[nodiscard]]
+    TEST_ASSERT_FALSE(can_inverters_api_deserialize_from_id((enum CanInvertersMessageFrameId)id, data, &msg));
     return msg.inverter1setpoints;
 }
 
@@ -312,7 +313,7 @@ void test_feature_zero_torque_is_coast(void) {
 
     TEST_ASSERT_FLOAT_WITHIN_MESSAGE(0.01f, 0.0f, s.torquelimitpositive, "Zero request => upper bound = 0");
     TEST_ASSERT_FLOAT_WITHIN_MESSAGE(0.01f, 0.0f, s.torquelimitnegative, "Zero request => lower bound = 0");
-    TEST_ASSERT_EQUAL_INT16_MESSAGE(0, s.speedsetpoint, "Zero request => speed rail = 0");
+    TEST_ASSERT_EQUAL_INT16_MESSAGE(20000, s.speedsetpoint, "Zero request => speed rail = 20000");
 }
 
 void test_feature_disarmed_wheel_emits_zero_and_disabled(void) {
@@ -322,7 +323,7 @@ void test_feature_disarmed_wheel_emits_zero_and_disabled(void) {
     TEST_ASSERT_EQUAL_UINT8_MESSAGE(0, s.enableinverter, "Disarmed wheel must not enable the inverter");
     TEST_ASSERT_FLOAT_WITHIN_MESSAGE(0.01f, 0.0f, s.torquelimitpositive, "Disarmed wheel => upper bound = 0");
     TEST_ASSERT_FLOAT_WITHIN_MESSAGE(0.01f, 0.0f, s.torquelimitnegative, "Disarmed wheel => lower bound = 0");
-    TEST_ASSERT_EQUAL_INT16_MESSAGE(0, s.speedsetpoint, "Disarmed wheel => speed rail = 0");
+    TEST_ASSERT_EQUAL_INT16_MESSAGE(20000, s.speedsetpoint, "Disarmed wheel => speed rail = 20000");
 }
 
 void test_feature_torque_request_is_clamped(void) {

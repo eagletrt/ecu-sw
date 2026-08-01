@@ -409,20 +409,15 @@ enum EphorusReturnCode ephorus_api_build_setpoints(struct EphorusHandler *handle
     float torque_limit_positive;
     float torque_limit_negative;
     int16_t speed_setpoint;
-    if (torque > 0.0F) {
+    if (torque >= 0.0F) {
         /* Drive: allow up to +T, forbid braking, chase the high speed rail. */
         torque_limit_positive = torque;
         torque_limit_negative = 0.0F;
         speed_setpoint = (int16_t)EPHORUS_DRIVE_SPEED_RPM;
-    } else if (torque < 0.0F) {
+    } else {
         /* Brake/regen: forbid driving, allow down to T, chase zero speed. */
         torque_limit_positive = 0.0F;
         torque_limit_negative = torque;
-        speed_setpoint = 0;
-    } else {
-        /* Coast: no torque either way. */
-        torque_limit_positive = 0.0F;
-        torque_limit_negative = 0.0F;
         speed_setpoint = 0;
     }
 
