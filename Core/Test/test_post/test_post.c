@@ -41,7 +41,7 @@ EAGLETRT_STATIC struct PostConfig post_config;
  */
 EAGLETRT_STATIC void build_default_valid_config(struct PostConfig *cfg) {
     // prepare CAN communication network configs
-    for (size_t i = 0; i < CAN_COMMUNICATION_NET_COUNT; i++) {
+    for (size_t i = 0; i < CAN_COMMUNICATION_NETWORK_COUNT; i++) {
         cfg->can_networks[i].send = mock_can_send;
         cfg->can_networks[i].on_receive = mock_can_on_receive;
         cfg->can_networks[i].cs_enter = NULL;
@@ -141,7 +141,7 @@ void test_post_do_init_should_fail_if_a_buzzer_delay_pointer_is_null(void) {
 }
 
 void test_post_do_init_should_fail_if_can_communication_callback_is_null(void) {
-    post_config.can_networks[CAN_COMMUNICATION_NET_PRIMARY].send = NULL;
+    post_config.can_networks[CAN_COMMUNICATION_NETWORK_PRIMARY].send = NULL;
 
     enum PostReturnCode rc = post_api_do_init(&post_config);
 

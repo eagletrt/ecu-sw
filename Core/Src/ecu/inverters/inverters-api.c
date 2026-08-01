@@ -97,7 +97,7 @@ EAGLETRT_STATIC float prv_inverters_get_motor_torque_limit(const float rpm) {
     // Limits the phase current to protect inverter's hardware
     // using INVERTER_MAX_CONTINUOUS_CURRENT_A instead of INVERTER_PEAK_CURRENT_A
     // will provide less power but can operate for much longer times safely
-    float current_max_current = INVERTERS_INVERTER_MAX_CONTINUOUS_CURRENT_A * INVERTERS_MOTOR_TORQUE_PER_CURRENT_NM_A;
+    constexpr float current_max_current = INVERTERS_INVERTER_MAX_CONTINUOUS_CURRENT_A * INVERTERS_MOTOR_TORQUE_PER_CURRENT_NM_A;
 
     // Ensure rpm is not zero to avoid division by zero
     float absolute_rpm = fabsf(rpm);

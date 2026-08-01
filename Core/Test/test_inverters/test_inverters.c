@@ -100,7 +100,7 @@ void test_cut_off_preserves_ratio_during_cut(void) {
 }
 
 void test_cut_off_preserves_ratio_at_high_rpm_saturation(void) {
-    set_all_rpm(14000);
+    set_all_rpm(20000);
     inverters_api_set_soc(1.0F);
 
     const float req_high = 20.0f, req_low = 10.0f;
