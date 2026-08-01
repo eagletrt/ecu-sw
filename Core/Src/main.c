@@ -184,7 +184,6 @@ int main(void) {
         .as_air_release = can_air_release_from_line,
         .raspberry_pin_control = gpio_raspberry_set_pin,
         .raspberry_initial_state = RASPBERRY_CONTROL_PIN_STATE_ON,
-        .ts_send_command = can_ts_send_command,
         .shutdown_control_relay = gpio_shutdown_control_relay
     };
 

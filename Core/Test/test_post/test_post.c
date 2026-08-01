@@ -23,7 +23,6 @@ FAKE_VALUE_FUNC(uint32_t, mock_buzzer_tick);
 FAKE_VALUE_FUNC(enum CanCommunicationReturnCode, mock_can_send, const struct CanCommunicationFrame *);
 FAKE_VALUE_FUNC(enum CanCommunicationReturnCode, mock_can_on_receive, struct CanCommunicationFrame *);
 FAKE_VALUE_FUNC(enum RaspberryReturnCode, mock_raspberry_pin_control, enum RaspberryControlPinState);
-FAKE_VALUE_FUNC(enum TSReturnCode, mock_ts_send_command, enum TSCommand);
 FAKE_VALUE_FUNC(enum ShutdownReturnCode, mock_shutdown_control_relay, bool);
 
 /*!
@@ -60,7 +59,6 @@ EAGLETRT_STATIC void build_default_valid_config(struct PostConfig *cfg) {
 
     cfg->raspberry_pin_control = mock_raspberry_pin_control;
     cfg->raspberry_initial_state = RASPBERRY_CONTROL_PIN_STATE_ON;
-    cfg->ts_send_command = mock_ts_send_command;
     cfg->shutdown_control_relay = mock_shutdown_control_relay;
 }
 
@@ -72,7 +70,6 @@ void setUp(void) {
     RESET_FAKE(mock_buzzer_delay);
     RESET_FAKE(mock_buzzer_tick);
     RESET_FAKE(mock_raspberry_pin_control);
-    RESET_FAKE(mock_ts_send_command);
 
     // Reset CAN callbacks mocks
     RESET_FAKE(mock_can_send);
@@ -156,14 +153,6 @@ void test_post_do_init_should_fail_if_raspberry_pin_control_callback_is_null(voi
     TEST_ASSERT_EQUAL_INT_MESSAGE(POST_RC_ERROR, rc, "POST initialization should fail validation if the Raspberry Pi pin control callback is missing.");
 }
 
-void test_post_do_init_should_fail_if_tractive_system_callback_is_null(void) {
-    post_config.ts_send_command = NULL;
-
-    enum PostReturnCode rc = post_api_do_init(&post_config);
-
-    TEST_ASSERT_EQUAL_INT_MESSAGE(POST_RC_ERROR, rc, "POST initialization should fail validation if the tractive system send command callback is missing.");
-}
-
 void test_post_do_init_should_fail_if_raspberry_initial_state_is_out_of_bounds(void) {
     // Force an out-of-bounds value onto the initial pin state configuration
     post_config.raspberry_initial_state = RASPBERRY_CONTROL_PIN_STATE_COUNT;
@@ -190,7 +179,6 @@ int main(void) {
     RUN_TEST(test_post_do_init_should_fail_if_a_buzzer_delay_pointer_is_null);
     RUN_TEST(test_post_do_init_should_fail_if_can_communication_callback_is_null);
     RUN_TEST(test_post_do_init_should_fail_if_raspberry_pin_control_callback_is_null);
-    RUN_TEST(test_post_do_init_should_fail_if_tractive_system_callback_is_null);
 
     RUN_TEST(test_post_do_init_should_fail_if_raspberry_initial_state_is_out_of_bounds);
     /*! \} */

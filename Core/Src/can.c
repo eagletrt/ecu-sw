@@ -21,6 +21,7 @@
 #include "can.h"
 
 /* USER CODE BEGIN 0 */
+#include "can-communication-api.h"
 #include "eagletrt-api.h"
 /* USER CODE END 0 */
 
@@ -390,11 +391,6 @@ enum CanCommunicationReturnCode can_send_inverter(const struct CanCommunicationF
 enum ASDriverReturnCode can_air_release_from_line(enum ASDriverAirLine air_line) {
     EAGLETRT_API_UNUSED(air_line);
     return AS_DRIVER_RC_OK;
-}
-
-enum TSReturnCode can_ts_send_command(enum TSCommand ts_command) {
-    EAGLETRT_API_UNUSED(ts_command);
-    return TS_RC_OK;
 }
 
 void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan) {

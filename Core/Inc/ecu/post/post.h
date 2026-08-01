@@ -11,9 +11,7 @@
 #include "as-driver.h"
 #include "buzzer.h"
 #include "can-communication.h"
-#include "inverters.h"
 #include "raspberry.h"
-#include "tractive-system.h"
 #include "shutdown.h"
 
 /*!
@@ -43,9 +41,6 @@ struct PostConfig {
     /* --- RaspberryPi callbacks --- */
     raspberry_pin_control_callback raspberry_pin_control;  /*!< Callback to control physical hardware state pins on the Raspberry Pi interface. */
     enum RaspberryControlPinState raspberry_initial_state; /*!< Dynamic initialization state requested for the RaspberryPi at boot. */
-
-    /* --- Tractive System (TS) callbacks --- */
-    ts_command_callback ts_send_command; /*!< Callback to transmit high-voltage tractive system orchestration commands. */
 
     /* --- Shutdown callbacks --- */
     shutdown_control_relay_callback shutdown_control_relay; /*!< Callback to set the system's shutdown state. */
