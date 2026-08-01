@@ -38,7 +38,7 @@ struct PostConfig {
     buzzer_tick_callback buzzer_tick_ptrs[BUZZER_TYPE_COUNT];   /*!< Array of function pointers to poll or update the buzzer tick timers. */
 
     /* --- CAN Communication configurations --- */
-    struct CanCommunicationNetworkConfig can_networks[CAN_COMMUNICATION_NET_COUNT]; /*!< Explicit configuration blocks for the system's physical CAN networks. */
+    struct CanCommunicationNetworkConfig can_networks[CAN_COMMUNICATION_NETWORK_COUNT]; /*!< Explicit configuration blocks for the system's physical CAN networks. */
 
     /* --- RaspberryPi callbacks --- */
     raspberry_pin_control_callback raspberry_pin_control;  /*!< Callback to control physical hardware state pins on the Raspberry Pi interface. */

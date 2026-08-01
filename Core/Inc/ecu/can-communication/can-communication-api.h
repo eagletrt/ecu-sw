@@ -18,7 +18,7 @@
  * \retval CAN_COMMUNICATION_RC_INVALID_NETWORK if a network ID within the initialization sequence is out of range.
  * \retval CAN_COMMUNICATION_RC_ERROR if PAL or the arena fail to set up.
  */
-enum CanCommunicationReturnCode can_communication_api_init(const struct CanCommunicationNetworkConfig configs[CAN_COMMUNICATION_NET_COUNT]);
+enum CanCommunicationReturnCode can_communication_api_init(const struct CanCommunicationNetworkConfig configs[CAN_COMMUNICATION_NETWORK_COUNT]);
 
 /*!
  * \brief Pushes an abstracted data frame into a specific network's local TX buffer queue.

@@ -3,18 +3,6 @@
  * \author Dorijan Di Zepp, Alessandro Bridi
  * \date 2026-07-31
  * \brief Unit tests for the inverters module and the ported Ephorus driver.
- *
- * \details Three concerns are covered:
- *   - the preserved cut-off safety layer (power / current / voltage-sag / regen
- *     limiting and torque-vectoring ratio preservation), tested directly through
- *     the internal \ref prv_inverters_apply_cut_off;
- *   - the torque-control-via-speed-rail feature of the driver, tested by decoding
- *     the setpoint frame produced by \ref ephorus_api_build_setpoints;
- *   - RX telemetry decode and fault latching, tested through
- *     \ref inverters_api_on_receive.
- *
- * The internal handler and cut-off function are reached via 'extern' declarations
- * (they are EAGLETRT_STATIC, i.e. external-linkage under the tests build).
  */
 
 #include <unity.h>
@@ -45,10 +33,6 @@ void setUp(void) {
 
 void tearDown(void) {
 }
-
-/* --------------------------------------------------------------------------
- * Cut-off safety layer (preserved limit features)
- * ------------------------------------------------------------------------ */
 
 void test_cut_off_never_exceeds_hardware_limits(void) {
     // Request far above any physical limit, at low RPM and full SoC so the motor
@@ -209,10 +193,6 @@ void test_set_soc_is_clamped(void) {
     TEST_ASSERT_EQUAL_FLOAT_MESSAGE(1.0F, inverters_handler.hv_bms_soc, "SoC above range should clamp to 1.0");
 }
 
-/* --------------------------------------------------------------------------
- * Torque-control-via-speed-rail feature (Ephorus setpoints)
- * ------------------------------------------------------------------------ */
-
 /*! \brief Arm + run a wheel, set its torque, build and decode its setpoint frame. */
 static struct CanInvertersInverter1setpoints build_and_decode(enum EphorusWheel wheel, float nm, bool armed) {
     struct EphorusHandler *drv = &inverters_handler.driver;
@@ -273,10 +253,6 @@ void test_feature_torque_request_is_clamped(void) {
     struct CanInvertersInverter1setpoints s = build_and_decode(EPHORUS_WHEEL_FRONT_LEFT, 1000.0f, true);
     TEST_ASSERT_FLOAT_WITHIN_MESSAGE(0.01f, EPHORUS_MAX_TORQUE_NM, s.torquelimitpositive, "Torque request must clamp to EPHORUS_MAX_TORQUE_NM");
 }
-
-/* --------------------------------------------------------------------------
- * RX telemetry decode + fault latching
- * ------------------------------------------------------------------------ */
 
 /*! \brief Serialize a message under \p id into a transport frame. */
 static struct CanCommunicationFrame make_frame(enum CanInvertersMessageFrameId id, union CanInvertersMessages *msg) {

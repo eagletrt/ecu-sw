@@ -31,16 +31,8 @@
 #include "arena-allocator-api.h"
 #include "ecu_fsm.h"
 #include "eagletrt-api.h"
-#include "as-driver-api.h"
-#include "buzzer-api.h"
-#include "can-communication-api.h"
 #include "can-communication-router-api.h"
-#include "inverters-api.h"
 #include "logger-api.h"
-#include "pedals-api.h"
-#include "post-api.h"
-#include "raspberry-api.h"
-#include "tractive-system-api.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -169,19 +161,19 @@ int main(void) {
     // --- CAN communication configuration ---
     struct PostConfig post_configuration = {
         .can_networks = {
-            [CAN_COMMUNICATION_NET_PRIMARY] = {
+            [CAN_COMMUNICATION_NETWORK_PRIMARY] = {
                 .send = can_send_primary,
                 .on_receive = can_communication_router_api_receive_primary,
                 .cs_enter = __disable_irq,
                 .cs_exit = __enable_irq,
             },
-            [CAN_COMMUNICATION_NET_SECONDARY] = {
+            [CAN_COMMUNICATION_NETWORK_SECONDARY] = {
                 .send = can_send_secondary,
                 .on_receive = can_communication_router_api_receive_secondary,
                 .cs_enter = __disable_irq,
                 .cs_exit = __enable_irq,
             },
-            [CAN_COMMUNICATION_NET_INVERTER] = {
+            [CAN_COMMUNICATION_NETWORK_INVERTER] = {
                 .send = can_send_inverter,
                 .on_receive = can_communication_router_api_receive_inverter,
                 .cs_enter = __disable_irq,

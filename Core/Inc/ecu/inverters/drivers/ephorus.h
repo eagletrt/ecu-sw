@@ -2,7 +2,6 @@
  * \file ephorus.h
  * \date 2026-07-31
  * \authors Alessandro Bridi [ale.bridi15@gmail.com]
- * \ingroup Core
  *
  * \brief Types, configuration and state for the Ephorus 3.1 inverter driver.
  *
@@ -31,8 +30,6 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "can-inverters-api.h"
-
 /*! \brief Payload size of an inverters-network frame (classic CAN, fixed 8). */
 #define EPHORUS_FRAME_DATA_SIZE (8U)
 
@@ -42,7 +39,7 @@
 
 #define EPHORUS_TX_PERIOD_MS (10U)      /*!< Setpoint cadence, hard requirement < 50 ms (inverter comm timeout). */
 #define EPHORUS_DRIVE_SPEED_RPM (20000) /*!< Speed rail commanded while a positive (drive) torque is requested. */
-#define EPHORUS_MAX_TORQUE_NM (60.0f)   /*!< Absolute clamp for the signed torque request [Nm]. */
+#define EPHORUS_MAX_TORQUE_NM (60.0F)   /*!< Absolute clamp for the signed torque request [Nm]. */
 
 /*!
  * \brief The four wheels of the car, each bound to one physical inverter.

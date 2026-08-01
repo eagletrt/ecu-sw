@@ -86,7 +86,7 @@ void inverters_api_toggle_run(enum EphorusWheel wheel);
  * \param wheel Wheel to command.
  * \param nm Signed torque request [Nm].
  */
-void inverters_api_set_torque(enum EphorusWheel wheel, float nm);
+void inverters_api_set_torque(enum EphorusWheel wheel, float torque_nm);
 
 /*!
  * \brief Set the current SoC (State of Charge) of the battery.

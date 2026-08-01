@@ -66,7 +66,8 @@ EAGLETRT_STATIC float prv_inverters_get_motors_reduction(
         float absolute_request = fabsf(requests[i]);
 
         // If the request exceeds the limit, calculate the necessary reduction
-        if (absolute_request > limits[i] && absolute_request > 0.001F) {
+        constexpr float epsilon = 0.001F; // Small threshold to avoid division by zero
+        if (absolute_request > limits[i] && absolute_request > epsilon) {
             float local_ratio = limits[i] / absolute_request;
             // Keep the smallest ratio (the most restrictive cut)
             global_reduction = EAGLETRT_API_MIN(global_reduction, local_ratio);
@@ -324,13 +325,13 @@ enum InvertersReturnCode inverters_api_init(void) {
     inverters_handler.last_tx_tick = 0;
 
     // Four-wheel ECU: activate every wheel so it transmits and decodes.
-    enum InvertersReturnCode rc = INVERTERS_RC_OK;
+    enum InvertersReturnCode return_code = INVERTERS_RC_OK;
     for (enum EphorusWheel wheel = 0; wheel < EPHORUS_WHEEL_COUNT; wheel++) {
         if (ephorus_api_attach(&inverters_handler.driver, wheel) != EPHORUS_RC_OK) {
-            rc = INVERTERS_RC_INVALID_WHEEL;
+            return_code = INVERTERS_RC_INVALID_WHEEL;
         }
     }
-    return rc;
+    return return_code;
 }
 
 enum InvertersReturnCode inverters_api_attach(enum EphorusWheel wheel) {
@@ -356,11 +357,11 @@ void inverters_api_toggle_run(enum EphorusWheel wheel) {
     ephorus_api_toggle_run(&inverters_handler.driver, wheel);
 }
 
-void inverters_api_set_torque(enum EphorusWheel wheel, float nm) {
+void inverters_api_set_torque(enum EphorusWheel wheel, float torque_nm) {
     if (wheel >= EPHORUS_WHEEL_COUNT) {
         return;
     }
-    inverters_handler.requested_torque_nm[wheel] = nm;
+    inverters_handler.requested_torque_nm[wheel] = torque_nm;
 }
 
 void inverters_api_set_soc(float hv_bms_soc) {
@@ -387,7 +388,7 @@ enum InvertersReturnCode inverters_api_step(uint32_t tick) {
     ephorus_api_set_torque(&inverters_handler.driver, EPHORUS_WHEEL_REAR_LEFT, torque_rear_left_nm);
     ephorus_api_set_torque(&inverters_handler.driver, EPHORUS_WHEEL_REAR_RIGHT, torque_rear_right_nm);
 
-    enum InvertersReturnCode rc = INVERTERS_RC_OK;
+    enum InvertersReturnCode return_code = INVERTERS_RC_OK;
     for (enum EphorusWheel wheel = 0; wheel < EPHORUS_WHEEL_COUNT; wheel++) {
         struct CanCommunicationFrame frame = { 0 };
         uint32_t id = 0;
@@ -396,16 +397,16 @@ enum InvertersReturnCode inverters_api_step(uint32_t tick) {
             continue; // wheel not attached
         }
         if (build != EPHORUS_RC_OK) {
-            rc = INVERTERS_RC_TX_ERROR;
+            return_code = INVERTERS_RC_TX_ERROR;
             continue;
         }
         frame.id = id;
         frame.length = EPHORUS_FRAME_DATA_SIZE;
         if (can_communication_api_add_to_tx(INVERTERS_NETWORK, &frame) != CAN_COMMUNICATION_RC_OK) {
-            rc = INVERTERS_RC_TX_ERROR;
+            return_code = INVERTERS_RC_TX_ERROR;
         }
     }
-    return rc;
+    return return_code;
 }
 
 const struct EphorusWheelTelemetry *inverters_api_wheel_telemetry(enum EphorusWheel wheel) {

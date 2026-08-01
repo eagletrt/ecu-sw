@@ -20,7 +20,6 @@
 #include <stdint.h>
 
 #include "ephorus.h"
-#include "can-communication.h"
 
 #define INVERTERS_HV_MAX_POWER_W (80000.0F) /*!< Maximum battery power allowed by Formula Student rules (80kW). */
 
@@ -37,11 +36,11 @@ TODO:
 the following constants require verification
 to see if the values associated are valid
 */
-#define INVERTERS_MOTOR_PEAK_TORQUE_NM (21.0F) /*!< Maximum mechanical torque allowed per motor. */
+#define INVERTERS_MOTOR_PEAK_TORQUE_NM (29.1F) /*!< Maximum mechanical torque allowed per motor. */
 
-#define INVERTERS_MOTOR_TORQUE_PER_CURRENT_NM_A (0.25F) /*!< Torque constant (Kt) in Nm/Arms. */
+#define INVERTERS_MOTOR_TORQUE_PER_CURRENT_NM_A (0.492F) /*!< Torque constant (Kt) in Nm/Arms. */
 
-#define INVERTERS_MOTOR_MAX_MECHANICAL_POWER_W (20000.0F) /*!< Maximum mechanical power allowed per motor. */
+#define INVERTERS_MOTOR_MAX_MECHANICAL_POWER_W (35400.0F) /*!< Maximum mechanical power allowed per motor. */
 
 #define INVERTERS_HV_MAX_REGEN_CURRENT_A (-24.0F) /*!< Maximum allowable regenerative current into the battery. */
 
@@ -56,7 +55,7 @@ to see if the values associated are valid
 #define INVERTERS_HV_CELLS_PARALLEL_COUNT (3) /*!< Number of individual battery cells connected in parallel */
 
 /*! \brief The single CAN network every inverter lives on. */
-#define INVERTERS_NETWORK CAN_COMMUNICATION_NET_INVERTER
+#define INVERTERS_NETWORK CAN_COMMUNICATION_NETWORK_INVERTER
 
 /*!
  * \brief Return codes for the inverters module APIs.
