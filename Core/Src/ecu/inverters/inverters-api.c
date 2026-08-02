@@ -134,13 +134,13 @@ EAGLETRT_STATIC float prv_inverters_pack_voc_model(void) {
     //TODO: verify the values as they correspond to the characteristics of the old pack
     // which should be "recycled" for kraken.
     // It may be possible to retrieve directly the VOC value from the SOC's CAN frame, to be checked.
-    constexpr float voc_poly_4_order = -3.85189120F;
-    constexpr float voc_poly_3_order = 9.42278296F;
-    constexpr float voc_poly_2_order = -8.31949326F;
-    constexpr float voc_poly_1_order = 4.04805239F;
-    constexpr float voc_poly_0_order = 2.82544823F;
+    constexpr float voc_4_order_term = -3.85189120F;
+    constexpr float voc_3_order_term = 9.42278296F;
+    constexpr float voc_2_order_term = -8.31949326F;
+    constexpr float voc_1_order_term = 4.04805239F;
+    constexpr float voc_0_order_term = 2.82544823F;
 
-    return voc_poly_4_order * powf(soc, 4) + voc_poly_3_order * powf(soc, 3) + voc_poly_2_order * powf(soc, 2) + voc_poly_1_order * soc + voc_poly_0_order;
+    return voc_4_order_term * powf(soc, 4) + voc_3_order_term * powf(soc, 3) + voc_2_order_term * powf(soc, 2) + voc_1_order_term * soc + voc_0_order_term;
 }
 
 /*!
@@ -159,9 +159,9 @@ EAGLETRT_STATIC float prv_inverters_internal_resistance_model(void) {
     //TODO: verify the values as they correspond to the characteristics of the old pack
     // which should be "recycled" for kraken.
     // It may be possible to retrieve directly the resistance value from the SOC's CAN frame, to be checked.
-    constexpr float resistance_poly_1_order = 0.0021F;
-    constexpr float resistance_poly_0_order = 0.0141F;
-    return resistance_poly_0_order + resistance_poly_1_order * soc;
+    constexpr float resistance_1_order_term = 0.0021F;
+    constexpr float resistance_0_order_term = 0.0141F;
+    return resistance_0_order_term + resistance_1_order_term * soc;
 }
 
 /*!
@@ -203,11 +203,11 @@ EAGLETRT_STATIC void prv_inverters_limit_torque_by_power(float power_max, float 
         reduction_ratio = 0.0F; // kill torque if battery is almost "dead"
     } else if (total_mechanical_power > power_max && total_mechanical_power >= 0.0F) {
         // discharge and power limit scaling
-        reduction_ratio = EAGLETRT_API_MIN(EAGLETRT_API_MAX(power_max / total_mechanical_power, 0.0F), 1.0F);
+        reduction_ratio = EAGLETRT_API_CLAMP(power_max / total_mechanical_power, 0.0F, 1.0F);
     } else if (total_mechanical_power < INVERTERS_HV_MAX_REGEN_POWER_W && total_mechanical_power < 0.0F) {
         // regen scaling, avoid  "pushing" more than the cells can absorb
         constexpr float inv_max_regen_power = INVERTERS_HV_MAX_REGEN_POWER_W;
-        reduction_ratio = EAGLETRT_API_MIN(EAGLETRT_API_MAX(inv_max_regen_power / total_mechanical_power, 0.0F), 1.0F);
+        reduction_ratio = EAGLETRT_API_CLAMP(inv_max_regen_power / total_mechanical_power, 0.0F, 1.0F);
     }
 
     // Apply the same ratio to all motors
@@ -328,11 +328,9 @@ EAGLETRT_STATIC void prv_inverters_apply_cut_off(float *torque_front_left_nm, fl
 }
 
 enum InvertersReturnCode inverters_api_init(void) {
-    ephorus_api_init(&inverters_handler.driver);
+    memset(&inverters_handler, 0, sizeof(inverters_handler));
 
-    memset(inverters_handler.requested_torque_nm, 0, sizeof(inverters_handler.requested_torque_nm));
-    inverters_handler.hv_bms_soc = 0.0F;
-    inverters_handler.last_tx_tick = 0;
+    ephorus_api_init(&inverters_handler.driver);
 
     // Four-wheel ECU: activate every wheel so it transmits and decodes.
     enum InvertersReturnCode return_code = INVERTERS_RC_OK;
@@ -357,14 +355,6 @@ void inverters_api_arm(enum EphorusWheel wheel) {
 
 void inverters_api_disarm(enum EphorusWheel wheel) {
     ephorus_api_disarm(&inverters_handler.driver, wheel);
-}
-
-void inverters_api_set_run(enum EphorusWheel wheel, bool run) {
-    ephorus_api_set_run(&inverters_handler.driver, wheel, run);
-}
-
-void inverters_api_toggle_run(enum EphorusWheel wheel) {
-    ephorus_api_toggle_run(&inverters_handler.driver, wheel);
 }
 
 void inverters_api_set_torque(enum EphorusWheel wheel, float torque_nm) {
@@ -419,24 +409,12 @@ enum InvertersReturnCode inverters_api_step(uint32_t tick) {
     return return_code;
 }
 
-const struct EphorusWheelTelemetry *inverters_api_wheel_telemetry(enum EphorusWheel wheel) {
-    return ephorus_api_wheel_telemetry(&inverters_handler.driver, wheel);
+const struct EphorusWheelTelemetry *inverters_api_get_wheel_telemetry(enum EphorusWheel wheel) {
+    return ephorus_api_get_wheel_telemetry(&inverters_handler.driver, wheel);
 }
 
-const struct EphorusGeneralTelemetry *inverters_api_general_telemetry(void) {
-    return ephorus_api_general_telemetry(&inverters_handler.driver);
-}
-
-const char *inverters_api_state_name(enum EphorusState state) {
-    return ephorus_api_state_name(state);
-}
-
-const char *inverters_api_wheel_fault_name(int fault_bit) {
-    return ephorus_api_wheel_fault_name(fault_bit);
-}
-
-const char *inverters_api_general_fault_name(int fault_bit) {
-    return ephorus_api_general_fault_name(fault_bit);
+const struct EphorusGeneralTelemetry *inverters_api_get_general_telemetry(void) {
+    return ephorus_api_get_general_telemetry(&inverters_handler.driver);
 }
 
 enum CanCommunicationReturnCode inverters_api_on_receive(const struct CanCommunicationFrame *frame) {

@@ -3,20 +3,6 @@
  * \author Dorijan Di Zepp, Alessandro Bridi
  * \date 2026-07-31
  * \brief Public API for the inverters control module.
- *
- * Typical usage (four-wheel ECU):
- * \code
- *   inverters_api_init(); // driver reset + all four wheels attached
- *
- *   while (1) {
- *       can_communication_api_process_rx(INVERTERS_NETWORK); // -> decode telemetry
- *       inverters_api_set_soc(latest_bms_soc);               // feed the power limits
- *       inverters_api_set_torque(EPHORUS_WHEEL_FRONT_LEFT, fl_nm);
- *       // ... the other wheels ...
- *       inverters_api_step(HAL_GetTick());                   // cut-off + build + queue
- *       can_communication_api_process_tx(INVERTERS_NETWORK); // flush to the bus
- *   }
- * \endcode
  */
 
 #ifndef INVERTERS_API_H
@@ -57,25 +43,11 @@ enum InvertersReturnCode inverters_api_attach(enum EphorusWheel wheel);
 void inverters_api_arm(enum EphorusWheel wheel);
 
 /*!
- * \brief Disarm a wheel (stop run request, disable drive).
+ * \brief Disarm a wheel (disable drive).
  *
  * \param wheel Wheel to disarm.
  */
 void inverters_api_disarm(enum EphorusWheel wheel);
-
-/*!
- * \brief Command or release a wheel's run request.
- * 
- * \param wheel Wheel to command.
- */
-void inverters_api_set_run(enum EphorusWheel wheel, bool run);
-
-/*!
- * \brief Flip a wheel's run request.
- * 
- * \param wheel Wheel to command.
- */
-void inverters_api_toggle_run(enum EphorusWheel wheel);
 
 /*!
  * \brief Set a wheel's signed torque request [Nm] (positive drives, negative brakes).
@@ -123,41 +95,14 @@ enum InvertersReturnCode inverters_api_step(uint32_t tick);
  *
  * \return Pointer to the wheel's telemetry (never NULL if \p wheel is valid).
  */
-const struct EphorusWheelTelemetry *inverters_api_wheel_telemetry(enum EphorusWheel wheel);
+const struct EphorusWheelTelemetry *inverters_api_get_wheel_telemetry(enum EphorusWheel wheel);
 
 /*!
  * \brief Borrow the shared telemetry.
  *
  * \return Pointer to the shared telemetry (never NULL).
  */
-const struct EphorusGeneralTelemetry *inverters_api_general_telemetry(void);
-
-/*!
- * \brief Name of an inverter state (static string, never NULL).
- *
- * \param state The state to query.
- *
- * \return Static string with the name of the state.
- */
-const char *inverters_api_state_name(enum EphorusState state);
-
-/*!
- * \brief Name of a per-wheel fault bit (static string, never NULL).
- *
- * \param fault_bit The bit position to query.
- *
- * \return Static string with the name of the fault bit.
- */
-const char *inverters_api_wheel_fault_name(int fault_bit);
-
-/*!
- * \brief Name of a shared fault bit (static string, never NULL).
- *
- * \param fault_bit The bit position to query.
- *
- * \return Static string with the name of the fault bit.
- */
-const char *inverters_api_general_fault_name(int fault_bit);
+const struct EphorusGeneralTelemetry *inverters_api_get_general_telemetry(void);
 
 /*!
  * \brief Router entry point: decode and dispatch one received frame.

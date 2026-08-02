@@ -42,29 +42,12 @@ enum EphorusReturnCode ephorus_api_attach(struct EphorusHandler *handle, enum Ep
 void ephorus_api_arm(struct EphorusHandler *handle, enum EphorusWheel wheel);
 
 /*!
- * \brief Disarm a wheel (stop run request, disable drive).
+ * \brief Disarm a wheel (disable drive).
  *
  * \param handle Driver handle.
  * \param wheel  Wheel to disarm.
  */
 void ephorus_api_disarm(struct EphorusHandler *handle, enum EphorusWheel wheel);
-
-/*!
- * \brief Command or release a wheel's run request (only while armed/unfaulted).
- *
- * \param handle Driver handle.
- * \param wheel  Wheel to command.
- * \param run    true to request run, false to release.
- */
-void ephorus_api_set_run(struct EphorusHandler *handle, enum EphorusWheel wheel, bool run);
-
-/*!
- * \brief Flip a wheel's run request.
- *
- * \param handle Driver handle.
- * \param wheel  Wheel to command.
- */
-void ephorus_api_toggle_run(struct EphorusHandler *handle, enum EphorusWheel wheel);
 
 /*!
  * \brief Set a wheel's signed torque request [Nm] (clamped to +/- EPHORUS_MAX_TORQUE_NM).
@@ -88,7 +71,7 @@ void ephorus_api_set_torque(struct EphorusHandler *handle, enum EphorusWheel whe
  *       - request < 0 : torquelimitpositive = 0, torquelimitnegative = T,
  *                       speedsetpoint = 0;
  *       - request = 0 : both limits 0, speedsetpoint = 0.
- *     A wheel that is not armed/running (or is faulted) emits a zero request.
+ *     A wheel that is not armed (or is faulted) emits a zero request.
  *     Meant to be called once per EPHORUS_TX_PERIOD_MS (the Inverters module
  *     enforces that cadence).
  *
@@ -127,7 +110,7 @@ void ephorus_api_handle_frame(struct EphorusHandler *handle, uint32_t frame_id, 
  *
  * \return Pointer into the handle, or NULL if \p wheel is out of range.
  */
-const struct EphorusWheelTelemetry *ephorus_api_wheel_telemetry(const struct EphorusHandler *handle, enum EphorusWheel wheel);
+const struct EphorusWheelTelemetry *ephorus_api_get_wheel_telemetry(const struct EphorusHandler *handle, enum EphorusWheel wheel);
 
 /*!
  * \brief Borrow the shared telemetry (valid while the handle lives).
@@ -136,31 +119,6 @@ const struct EphorusWheelTelemetry *ephorus_api_wheel_telemetry(const struct Eph
  *
  * \return Pointer into the handle, or NULL if \p handle is NULL.
  */
-const struct EphorusGeneralTelemetry *ephorus_api_general_telemetry(const struct EphorusHandler *handle);
-
-/*!
- * \brief Name of an inverter state (static string, never NULL).
- *
- * \param state Inverter state to name.
- *
- * \return Static string with the name of \p state.
- */
-const char *ephorus_api_state_name(enum EphorusState state);
-
-/*!
- * \brief Name of a per-wheel fault bit (static string, never NULL).
- *
- * \param fault_bit Fault bit to name.
- *
- * \return Static string with the name of \p fault_bit.
- */
-const char *ephorus_api_wheel_fault_name(uint32_t fault_bit);
-
-/*!
- * \brief Name of a shared fault bit (static string, never NULL).
- *
- * \param fault_bit Fault bit to name.
- */
-const char *ephorus_api_general_fault_name(uint32_t fault_bit);
+const struct EphorusGeneralTelemetry *ephorus_api_get_general_telemetry(const struct EphorusHandler *handle);
 
 #endif // EPHORUS_API_H

@@ -135,22 +135,36 @@ struct EphorusGeneralTelemetry {
 };
 
 /*!
+ * \brief Inverter internal state, used to determine which actions are allowed.
+ */
+enum EphorusInverterState {
+    EPHORUS_INVERTER_STATE_FAULT,    /*!< A latched fault is present, must be reset. */
+    EPHORUS_INVERTER_STATE_DISARMED, /*!< No torque is allowed, but the inverter can be armed. */
+    EPHORUS_INVERTER_STATE_ARMED,    /*!< The inverter is running. */
+};
+
+/*!
+ * \brief The CAN frame IDs used by one wheel.
+ */
+struct EphorusWheelCanIds {
+    uint32_t tx_id;
+    uint32_t outbound_a_id;
+    uint32_t outbound_b_id;
+};
+
+/*!
  * \brief One wheel: command state, frame ids and per-wheel telemetry.
  *
  * Fields are public for rendering, but mutate them only through ephorus_api_*.
  */
 struct EphorusWheelState {
-    bool active;            /*!< true once attached via ephorus_api_attach. */
-    uint32_t tx_id;         /*!< Setpoints frame id. */
-    uint32_t outbound_a_id; /*!< OutboundA frame id (state / torque / temps). */
-    uint32_t outbound_b_id; /*!< OutboundB frame id (speed). */
+    bool enabled;                      /*!< true once attached via ephorus_api_attach. */
+    struct EphorusWheelCanIds can_ids; /*!< The CAN frame IDs used by this wheel. */
 
-    bool armed;       /*!< Inverter enabled (latched errors acked). */
-    bool running;     /*!< Run requested (allows torque output). */
-    bool faulted;     /*!< A fault was latched, motion inhibited until re-armed. */
-    float torque_nm;  /*!< Signed torque request [Nm]: >0 drive, <0 brake/regen. */
-    bool ack_pulse;   /*!< One-shot AckErr rising edge request. */
-    bool reset_pulse; /*!< One-shot ResetError request. */
+    enum EphorusInverterState inverter_state; /*!< Internal state machine. */
+    float torque_nm;                          /*!< Signed torque request [Nm]: >0 drive, <0 brake/regen. */
+    bool ack_pulse;                           /*!< One-shot AckErr rising edge request. */
+    bool reset_pulse;                         /*!< One-shot ResetError request. */
 
     struct EphorusWheelTelemetry tlm; /*!< Decoded per-wheel telemetry. */
 };

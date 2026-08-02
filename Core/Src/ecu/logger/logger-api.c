@@ -6,7 +6,7 @@
  */
 
 #include "logger-api.h"
-#include "eagletrt.h"
+#include "eagletrt-api.h"
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
@@ -80,7 +80,7 @@ enum LoggerReturnCode logger_api_log(enum LoggerLevel level, const char *format,
     const int16_t max_wrote =
         (int16_t)(LOGGER_MAX_LINE_SIZE - offset - length_of_closing_characters);
 
-    int16_t wrote = body_len < max_wrote ? body_len : max_wrote;
+    int16_t wrote = EAGLETRT_API_MIN(body_len, max_wrote);
 
     // Measure the actual string safely populated inside the buffer boundary
     int16_t actual_len = offset + wrote;
