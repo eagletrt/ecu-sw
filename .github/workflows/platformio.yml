@@ -53,4 +53,4 @@ jobs:
 
       - name: Static Code Analysis
         if: github.ref == 'refs/heads/dev'
-        run: pio check  || true
+        run: pio check --fail-on-defect high

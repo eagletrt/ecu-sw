@@ -44,7 +44,7 @@ EAGLETRT_STATIC const struct EphorusWheelCanIds ephorus_wheels_can_ids[EPHORUS_W
  * \return true if the wheel is front-left or front-right, else false.
  */
 EAGLETRT_STATIC bool prv_ephorus_wheel_is_pair_12(enum EphorusWheel wheel) {
-    return wheel <= EPHORUS_WHEEL_FRONT_RIGHT;
+    return (wheel == EPHORUS_WHEEL_FRONT_RIGHT) || (wheel == EPHORUS_WHEEL_FRONT_LEFT);
 }
 
 /*!
@@ -98,6 +98,88 @@ EAGLETRT_STATIC enum EphorusState prv_ephorus_get_state_from_raw(uint8_t raw) {
 }
 
 /*!
+ * \brief Fills a wheel's per-inverter faults from a decoded error frame.
+ *
+ * \param general_error[in] The decoded error frame.
+ * \param errors[out] Array of bools to fill with the wheel's faults.
+ */
+EAGLETRT_STATIC void prv_ephorus_fill_inv1(const struct CanInvertersGeneralerrorbits *general_error, bool errors[EPHORUS_WHEEL_FAULT_COUNT]) {
+    errors[EPHORUS_WHEEL_FAULT_CONTROL_ERROR] = (general_error->err_inverter1_controlerror != 0);
+    errors[EPHORUS_WHEEL_FAULT_TIMEOUT_COMM] = (general_error->err_inverter1_timeout_comm != 0);
+    errors[EPHORUS_WHEEL_FAULT_DISABLE_UNDER_LOAD] = (general_error->err_inverter1_disable_under_load != 0);
+    errors[EPHORUS_WHEEL_FAULT_POSITION_SENSOR] = (general_error->err_inverter1_position_sensor != 0);
+    errors[EPHORUS_WHEEL_FAULT_MOTOR_TEMPERATURE] = (general_error->err_inverter1_motortemperature != 0);
+    errors[EPHORUS_WHEEL_FAULT_OVERTEMPERATURE] = (general_error->err_inverter1_overtemperature != 0);
+    errors[EPHORUS_WHEEL_FAULT_OVERSPEED] = (general_error->err_inverter1_overspeed != 0);
+    errors[EPHORUS_WHEEL_FAULT_OVERCURRENT] = (general_error->err_inverter1_overcurrent != 0);
+    errors[EPHORUS_WHEEL_FAULT_SHORT_CIRCUIT] = (general_error->err_inverter1_short_circuit != 0);
+    errors[EPHORUS_WHEEL_FAULT_SUM_PHASE_CURRENTS] = (general_error->err_inverter1_sum_phase_currents != 0);
+    errors[EPHORUS_WHEEL_FAULT_INTERNAL_FAULT] = (general_error->err_inverter1_internal_fault != 0);
+}
+
+/*!
+ * \brief Fills a wheel's per-inverter faults from a decoded error frame.
+ *
+ * \param general_error[in] The decoded error frame.
+ * \param errors[out] Array of bools to fill with the wheel's faults.
+ */
+EAGLETRT_STATIC void prv_ephorus_fill_inv2(const struct CanInvertersGeneralerrorbits *general_error, bool errors[EPHORUS_WHEEL_FAULT_COUNT]) {
+    errors[EPHORUS_WHEEL_FAULT_CONTROL_ERROR] = (general_error->err_inverter2_controlerror != 0);
+    errors[EPHORUS_WHEEL_FAULT_TIMEOUT_COMM] = (general_error->err_inverter2_timeout_comm != 0);
+    errors[EPHORUS_WHEEL_FAULT_DISABLE_UNDER_LOAD] = (general_error->err_inverter2_disable_under_load != 0);
+    errors[EPHORUS_WHEEL_FAULT_POSITION_SENSOR] = (general_error->err_inverter2_position_sensor != 0);
+    errors[EPHORUS_WHEEL_FAULT_MOTOR_TEMPERATURE] = (general_error->err_inverter2_motortemperature != 0);
+    errors[EPHORUS_WHEEL_FAULT_OVERTEMPERATURE] = (general_error->err_inverter2_overtemperature != 0);
+    errors[EPHORUS_WHEEL_FAULT_OVERSPEED] = (general_error->err_inverter2_overspeed != 0);
+    errors[EPHORUS_WHEEL_FAULT_OVERCURRENT] = (general_error->err_inverter2_overcurrent != 0);
+    errors[EPHORUS_WHEEL_FAULT_SHORT_CIRCUIT] = (general_error->err_inverter2_short_circuit != 0);
+    errors[EPHORUS_WHEEL_FAULT_SUM_PHASE_CURRENTS] = (general_error->err_inverter2_sum_phase_currents != 0);
+    errors[EPHORUS_WHEEL_FAULT_INTERNAL_FAULT] = (general_error->err_inverter2_internal_fault != 0);
+}
+
+/*!
+ * \brief Fills a wheel's per-inverter faults from a decoded error frame.
+ *
+ * \param general_error[in] The decoded error frame.
+ * \param errors[out] Array of bools to fill with the wheel's faults.
+ */
+EAGLETRT_STATIC void prv_ephorus_fill_inv3(const struct CanInvertersGeneralerrorbits *general_error, bool errors[EPHORUS_WHEEL_FAULT_COUNT]) {
+    errors[EPHORUS_WHEEL_FAULT_CONTROL_ERROR] = (general_error->err_inverter3_controlerror != 0);
+    errors[EPHORUS_WHEEL_FAULT_TIMEOUT_COMM] = (general_error->err_inverter3_timeout_comm != 0);
+    errors[EPHORUS_WHEEL_FAULT_DISABLE_UNDER_LOAD] = (general_error->err_inverter3_disable_under_load != 0);
+    errors[EPHORUS_WHEEL_FAULT_POSITION_SENSOR] = (general_error->err_inverter3_position_sensor != 0);
+    errors[EPHORUS_WHEEL_FAULT_MOTOR_TEMPERATURE] = (general_error->err_inverter3_motortemperature != 0);
+    errors[EPHORUS_WHEEL_FAULT_OVERTEMPERATURE] = (general_error->err_inverter3_overtemperature != 0);
+    errors[EPHORUS_WHEEL_FAULT_OVERSPEED] = (general_error->err_inverter3_overspeed != 0);
+    errors[EPHORUS_WHEEL_FAULT_OVERCURRENT] = (general_error->err_inverter3_overcurrent != 0);
+    errors[EPHORUS_WHEEL_FAULT_SHORT_CIRCUIT] = (general_error->err_inverter3_short_circuit != 0);
+    errors[EPHORUS_WHEEL_FAULT_SUM_PHASE_CURRENTS] = (general_error->err_inverter3_sum_phase_currents != 0);
+    errors[EPHORUS_WHEEL_FAULT_INTERNAL_FAULT] = (general_error->err_inverter3_internal_fault != 0);
+}
+
+/*!
+ * \brief Fills a wheel's per-inverter faults from a decoded error frame.
+ *
+ * \param general_error[in] The decoded error frame.
+ * \param errors[out] Array of bools to fill with the wheel's faults.
+ */
+EAGLETRT_STATIC void prv_ephorus_fill_inv4(const struct CanInvertersGeneralerrorbits *general_error, bool errors[EPHORUS_WHEEL_FAULT_COUNT]) {
+    errors[EPHORUS_WHEEL_FAULT_CONTROL_ERROR] = (general_error->err_inverter4_controlerror != 0);
+    errors[EPHORUS_WHEEL_FAULT_TIMEOUT_COMM] = (general_error->err_inverter4_timeout_comm != 0);
+    errors[EPHORUS_WHEEL_FAULT_DISABLE_UNDER_LOAD] = (general_error->err_inverter4_disable_under_load != 0);
+    errors[EPHORUS_WHEEL_FAULT_POSITION_SENSOR] = (general_error->err_inverter4_position_sensor != 0);
+    errors[EPHORUS_WHEEL_FAULT_MOTOR_TEMPERATURE] = (general_error->err_inverter4_motortemperature != 0);
+    errors[EPHORUS_WHEEL_FAULT_OVERTEMPERATURE] = (general_error->err_inverter4_overtemperature != 0);
+    errors[EPHORUS_WHEEL_FAULT_OVERSPEED] = (general_error->err_inverter4_overspeed != 0);
+    errors[EPHORUS_WHEEL_FAULT_OVERCURRENT] = (general_error->err_inverter4_overcurrent != 0);
+    errors[EPHORUS_WHEEL_FAULT_SHORT_CIRCUIT] = (general_error->err_inverter4_short_circuit != 0);
+    errors[EPHORUS_WHEEL_FAULT_SUM_PHASE_CURRENTS] = (general_error->err_inverter4_sum_phase_currents != 0);
+    errors[EPHORUS_WHEEL_FAULT_INTERNAL_FAULT] = (general_error->err_inverter4_internal_fault != 0);
+}
+
+typedef void (*ephorus_fill_fault_function)(const struct CanInvertersGeneralerrorbits *, bool[EPHORUS_WHEEL_FAULT_COUNT]);
+
+/*!
  * \brief Extracts this wheel's per-inverter faults from a decoded error frame.
  *
  * \param general_error[in] The decoded error frame.
@@ -110,68 +192,15 @@ EAGLETRT_STATIC uint32_t prv_ephorus_get_wheel_fault_bits(const struct CanInvert
         return 0;
     }
 
+    EAGLETRT_STATIC ephorus_fill_fault_function fillers[EPHORUS_WHEEL_COUNT] = {
+        [EPHORUS_WHEEL_FRONT_LEFT] = prv_ephorus_fill_inv1,
+        [EPHORUS_WHEEL_FRONT_RIGHT] = prv_ephorus_fill_inv2,
+        [EPHORUS_WHEEL_REAR_LEFT] = prv_ephorus_fill_inv3,
+        [EPHORUS_WHEEL_REAR_RIGHT] = prv_ephorus_fill_inv4,
+    };
+
     bool errors[EPHORUS_WHEEL_FAULT_COUNT] = { 0 };
-
-    switch (wheel) {
-        case EPHORUS_WHEEL_FRONT_LEFT:
-            errors[EPHORUS_WHEEL_FAULT_CONTROL_ERROR] = (general_error->err_inverter1_controlerror != 0);
-            errors[EPHORUS_WHEEL_FAULT_TIMEOUT_COMM] = (general_error->err_inverter1_timeout_comm != 0);
-            errors[EPHORUS_WHEEL_FAULT_DISABLE_UNDER_LOAD] = (general_error->err_inverter1_disable_under_load != 0);
-            errors[EPHORUS_WHEEL_FAULT_POSITION_SENSOR] = (general_error->err_inverter1_position_sensor != 0);
-            errors[EPHORUS_WHEEL_FAULT_MOTOR_TEMPERATURE] = (general_error->err_inverter1_motortemperature != 0);
-            errors[EPHORUS_WHEEL_FAULT_OVERTEMPERATURE] = (general_error->err_inverter1_overtemperature != 0);
-            errors[EPHORUS_WHEEL_FAULT_OVERSPEED] = (general_error->err_inverter1_overspeed != 0);
-            errors[EPHORUS_WHEEL_FAULT_OVERCURRENT] = (general_error->err_inverter1_overcurrent != 0);
-            errors[EPHORUS_WHEEL_FAULT_SHORT_CIRCUIT] = (general_error->err_inverter1_short_circuit != 0);
-            errors[EPHORUS_WHEEL_FAULT_SUM_PHASE_CURRENTS] = (general_error->err_inverter1_sum_phase_currents != 0);
-            errors[EPHORUS_WHEEL_FAULT_INTERNAL_FAULT] = (general_error->err_inverter1_internal_fault != 0);
-            break;
-
-        case EPHORUS_WHEEL_FRONT_RIGHT:
-            errors[EPHORUS_WHEEL_FAULT_CONTROL_ERROR] = (general_error->err_inverter2_controlerror != 0);
-            errors[EPHORUS_WHEEL_FAULT_TIMEOUT_COMM] = (general_error->err_inverter2_timeout_comm != 0);
-            errors[EPHORUS_WHEEL_FAULT_DISABLE_UNDER_LOAD] = (general_error->err_inverter2_disable_under_load != 0);
-            errors[EPHORUS_WHEEL_FAULT_POSITION_SENSOR] = (general_error->err_inverter2_position_sensor != 0);
-            errors[EPHORUS_WHEEL_FAULT_MOTOR_TEMPERATURE] = (general_error->err_inverter2_motortemperature != 0);
-            errors[EPHORUS_WHEEL_FAULT_OVERTEMPERATURE] = (general_error->err_inverter2_overtemperature != 0);
-            errors[EPHORUS_WHEEL_FAULT_OVERSPEED] = (general_error->err_inverter2_overspeed != 0);
-            errors[EPHORUS_WHEEL_FAULT_OVERCURRENT] = (general_error->err_inverter2_overcurrent != 0);
-            errors[EPHORUS_WHEEL_FAULT_SHORT_CIRCUIT] = (general_error->err_inverter2_short_circuit != 0);
-            errors[EPHORUS_WHEEL_FAULT_SUM_PHASE_CURRENTS] = (general_error->err_inverter2_sum_phase_currents != 0);
-            errors[EPHORUS_WHEEL_FAULT_INTERNAL_FAULT] = (general_error->err_inverter2_internal_fault != 0);
-            break;
-
-        case EPHORUS_WHEEL_REAR_LEFT:
-            errors[EPHORUS_WHEEL_FAULT_CONTROL_ERROR] = (general_error->err_inverter3_controlerror != 0);
-            errors[EPHORUS_WHEEL_FAULT_TIMEOUT_COMM] = (general_error->err_inverter3_timeout_comm != 0);
-            errors[EPHORUS_WHEEL_FAULT_DISABLE_UNDER_LOAD] = (general_error->err_inverter3_disable_under_load != 0);
-            errors[EPHORUS_WHEEL_FAULT_POSITION_SENSOR] = (general_error->err_inverter3_position_sensor != 0);
-            errors[EPHORUS_WHEEL_FAULT_MOTOR_TEMPERATURE] = (general_error->err_inverter3_motortemperature != 0);
-            errors[EPHORUS_WHEEL_FAULT_OVERTEMPERATURE] = (general_error->err_inverter3_overtemperature != 0);
-            errors[EPHORUS_WHEEL_FAULT_OVERSPEED] = (general_error->err_inverter3_overspeed != 0);
-            errors[EPHORUS_WHEEL_FAULT_OVERCURRENT] = (general_error->err_inverter3_overcurrent != 0);
-            errors[EPHORUS_WHEEL_FAULT_SHORT_CIRCUIT] = (general_error->err_inverter3_short_circuit != 0);
-            errors[EPHORUS_WHEEL_FAULT_SUM_PHASE_CURRENTS] = (general_error->err_inverter3_sum_phase_currents != 0);
-            errors[EPHORUS_WHEEL_FAULT_INTERNAL_FAULT] = (general_error->err_inverter3_internal_fault != 0);
-            break;
-
-        case EPHORUS_WHEEL_REAR_RIGHT:
-            errors[EPHORUS_WHEEL_FAULT_CONTROL_ERROR] = (general_error->err_inverter4_controlerror != 0);
-            errors[EPHORUS_WHEEL_FAULT_TIMEOUT_COMM] = (general_error->err_inverter4_timeout_comm != 0);
-            errors[EPHORUS_WHEEL_FAULT_DISABLE_UNDER_LOAD] = (general_error->err_inverter4_disable_under_load != 0);
-            errors[EPHORUS_WHEEL_FAULT_POSITION_SENSOR] = (general_error->err_inverter4_position_sensor != 0);
-            errors[EPHORUS_WHEEL_FAULT_MOTOR_TEMPERATURE] = (general_error->err_inverter4_motortemperature != 0);
-            errors[EPHORUS_WHEEL_FAULT_OVERTEMPERATURE] = (general_error->err_inverter4_overtemperature != 0);
-            errors[EPHORUS_WHEEL_FAULT_OVERSPEED] = (general_error->err_inverter4_overspeed != 0);
-            errors[EPHORUS_WHEEL_FAULT_OVERCURRENT] = (general_error->err_inverter4_overcurrent != 0);
-            errors[EPHORUS_WHEEL_FAULT_SHORT_CIRCUIT] = (general_error->err_inverter4_short_circuit != 0);
-            errors[EPHORUS_WHEEL_FAULT_SUM_PHASE_CURRENTS] = (general_error->err_inverter4_sum_phase_currents != 0);
-            errors[EPHORUS_WHEEL_FAULT_INTERNAL_FAULT] = (general_error->err_inverter4_internal_fault != 0);
-            break;
-
-        default:
-            return 0;
-    }
+    fillers[wheel](general_error, errors);
 
     uint32_t fault_bits = 0;
     for (enum EphorusWheelFault fault = 0; fault < EPHORUS_WHEEL_FAULT_COUNT; fault++) {
@@ -238,7 +267,7 @@ EAGLETRT_STATIC void prv_ephorus_apply_outbound_a(struct EphorusWheelState *whee
  * \param wheel[out] The wheel to update.
  * \param outbound_b[in] The decoded OutboundB frame.
  */
-EAGLETRT_STATIC void prvephorus_apply_outbound_b(struct EphorusWheelState *wheel, const struct CanInvertersInverter1outboundb *outbound_b) {
+EAGLETRT_STATIC void prv_ephorus_apply_outbound_b(struct EphorusWheelState *wheel, const struct CanInvertersInverter1outboundb *outbound_b) {
     wheel->tlm.speed_rpm = outbound_b->speedactual;
 }
 
@@ -375,7 +404,7 @@ enum EphorusReturnCode ephorus_api_build_setpoints(struct EphorusHandler *handle
     msg.inverter1setpoints = (struct CanInvertersInverter1setpoints){
         .enableinverter = drive,
         .reseterror = reset,
-        .ascallowed = 0,
+        .ascallowed = 1,     /* hardcoded as it should be always used with fisher motors */
         .currentcontrol = 0, /* never current mode over this network */
         .ackerr = ack,
         .speedsetpoint = speed_setpoint,
@@ -425,7 +454,7 @@ void ephorus_api_handle_frame(struct EphorusHandler *handle, uint32_t frame_id, 
             return;
         }
         if (frame_id == wheel_state->can_ids.outbound_b_id) {
-            prvephorus_apply_outbound_b(wheel_state, &msg.inverter1outboundb);
+            prv_ephorus_apply_outbound_b(wheel_state, &msg.inverter1outboundb);
             return;
         }
     }
