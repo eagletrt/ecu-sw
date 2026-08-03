@@ -30,7 +30,6 @@ extern "C" {
 #include "pedals-api.h"
 #include "post-api.h"
 #include "raspberry-api.h"
-#include "tractive-system-api.h"
 #include "vehicle-api.h"
 #include "eagletrt-api.h"
 // END USER includes --------------

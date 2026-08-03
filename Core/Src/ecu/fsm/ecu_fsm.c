@@ -150,11 +150,12 @@ state_t do_idle(state_data_t *data) {
     EAGLETRT_API_UNUSED(data);
     logger_api_log(LOGGER_LEVEL_INFO, "FSM: IDLE state");
 
-    can_communication_api_process_rx(CAN_COMMUNICATION_NET_PRIMARY);
-    can_communication_api_process_rx(CAN_COMMUNICATION_NET_SECONDARY);
-    can_communication_api_process_rx(CAN_COMMUNICATION_NET_INVERTER);
+    can_communication_api_process_rx(CAN_COMMUNICATION_NETWORK_PRIMARY);
+    can_communication_api_process_rx(CAN_COMMUNICATION_NETWORK_SECONDARY);
+    can_communication_api_process_rx(CAN_COMMUNICATION_NETWORK_INVERTER);
 
     if (vehicle_api_get_ts_on_button_pressed()) {
+        // NOLINTNEXTLINE(bugprone-branch-clone)
         if (!vehicle_api_get_voltage_higher_than_60v()) {
             logger_api_log(LOGGER_LEVEL_INFO, "FSM: TS ON requested. Moving to PRECHARGE.");
             next_state = STATE_MANUAL_WAIT_TS_PRECHARGE;
@@ -164,9 +165,9 @@ state_t do_idle(state_data_t *data) {
         }
     }
 
-    can_communication_api_process_tx(CAN_COMMUNICATION_NET_PRIMARY);
-    can_communication_api_process_tx(CAN_COMMUNICATION_NET_SECONDARY);
-    can_communication_api_process_tx(CAN_COMMUNICATION_NET_INVERTER);
+    can_communication_api_process_tx(CAN_COMMUNICATION_NETWORK_PRIMARY);
+    can_communication_api_process_tx(CAN_COMMUNICATION_NETWORK_SECONDARY);
+    can_communication_api_process_tx(CAN_COMMUNICATION_NETWORK_INVERTER);
 
     switch (next_state) {
         case NO_CHANGE:
@@ -196,8 +197,8 @@ state_t do_flash(state_data_t *data) {
 
     // Remain in flash until an external request is received
     // to indicate that flashing is aborted/terminated
-    can_communication_api_process_rx(CAN_COMMUNICATION_NET_PRIMARY);
-    can_communication_api_process_rx(CAN_COMMUNICATION_NET_SECONDARY);
+    can_communication_api_process_rx(CAN_COMMUNICATION_NETWORK_PRIMARY);
+    can_communication_api_process_rx(CAN_COMMUNICATION_NETWORK_SECONDARY);
 
     switch (next_state) {
         case NO_CHANGE:

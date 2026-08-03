@@ -21,6 +21,7 @@
 #include "can.h"
 
 /* USER CODE BEGIN 0 */
+#include "can-communication-api.h"
 #include "eagletrt-api.h"
 /* USER CODE END 0 */
 
@@ -293,31 +294,31 @@ void HAL_CAN_MspDeInit(CAN_HandleTypeDef *canHandle) {
 /* USER CODE BEGIN 1 */
 /*!
  * \brief Returns the CAN network used based on the native ST HAL CAN handle.
- * \warning If the \c hcan refers to an undefined instance, the returned value is a non-valid network (\c CAN_COMMUNICATION_NET_COUNT).
+ * \warning If the \c hcan refers to an undefined instance, the returned value is a non-valid network (\c CAN_COMMUNICATION_NETWORK_COUNT).
  * \param[in] hcan Pointer to the ST HAL CAN handle instance structure.
- * \retval CAN_COMMUNICATION_NET_PRIMARY If the handler refers to the primary network peripheral instance.
- * \retval CAN_COMMUNICATION_NET_SECONDARY If the handler refers to the secondary network peripheral instance.
- * \retval CAN_COMMUNICATION_NET_INVERTER If the handler refers to the inverter network peripheral instance.
- * \retval CAN_COMMUNICATION_NET_COUNT If the handler doesn't refer to any valid CAN network.
+ * \retval CAN_COMMUNICATION_NETWORK_PRIMARY If the handler refers to the primary network peripheral instance.
+ * \retval CAN_COMMUNICATION_NETWORK_SECONDARY If the handler refers to the secondary network peripheral instance.
+ * \retval CAN_COMMUNICATION_NETWORK_INVERTER If the handler refers to the inverter network peripheral instance.
+ * \retval CAN_COMMUNICATION_NETWORK_COUNT If the handler doesn't refer to any valid CAN network.
  */
 EAGLETRT_STATIC_INLINE enum CanCommunicationNetwork prv_can_get_network(const CAN_HandleTypeDef *hcan) {
     if (hcan == NULL || hcan->Instance == NULL) {
-        return CAN_COMMUNICATION_NET_COUNT;
+        return CAN_COMMUNICATION_NETWORK_COUNT;
     }
 
     if (hcan->Instance == CAN1) {
-        return CAN_COMMUNICATION_NET_PRIMARY;
+        return CAN_COMMUNICATION_NETWORK_PRIMARY;
     }
 
     if (hcan->Instance == CAN2) {
-        return CAN_COMMUNICATION_NET_SECONDARY;
+        return CAN_COMMUNICATION_NETWORK_SECONDARY;
     }
 
     if (hcan->Instance == CAN3) {
-        return CAN_COMMUNICATION_NET_INVERTER;
+        return CAN_COMMUNICATION_NETWORK_INVERTER;
     }
 
-    return CAN_COMMUNICATION_NET_COUNT;
+    return CAN_COMMUNICATION_NETWORK_COUNT;
 }
 
 /*!
@@ -327,11 +328,11 @@ EAGLETRT_STATIC_INLINE enum CanCommunicationNetwork prv_can_get_network(const CA
  */
 EAGLETRT_STATIC_INLINE CAN_HandleTypeDef *prv_can_get_handler(enum CanCommunicationNetwork network) {
     switch (network) {
-        case CAN_COMMUNICATION_NET_PRIMARY:
+        case CAN_COMMUNICATION_NETWORK_PRIMARY:
             return &hcan1;
-        case CAN_COMMUNICATION_NET_SECONDARY:
+        case CAN_COMMUNICATION_NETWORK_SECONDARY:
             return &hcan2;
-        case CAN_COMMUNICATION_NET_INVERTER:
+        case CAN_COMMUNICATION_NETWORK_INVERTER:
             return &hcan3;
         default:
             return NULL;
@@ -376,37 +377,20 @@ EAGLETRT_STATIC enum CanCommunicationReturnCode prv_can_send_to_hardware(enum Ca
 }
 
 enum CanCommunicationReturnCode can_send_primary(const struct CanCommunicationFrame *frame) {
-    return prv_can_send_to_hardware(CAN_COMMUNICATION_NET_PRIMARY, frame);
+    return prv_can_send_to_hardware(CAN_COMMUNICATION_NETWORK_PRIMARY, frame);
 }
 
 enum CanCommunicationReturnCode can_send_secondary(const struct CanCommunicationFrame *frame) {
-    return prv_can_send_to_hardware(CAN_COMMUNICATION_NET_SECONDARY, frame);
+    return prv_can_send_to_hardware(CAN_COMMUNICATION_NETWORK_SECONDARY, frame);
 }
 
 enum CanCommunicationReturnCode can_send_inverter(const struct CanCommunicationFrame *frame) {
-    return prv_can_send_to_hardware(CAN_COMMUNICATION_NET_INVERTER, frame);
+    return prv_can_send_to_hardware(CAN_COMMUNICATION_NETWORK_INVERTER, frame);
 }
 
 enum ASDriverReturnCode can_air_release_from_line(enum ASDriverAirLine air_line) {
     EAGLETRT_API_UNUSED(air_line);
     return AS_DRIVER_RC_OK;
-}
-
-enum InvertersReturnCode can_inverters_send_drive_command(enum InvertersDriveStatus drive_status, enum InvertersPosition position) {
-    EAGLETRT_API_UNUSED(drive_status);
-    EAGLETRT_API_UNUSED(position);
-    return INVERTERS_RC_OK;
-}
-
-enum InvertersReturnCode can_inverters_set_torque(float target_torque, enum InvertersPosition position) {
-    EAGLETRT_API_UNUSED(target_torque);
-    EAGLETRT_API_UNUSED(position);
-    return INVERTERS_RC_OK;
-}
-
-enum TSReturnCode can_ts_send_command(enum TSCommand ts_command) {
-    EAGLETRT_API_UNUSED(ts_command);
-    return TS_RC_OK;
 }
 
 void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan) {
@@ -420,7 +404,7 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan) {
         // Based on the handler, retrieve the selected network
         enum CanCommunicationNetwork network = prv_can_get_network(hcan);
 
-        if (network < CAN_COMMUNICATION_NET_COUNT) {
+        if (network < CAN_COMMUNICATION_NETWORK_COUNT) {
             /*
             The return value of the call is not used as no action can be taken within the interrupt
             such as retry, waiting or heavy error-handling.
@@ -445,7 +429,7 @@ void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef *hcan) {
         // Based on the handler, retrieve the selected network
         enum CanCommunicationNetwork network = prv_can_get_network(hcan);
 
-        if (network < CAN_COMMUNICATION_NET_COUNT) {
+        if (network < CAN_COMMUNICATION_NETWORK_COUNT) {
             /*
             The return value of the call is not used as no action can be taken within the interrupt
             such as retry, waiting or heavy error-handling.
