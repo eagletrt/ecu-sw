@@ -33,8 +33,8 @@
 #define EPHORUS_FRAME_DATA_SIZE (8U)
 
 /* Shared general frames (carry all four inverters at once). */
-#define EPHORUS_RX_GENERAL CAN_INVERTERS_MESSAGE_FRAME_ID_GENERALOUTBOUND /*!< 0x400 DC link / enable mirror */
-#define EPHORUS_RX_ERRORS CAN_INVERTERS_MESSAGE_FRAME_ID_GENERALERRORBITS /*!< 0x401 latched faults */
+#define EPHORUS_RX_GENERAL CAN_INVERTERS_MESSAGE_FRAME_ID_EPHORUSTELEMETRY /*!< 0x400 DC link / enable mirror */
+#define EPHORUS_RX_ERRORS CAN_INVERTERS_MESSAGE_FRAME_ID_EPHORUSERROR      /*!< 0x401 latched faults */
 
 #define EPHORUS_TX_PERIOD_MS (10U)      /*!< Setpoint cadence, hard requirement < 50 ms (inverter comm timeout). */
 #define EPHORUS_DRIVE_SPEED_RPM (20000) /*!< Speed rail commanded while a positive (drive) torque is requested. */

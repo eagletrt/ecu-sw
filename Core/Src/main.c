@@ -33,6 +33,7 @@
 #include "eagletrt-api.h"
 #include "can-communication-router-api.h"
 #include "logger-api.h"
+#include "inverters-api.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -44,7 +45,7 @@
 /* USER CODE BEGIN PD */
 //TODO: Would be better to move the defines into a configuration file (e.g. ecu-config.h)
 #define LOGGER_ENABLED (true)          /*!< Logger status: true to enable active logging, false to mute entirely. */
-#define LOGGER_RX_CAPACITY (0U)        /*!< Receive queue depth. Set to 0 because the logger is transmit-only. */
+#define LOGGER_RX_CAPACITY (1U)        /*!< Receive queue depth. Set to 1 because the logger is transmit-only but needs to be > 0 because of arena allocator. */
 #define LOGGER_TX_CAPACITY (10U)       /*!< Maximum number of log message packets allowed to sit in the outbound transmission queue. */
 #define LOGGER_UART_MAX_MSG_SIZE (64U) /*!< Maximum allocation allowed for an individual log string. */
 /* USER CODE END PD */
@@ -210,6 +211,10 @@ int main(void) {
     HAL_CAN_ActivateNotification(&hcan2, CAN_IT_RX_FIFO1_MSG_PENDING);
     HAL_CAN_ActivateNotification(&hcan3, CAN_IT_RX_FIFO0_MSG_PENDING);
     HAL_CAN_ActivateNotification(&hcan3, CAN_IT_RX_FIFO1_MSG_PENDING);
+
+    inverters_api_init();
+
+    gpio_shutdown_control_relay(true);
     /* USER CODE END 2 */
 
     /* Infinite loop */

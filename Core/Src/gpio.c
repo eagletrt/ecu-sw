@@ -138,8 +138,9 @@ enum BuzzerReturnCode gpio_buzzer_off() {
 }
 
 enum BuzzerReturnCode gpio_buzzer_play_sync(uint32_t frequency, float amplitude, uint32_t duration) {
-    if (gpio_buzzer_on(frequency, amplitude) == BUZZER_RC_ERROR)
+    if (gpio_buzzer_on(frequency, amplitude) == BUZZER_RC_ERROR) {
         return BUZZER_RC_ERROR;
+    }
 
     HAL_Delay(duration);
 

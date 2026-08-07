@@ -9,6 +9,7 @@
 #include "as-driver-api.h"
 #include "buzzer-api.h"
 #include "can-communication-api.h"
+#include "identity-api.h"
 #include "inverters-api.h"
 #include "pedals-api.h"
 #include "raspberry-api.h"
@@ -71,6 +72,10 @@ enum PostReturnCode post_api_do_init(struct PostConfig *post_config) {
     }
 
     if (shutdown_api_init(post_config->shutdown_control_relay) != SHUTDOWN_RC_OK) {
+        final_status = POST_RC_ERROR;
+    }
+
+    if (identity_api_init() != IDENTITY_RC_OK) {
         final_status = POST_RC_ERROR;
     }
 

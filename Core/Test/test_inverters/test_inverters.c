@@ -270,7 +270,7 @@ void test_cut_off_leaves_within_limit_request_untouched(void) {
  *
  * \return The decoded setpoints message.
  */
-static struct CanInvertersInverter1setpoints build_and_decode(enum EphorusWheel wheel, float nm, bool armed) {
+static struct CanInvertersEphorusinverter1setpoints build_and_decode(enum EphorusWheel wheel, float nm, bool armed) {
     struct EphorusHandler *drv = &inverters_handler.driver;
     if (armed) {
         ephorus_api_arm(drv, wheel);
@@ -284,11 +284,11 @@ static struct CanInvertersInverter1setpoints build_and_decode(enum EphorusWheel 
     union CanInvertersMessages msg = { 0 };
     // done just because it's defined as [[nodiscard]]
     EAGLETRT_API_UNUSED(can_inverters_api_deserialize_from_id((enum CanInvertersMessageFrameId)id, data, &msg));
-    return msg.inverter1setpoints;
+    return msg.ephorusinverter1setpoints;
 }
 
 void test_feature_positive_torque_sets_upper_bound_and_high_speed_rail(void) {
-    struct CanInvertersInverter1setpoints s = build_and_decode(EPHORUS_WHEEL_FRONT_LEFT, 5.0f, true);
+    struct CanInvertersEphorusinverter1setpoints s = build_and_decode(EPHORUS_WHEEL_FRONT_LEFT, 5.0f, true);
 
     TEST_ASSERT_EQUAL_UINT8_MESSAGE(1, s.enableinverter, "Armed + running wheel must be enabled");
     TEST_ASSERT_FLOAT_WITHIN_MESSAGE(0.01f, 5.0f, s.torquelimitpositive, "Positive request => upper bound = request");
@@ -297,7 +297,7 @@ void test_feature_positive_torque_sets_upper_bound_and_high_speed_rail(void) {
 }
 
 void test_feature_negative_torque_sets_lower_bound_and_zero_speed_rail(void) {
-    struct CanInvertersInverter1setpoints s = build_and_decode(EPHORUS_WHEEL_REAR_RIGHT, -7.5f, true);
+    struct CanInvertersEphorusinverter1setpoints s = build_and_decode(EPHORUS_WHEEL_REAR_RIGHT, -7.5f, true);
 
     TEST_ASSERT_EQUAL_UINT8_MESSAGE(1, s.enableinverter, "Armed + running wheel must be enabled");
     TEST_ASSERT_FLOAT_WITHIN_MESSAGE(0.01f, 0.0f, s.torquelimitpositive, "Negative request => upper bound = 0");
@@ -306,7 +306,7 @@ void test_feature_negative_torque_sets_lower_bound_and_zero_speed_rail(void) {
 }
 
 void test_feature_zero_torque_is_coast(void) {
-    struct CanInvertersInverter1setpoints s = build_and_decode(EPHORUS_WHEEL_FRONT_RIGHT, 0.0f, true);
+    struct CanInvertersEphorusinverter1setpoints s = build_and_decode(EPHORUS_WHEEL_FRONT_RIGHT, 0.0f, true);
 
     TEST_ASSERT_EQUAL_UINT8_MESSAGE(1, s.enableinverter, "Even at 0 torque the armed + running wheel must be enabled");
     TEST_ASSERT_FLOAT_WITHIN_MESSAGE(0.01f, 0.0f, s.torquelimitpositive, "Zero request => upper bound = 0");
@@ -316,7 +316,7 @@ void test_feature_zero_torque_is_coast(void) {
 
 void test_feature_disarmed_wheel_emits_zero_and_disabled(void) {
     // Not armed: even with a run request and a torque command the frame is inert.
-    struct CanInvertersInverter1setpoints s = build_and_decode(EPHORUS_WHEEL_FRONT_LEFT, 10.0f, false);
+    struct CanInvertersEphorusinverter1setpoints s = build_and_decode(EPHORUS_WHEEL_FRONT_LEFT, 10.0f, false);
 
     TEST_ASSERT_EQUAL_UINT8_MESSAGE(0, s.enableinverter, "Disarmed wheel must not enable the inverter");
     TEST_ASSERT_FLOAT_WITHIN_MESSAGE(0.01f, 0.0f, s.torquelimitpositive, "Disarmed wheel => upper bound = 0");
@@ -325,7 +325,7 @@ void test_feature_disarmed_wheel_emits_zero_and_disabled(void) {
 }
 
 void test_feature_torque_request_is_clamped(void) {
-    struct CanInvertersInverter1setpoints s = build_and_decode(EPHORUS_WHEEL_FRONT_LEFT, 1000.0f, true);
+    struct CanInvertersEphorusinverter1setpoints s = build_and_decode(EPHORUS_WHEEL_FRONT_LEFT, 1000.0f, true);
     TEST_ASSERT_FLOAT_WITHIN_MESSAGE(0.01f, EPHORUS_MAX_TORQUE_NM, s.torquelimitpositive, "Torque request must clamp to EPHORUS_MAX_TORQUE_NM");
 }
 

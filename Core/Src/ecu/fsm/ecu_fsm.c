@@ -14,8 +14,27 @@ The finite state machine has:
 ******************************************************************************/
 
 #include "ecu_fsm.h"
+#include "buzzer.h"
 
 // SEARCH FOR Your Code Here FOR CODE INSERTION POINTS!
+
+EAGLETRT_STATIC void prv_periodically_send(enum CanPrimaryEcufsmVehiclestatus vehicle_status, enum CanPrimaryEcufsmKrakenstatus kraken_status, uint32_t tick) {
+    identity_api_periodically_send_state(vehicle_status, kraken_status, tick);
+    identity_api_periodically_send_version(tick);
+    identity_api_periodically_send_libcan_version(tick);
+}
+
+EAGLETRT_STATIC void prv_drain_can_tx_buffers(void) {
+    can_communication_api_process_tx(CAN_COMMUNICATION_NETWORK_PRIMARY);
+    can_communication_api_process_tx(CAN_COMMUNICATION_NETWORK_SECONDARY);
+    can_communication_api_process_tx(CAN_COMMUNICATION_NETWORK_INVERTER);
+}
+
+EAGLETRT_STATIC void prv_drain_can_rx_buffers(void) {
+    can_communication_api_process_rx(CAN_COMMUNICATION_NETWORK_PRIMARY);
+    can_communication_api_process_rx(CAN_COMMUNICATION_NETWORK_SECONDARY);
+    can_communication_api_process_rx(CAN_COMMUNICATION_NETWORK_INVERTER);
+}
 
 // GLOBALS
 // State human-readable names
@@ -107,7 +126,18 @@ state_t do_init(state_data_t *data) {
         // Error during POST initialization
         logger_api_log(LOGGER_LEVEL_ERROR, "FSM: POST failed. Going to FATAL");
         next_state = STATE_FATAL;
+    } else {
+        buzzer_api_set_frequency(BUZZER_TYPE_ASSI, 1000);
+        buzzer_api_set_amplitude(BUZZER_TYPE_ASSI, 0.33f);
+        buzzer_api_set_duration(BUZZER_TYPE_ASSI, 800);
+        buzzer_api_play_sync(BUZZER_TYPE_ASSI);
+
+        buzzer_api_set_duration(BUZZER_TYPE_R2D, 1000);
+        buzzer_api_play_sync(BUZZER_TYPE_R2D);
     }
+
+    identity_api_send_state(CAN_PRIMARY_ECUFSM_VEHICLESTATUS_IDLE, CAN_PRIMARY_ECUFSM_KRAKENSTATUS_IDLE);
+
     // If ok, transit to idle
 
     switch (next_state) {
@@ -150,9 +180,26 @@ state_t do_idle(state_data_t *data) {
     EAGLETRT_API_UNUSED(data);
     logger_api_log(LOGGER_LEVEL_INFO, "FSM: IDLE state");
 
-    can_communication_api_process_rx(CAN_COMMUNICATION_NETWORK_PRIMARY);
-    can_communication_api_process_rx(CAN_COMMUNICATION_NETWORK_SECONDARY);
-    can_communication_api_process_rx(CAN_COMMUNICATION_NETWORK_INVERTER);
+    if (data == NULL) {
+        logger_api_log(LOGGER_LEVEL_ERROR, "FSM: State data is NULL. Going to FATAL");
+        return STATE_FATAL;
+    }
+    struct FsmData fsm_data = *(struct FsmData *)data;
+
+    prv_drain_can_rx_buffers();
+
+    switch (inverters_api_step(fsm_data.tick)) {
+        case INVERTERS_RC_OK:
+            break;
+        case INVERTERS_RC_TX_ERROR:
+            logger_api_log(LOGGER_LEVEL_ERROR, "Inverter TX error");
+            next_state = STATE_FATAL;
+            break;
+        default:
+            logger_api_log(LOGGER_LEVEL_ERROR, "Inverter error");
+            next_state = STATE_FATAL;
+            break;
+    }
 
     if (vehicle_api_get_ts_on_button_pressed()) {
         // NOLINTNEXTLINE(bugprone-branch-clone)
@@ -165,9 +212,9 @@ state_t do_idle(state_data_t *data) {
         }
     }
 
-    can_communication_api_process_tx(CAN_COMMUNICATION_NETWORK_PRIMARY);
-    can_communication_api_process_tx(CAN_COMMUNICATION_NETWORK_SECONDARY);
-    can_communication_api_process_tx(CAN_COMMUNICATION_NETWORK_INVERTER);
+    prv_periodically_send(CAN_PRIMARY_ECUFSM_VEHICLESTATUS_IDLE, CAN_PRIMARY_ECUFSM_KRAKENSTATUS_IDLE, fsm_data.tick);
+
+    prv_drain_can_tx_buffers();
 
     switch (next_state) {
         case NO_CHANGE:
@@ -197,8 +244,7 @@ state_t do_flash(state_data_t *data) {
 
     // Remain in flash until an external request is received
     // to indicate that flashing is aborted/terminated
-    can_communication_api_process_rx(CAN_COMMUNICATION_NETWORK_PRIMARY);
-    can_communication_api_process_rx(CAN_COMMUNICATION_NETWORK_SECONDARY);
+    prv_drain_can_rx_buffers();
 
     switch (next_state) {
         case NO_CHANGE:

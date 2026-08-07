@@ -26,38 +26,33 @@ enum CanCommunicationReturnCode can_communication_router_api_receive_primary(str
     }
 
     switch (frame->id) {
-        case CAN_PRIMARY_MESSAGE_FRAME_ID_STEERING_WHEEL_SET_ECU_STATUS: {
-            if (message.steering_wheel_set_ecu_status.targetstatus ==
-                CAN_PRIMARY_STEERING_WHEEL_SET_ECU_STATUS_TARGETSTATUS_READY) {
-                // TODO: change message from enum to boolean in libcan
-                vehicle_api_set_ts_on_button_pressed(true);
-            }
+        case CAN_PRIMARY_MESSAGE_FRAME_ID_STEERINGWHEELBUTTONSTATUS: {
+            vehicle_api_set_ts_on_button_pressed(message.steeringwheelbuttonstatus.tson);
             break;
         }
 
-        case CAN_PRIMARY_MESSAGE_FRAME_ID_HV_BMS_FEEDBACK_STATUS: {
-            bool is_high = (message.hv_bms_feedback_status.tsover60v ==
-                            CAN_PRIMARY_HV_BMS_FEEDBACK_STATUS_TSOVER60V_HIGH);
+        case CAN_PRIMARY_MESSAGE_FRAME_ID_TSACMAINBOARDFEEDBACK: {
+            bool is_high = (message.tsacmainboardfeedback.tslessthan60v == 0);
             vehicle_api_set_voltage_higher_than_60v(is_high);
             break;
         }
 
-        case CAN_PRIMARY_MESSAGE_FRAME_ID_PEDALS_THROTTLE: {
+        case CAN_PRIMARY_MESSAGE_FRAME_ID_PEDALSTHROTTLE: {
             float travel_pct = 0.0F;
-            if ((message.pedals_throttle.status == CAN_PRIMARY_PEDALS_THROTTLE_STATUS_OK) ||
-                (message.pedals_throttle.status == CAN_PRIMARY_PEDALS_THROTTLE_STATUS_IMPLAUSIBILITY_RECOVERABLE)) {
-                travel_pct = message.pedals_throttle.travel_pct;
+            if ((message.pedalsthrottle.plausibility == CAN_PRIMARY_PEDALSTHROTTLE_PLAUSIBILITY_OK) ||
+                (message.pedalsthrottle.plausibility == CAN_PRIMARY_PEDALSTHROTTLE_PLAUSIBILITY_IMPLAUSIBILITY_RECOVERABLE)) {
+                travel_pct = message.pedalsthrottle.travel;
             }
             pedals_api_set_throttle(travel_pct);
             break;
         }
 
-        case CAN_PRIMARY_MESSAGE_FRAME_ID_PEDALS_BRAKE: {
-            float travel_pct = message.pedals_brake.travel_pct;
+        case CAN_PRIMARY_MESSAGE_FRAME_ID_PEDALSBRAKE: {
+            float travel_pct = message.pedalsbrake.travel;
             constexpr float pressure_count = 2.0F;
 
-            float brake_pressure = (message.pedals_brake.pressurefront_bar +
-                                    message.pedals_brake.pressurerear_bar) /
+            float brake_pressure = (message.pedalsbrake.pressurefl +
+                                    message.pedalsbrake.pressurerr) /
                                    pressure_count;
 
             pedals_api_set_brake(travel_pct);

@@ -32,12 +32,18 @@ extern "C" {
 #include "raspberry-api.h"
 #include "vehicle-api.h"
 #include "eagletrt-api.h"
+#include "can-primary.h"
+#include "identity-api.h"
 // END USER includes --------------
 
 // State data object
 // By default set to void; override this typedef or load the proper
 // header if you need
 typedef void state_data_t;
+
+struct FsmData {
+    uint32_t tick;
+};
 
 // NOTHING SHALL BE CHANGED AFTER THIS LINE!
 
