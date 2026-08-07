@@ -122,6 +122,7 @@ state_t do_init(state_data_t *data) {
     // convert state data into POST struct configuration
     struct PostConfig *post_configuration = (struct PostConfig *)data;
 
+    // NOLINTNEXTLINE(bugprone-branch-clone)
     if (post_api_do_init(post_configuration) != POST_RC_OK) {
         // Error during POST initialization
         logger_api_log(LOGGER_LEVEL_ERROR, "FSM: POST failed. Going to FATAL");
