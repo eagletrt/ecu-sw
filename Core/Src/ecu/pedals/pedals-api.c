@@ -6,8 +6,10 @@
  */
 
 #include "pedals-api.h"
-#include "eagletrt-api.h"
+#include "eagletrt.h"
 #include "string.h"
+
+constexpr uint32_t pedals_timeout_ms = 120U;
 
 /*!
  * \brief Internal module handler.
@@ -15,14 +17,19 @@
  */
 EAGLETRT_STATIC struct PedalsHandler pedals_handler;
 
-enum PedalsReturnCode pedals_api_init() {
+enum PedalsReturnCode pedals_api_init(pedals_get_tick_callback get_tick) {
     memset(&pedals_handler, 0U, sizeof(pedals_handler));
+    pedals_handler.get_tick = get_tick;
     return PEDALS_RC_OK;
 }
 
 enum PedalsReturnCode pedals_api_set_throttle(float throttle) {
     if (throttle < 0.0F || throttle > 1.0F) {
         return PEDALS_RC_ERROR;
+    }
+
+    if (pedals_handler.get_tick != NULL) {
+        pedals_handler.last_update_tick = pedals_handler.get_tick();
     }
 
     pedals_handler.throttle = throttle;
@@ -47,7 +54,7 @@ enum PedalsReturnCode pedals_api_set_brake_pressure(float brake_pressure) {
     return PEDALS_RC_OK;
 }
 
-float pedals_api_get_requested_throttle_torque() {
+float pedals_api_get_requested_throttle_torque(void) {
     return PEDALS_MAX_TORQUE_NM * pedals_handler.throttle;
 }
 
@@ -65,4 +72,13 @@ float pedals_api_get_brake() {
 
 float pedals_api_get_brake_pressure() {
     return pedals_handler.brake_pressure;
+}
+
+bool pedals_api_is_timeout() {
+    if (pedals_handler.get_tick == NULL) {
+        return true; // If no tick callback is provided, consider it a timeout.
+    }
+
+    uint32_t current_tick = pedals_handler.get_tick();
+    return (current_tick - pedals_handler.last_update_tick) > pedals_timeout_ms;
 }

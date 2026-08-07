@@ -23,7 +23,8 @@ enum PostReturnCode post_api_do_init(struct PostConfig *post_config) {
     // NULL pointer validation of all required dependency members
     if (post_config->as_air_release == NULL ||
         post_config->raspberry_pin_control == NULL ||
-        post_config->shutdown_control_relay == NULL) {
+        post_config->shutdown_control_relay == NULL ||
+        post_config->pedals_get_tick == NULL) {
         return POST_RC_ERROR;
     }
 
@@ -60,7 +61,7 @@ enum PostReturnCode post_api_do_init(struct PostConfig *post_config) {
         final_status = POST_RC_ERROR;
     }
 
-    if (pedals_api_init() != PEDALS_RC_OK) {
+    if (pedals_api_init(post_config->pedals_get_tick) != PEDALS_RC_OK) {
         final_status = POST_RC_ERROR;
     }
 

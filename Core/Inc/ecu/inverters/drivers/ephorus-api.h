@@ -63,6 +63,15 @@ void ephorus_api_disarm(struct EphorusHandler *handle, enum EphorusWheel wheel);
 void ephorus_api_set_torque(struct EphorusHandler *handle, enum EphorusWheel wheel, float torque_nm);
 
 /*!
+ * \brief Returns true if all wheels are in the drive state.
+ *
+ * \param handle Driver handle.
+ *
+ * \return true if all wheels are armed, false otherwise.
+ */
+bool ephorus_api_is_all_in_drive(struct EphorusHandler *handle);
+
+/*!
  * \brief Serializes a wheel's setpoint frame from its current signed torque request.
  *
  * \details Translates the signed torque request into the inverter setpoints:

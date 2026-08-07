@@ -13,6 +13,7 @@
 #include "can-communication.h"
 #include "raspberry.h"
 #include "shutdown.h"
+#include "pedals.h"
 
 /*!
  * \brief Return codes for the post module APIs
@@ -44,6 +45,9 @@ struct PostConfig {
 
     /* --- Shutdown callbacks --- */
     shutdown_control_relay_callback shutdown_control_relay; /*!< Callback to set the system's shutdown state. */
+
+    /* --- Pedals callbacks --- */
+    pedals_get_tick_callback pedals_get_tick; /*!< Callback to retrieve the current tick count from the pedals module. */
 };
 
 #endif

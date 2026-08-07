@@ -61,6 +61,13 @@ void inverters_api_disarm(enum EphorusWheel wheel);
 void inverters_api_set_torque(enum EphorusWheel wheel, float torque_nm);
 
 /*!
+ * \brief Returns true if all wheels are in the drive state.
+ *
+ * \return true if all wheels are in the drive state, else false.
+ */
+bool inverters_api_is_all_in_drive(void);
+
+/*!
  * \brief Set the current SoC (State of Charge) of the battery.
  *
  * \details The value is automatically clamped into the range 0.0 and 1.0. It feeds

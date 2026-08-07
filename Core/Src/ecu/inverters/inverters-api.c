@@ -364,6 +364,10 @@ void inverters_api_set_torque(enum EphorusWheel wheel, float torque_nm) {
     inverters_handler.requested_torque_nm[wheel] = torque_nm;
 }
 
+bool inverters_api_is_all_in_drive(void) {
+    return ephorus_api_is_all_in_drive(&inverters_handler.driver);
+}
+
 void inverters_api_set_soc(float hv_bms_soc) {
     inverters_handler.hv_bms_soc = EAGLETRT_API_CLAMP(hv_bms_soc, 0.0F, 1.0F);
 }

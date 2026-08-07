@@ -360,6 +360,25 @@ void ephorus_api_set_torque(struct EphorusHandler *handle, enum EphorusWheel whe
     }
 }
 
+bool ephorus_api_is_all_in_drive(struct EphorusHandler *handle) {
+    if (handle == NULL) {
+        return false;
+    }
+    for (enum EphorusWheel wheel = 0; wheel < EPHORUS_WHEEL_COUNT; wheel++) {
+        struct EphorusWheelState *wheel_state = &handle->wheels[wheel];
+        if (!wheel_state->enabled) {
+            continue;
+        }
+        if (wheel_state->inverter_state != EPHORUS_INVERTER_STATE_ARMED) {
+            return false;
+        }
+        if (wheel_state->tlm.state != EPHORUS_STATE_DRIVE || !(wheel_state->tlm.ready) || wheel_state->tlm.fault_bits != 0 || prv_ephorus_has_wheel_general_faults(handle->general.fault_bits, wheel)) {
+            return false;
+        }
+    }
+    return true;
+}
+
 enum EphorusReturnCode ephorus_api_build_setpoints(struct EphorusHandler *handle, enum EphorusWheel wheel, uint32_t *out_id, uint8_t data[EPHORUS_FRAME_DATA_SIZE]) {
     if (handle == NULL || out_id == NULL || data == NULL) {
         return EPHORUS_RC_NULL_POINTER;

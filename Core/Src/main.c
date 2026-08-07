@@ -185,7 +185,8 @@ int main(void) {
         .as_air_release = can_air_release_from_line,
         .raspberry_pin_control = gpio_raspberry_set_pin,
         .raspberry_initial_state = RASPBERRY_CONTROL_PIN_STATE_ON,
-        .shutdown_control_relay = gpio_shutdown_control_relay
+        .shutdown_control_relay = gpio_shutdown_control_relay,
+        .pedals_get_tick = HAL_GetTick
     };
 
     // Populate buzzer configuration arrays

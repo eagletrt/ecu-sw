@@ -34,6 +34,7 @@ extern "C" {
 #include "eagletrt-api.h"
 #include "can-primary.h"
 #include "identity-api.h"
+#include "shutdown-api.h"
 // END USER includes --------------
 
 // State data object
