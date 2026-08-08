@@ -14,14 +14,14 @@ The finite state machine has:
 ******************************************************************************/
 
 #include "ecu_fsm.h"
-#include "tsac-api.h"
 
 // SEARCH FOR Your Code Here FOR CODE INSERTION POINTS!
 
-EAGLETRT_STATIC void prv_periodically_send_identity(enum CanPrimaryEcufsmVehiclestatus vehicle_status, enum CanPrimaryEcufsmKrakenstatus kraken_status, uint32_t tick) {
+EAGLETRT_STATIC void prv_periodically_send(enum CanPrimaryEcufsmVehiclestatus vehicle_status, enum CanPrimaryEcufsmKrakenstatus kraken_status, uint32_t tick) {
     identity_api_periodically_send_state(vehicle_status, kraken_status, tick);
     identity_api_periodically_send_version(tick);
     identity_api_periodically_send_libcan_version(tick);
+    temperatures_api_periodically_send_temperatures(tick);
 }
 
 EAGLETRT_STATIC void prv_drain_can_tx_buffers(void) {
@@ -225,7 +225,7 @@ state_t do_idle(state_data_t *data) {
     }
 
     tsac_api_periodically_require_tsac_status(fsm_data.tick);
-    prv_periodically_send_identity(CAN_PRIMARY_ECUFSM_VEHICLESTATUS_IDLE, CAN_PRIMARY_ECUFSM_KRAKENSTATUS_IDLE, fsm_data.tick);
+    prv_periodically_send(CAN_PRIMARY_ECUFSM_VEHICLESTATUS_IDLE, CAN_PRIMARY_ECUFSM_KRAKENSTATUS_IDLE, fsm_data.tick);
 
     prv_drain_can_tx_buffers();
 
@@ -336,7 +336,7 @@ state_t do_manual_wait_ts_precharge(state_data_t *data) {
     }
 
     tsac_api_periodically_require_tsac_status(fsm_data.tick);
-    prv_periodically_send_identity(CAN_PRIMARY_ECUFSM_VEHICLESTATUS_PRECHARGE, CAN_PRIMARY_ECUFSM_KRAKENSTATUS_MANUAL_WAIT_TS_PRECHARGE, fsm_data.tick);
+    prv_periodically_send(CAN_PRIMARY_ECUFSM_VEHICLESTATUS_PRECHARGE, CAN_PRIMARY_ECUFSM_KRAKENSTATUS_MANUAL_WAIT_TS_PRECHARGE, fsm_data.tick);
 
     prv_drain_can_tx_buffers();
 
@@ -436,7 +436,7 @@ state_t do_wait_driver(state_data_t *data) {
         tson_first_press_tick = 0;
     }
 
-    prv_periodically_send_identity(CAN_PRIMARY_ECUFSM_VEHICLESTATUS_TSON, CAN_PRIMARY_ECUFSM_KRAKENSTATUS_WAIT_DRIVER, fsm_data.tick);
+    prv_periodically_send(CAN_PRIMARY_ECUFSM_VEHICLESTATUS_TSON, CAN_PRIMARY_ECUFSM_KRAKENSTATUS_WAIT_DRIVER, fsm_data.tick);
     tsac_api_periodically_require_tsac_status(fsm_data.tick);
     prv_drain_can_tx_buffers();
 
@@ -489,7 +489,7 @@ state_t do_manual_wait_ts_discharge(state_data_t *data) {
         shutdown_api_control_relay(false);
     }
 
-    prv_periodically_send_identity(CAN_PRIMARY_ECUFSM_VEHICLESTATUS_DISCHARGE, CAN_PRIMARY_ECUFSM_KRAKENSTATUS_MANUAL_WAIT_TS_DISCHARGE, fsm_data.tick);
+    prv_periodically_send(CAN_PRIMARY_ECUFSM_VEHICLESTATUS_DISCHARGE, CAN_PRIMARY_ECUFSM_KRAKENSTATUS_MANUAL_WAIT_TS_DISCHARGE, fsm_data.tick);
     tsac_api_periodically_require_tsac_status(fsm_data.tick);
     prv_drain_can_tx_buffers();
 
@@ -571,7 +571,7 @@ state_t do_manual_wait_inv_enable(state_data_t *data) {
         buzzer_played_tick = 0;
     }
 
-    prv_periodically_send_identity(CAN_PRIMARY_ECUFSM_VEHICLESTATUS_TSON, CAN_PRIMARY_ECUFSM_KRAKENSTATUS_MANUAL_WAIT_INV_ENABLE, fsm_data.tick);
+    prv_periodically_send(CAN_PRIMARY_ECUFSM_VEHICLESTATUS_TSON, CAN_PRIMARY_ECUFSM_KRAKENSTATUS_MANUAL_WAIT_INV_ENABLE, fsm_data.tick);
     tsac_api_periodically_require_tsac_status(fsm_data.tick);
     prv_drain_can_tx_buffers();
 
@@ -646,7 +646,7 @@ state_t do_driving(state_data_t *data) {
         inverters_api_set_torque(EPHORUS_WHEEL_REAR_RIGHT, requested_torque);
     }
 
-    prv_periodically_send_identity(CAN_PRIMARY_ECUFSM_VEHICLESTATUS_R2D, CAN_PRIMARY_ECUFSM_KRAKENSTATUS_DRIVING, fsm_data.tick);
+    prv_periodically_send(CAN_PRIMARY_ECUFSM_VEHICLESTATUS_R2D, CAN_PRIMARY_ECUFSM_KRAKENSTATUS_DRIVING, fsm_data.tick);
     tsac_api_periodically_require_tsac_status(fsm_data.tick);
     prv_drain_can_tx_buffers();
 
@@ -700,7 +700,7 @@ state_t do_manual_wait_inv_disable(state_data_t *data) {
         inverters_api_disarm(EPHORUS_WHEEL_REAR_RIGHT);
     }
 
-    prv_periodically_send_identity(CAN_PRIMARY_ECUFSM_VEHICLESTATUS_R2D, CAN_PRIMARY_ECUFSM_KRAKENSTATUS_DRIVING, fsm_data.tick);
+    prv_periodically_send(CAN_PRIMARY_ECUFSM_VEHICLESTATUS_R2D, CAN_PRIMARY_ECUFSM_KRAKENSTATUS_DRIVING, fsm_data.tick);
     tsac_api_periodically_require_tsac_status(fsm_data.tick);
     prv_drain_can_tx_buffers();
 

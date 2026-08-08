@@ -36,6 +36,7 @@ extern "C" {
 #include "identity-api.h"
 #include "shutdown-api.h"
 #include "tsac-api.h"
+#include "temperatures-api.h"
 // END USER includes --------------
 
 // State data object

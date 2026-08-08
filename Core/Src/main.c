@@ -43,10 +43,10 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 //TODO: Would be better to move the defines into a configuration file (e.g. ecu-config.h)
-#define LOGGER_ENABLED (true)           /*!< Logger status: true to enable active logging, false to mute entirely. */
-#define LOGGER_RX_CAPACITY (1U)         /*!< Receive queue depth. Set to 1 because the logger is transmit-only but needs to be > 0 because of arena allocator. */
-#define LOGGER_TX_CAPACITY (10U)        /*!< Maximum number of log message packets allowed to sit in the outbound transmission queue. */
-#define LOGGER_UART_MAX_MSG_SIZE (256U) /*!< Maximum allocation allowed for an individual log string. */
+#define LOGGER_ENABLED (true)          /*!< Logger status: true to enable active logging, false to mute entirely. */
+#define LOGGER_RX_CAPACITY (1U)        /*!< Receive queue depth. Set to 1 because the logger is transmit-only but needs to be > 0 because of arena allocator. */
+#define LOGGER_TX_CAPACITY (10U)       /*!< Maximum number of log message packets allowed to sit in the outbound transmission queue. */
+#define LOGGER_UART_MAX_MSG_SIZE (64U) /*!< Maximum allocation allowed for an individual log string. */
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -199,14 +199,14 @@ int main(void) {
     }
     // end of POST configuration --------------------------------------------------------
 
-    // single call run_state to verify POST
-    current_state = run_state(current_state, &post_configuration);
-
-    // enable can interrupts
     HAL_CAN_Start(&hcan1);
     HAL_CAN_Start(&hcan2);
     HAL_CAN_Start(&hcan3);
 
+    // single call run_state to verify POST
+    current_state = run_state(current_state, &post_configuration);
+
+    // enable can interrupts
     HAL_CAN_ActivateNotification(&hcan1, CAN_IT_RX_FIFO0_MSG_PENDING);
     HAL_CAN_ActivateNotification(&hcan1, CAN_IT_RX_FIFO1_MSG_PENDING);
     HAL_CAN_ActivateNotification(&hcan2, CAN_IT_RX_FIFO0_MSG_PENDING);

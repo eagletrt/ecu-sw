@@ -11,7 +11,7 @@
 #include <stdarg.h>
 #include <string.h>
 
-#define LOGGER_MAX_LINE_SIZE (256U)
+#define LOGGER_MAX_LINE_SIZE (64U)
 
 /*!
  * \brief Internal module handler.

@@ -14,6 +14,7 @@
 #include "pedals-api.h"
 #include "raspberry-api.h"
 #include "shutdown-api.h"
+#include "temperatures-api.h"
 #include "tsac-api.h"
 #include "vehicle-api.h"
 #include "lights-api.h"
@@ -99,6 +100,10 @@ enum PostReturnCode post_api_do_init(struct PostConfig *post_config) {
     }
 
     if (lights_api_init(post_config->lights_set_state) != LIGHTS_RC_OK) {
+        final_status = POST_RC_ERROR;
+    }
+
+    if (temperatures_api_init() != TEMPERATURES_RC_OK) {
         final_status = POST_RC_ERROR;
     }
 
