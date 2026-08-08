@@ -20,12 +20,21 @@ enum VehicleReturnCode {
     VEHICLE_RC_NULL_POINTER, /*!< A null pointer was passed to an API function. */
 };
 
+typedef bool (*vehicle_tson_pressed_callback)(void);
+
 /*!
  * \struct VehicleHandler
  * \brief Flag container for evaluating core state transitions.
  * \details Stores transient flags parsed from incoming CAN messages.
  */
 struct VehicleHandler {
+
+    /*!
+     * \brief Callback function to evaluate the state of the steering wheel button.
+     *
+     * \details This function pointer should be set to a function that returns true when the steering wheel button is pressed and false otherwise.
+     */
+    vehicle_tson_pressed_callback ts_on_get_button_pressed;
 
     /*! 
      * \brief Edge-triggered activation command from the steering wheel.

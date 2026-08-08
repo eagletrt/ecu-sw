@@ -13,7 +13,7 @@
 #include "pedals-api.h"
 
 enum CanCommunicationReturnCode can_communication_router_api_receive_primary(struct CanCommunicationFrame *frame) {
-    if (frame == nullptr) {
+    if (frame == NULL) {
         return CAN_COMMUNICATION_RC_NULL_POINTER;
     }
 
@@ -28,7 +28,8 @@ enum CanCommunicationReturnCode can_communication_router_api_receive_primary(str
 
     switch (frame->id) {
         case CAN_PRIMARY_MESSAGE_FRAME_ID_STEERINGWHEELBUTTONSTATUS: {
-            vehicle_api_set_ts_on_button_pressed(message.steeringwheelbuttonstatus.tson);
+            // TODO: add this back in once the steering wheel works
+            // vehicle_api_set_ts_on_button_pressed(message.steeringwheelbuttonstatus.tson);
             break;
         }
 
@@ -63,6 +64,11 @@ enum CanCommunicationReturnCode can_communication_router_api_receive_primary(str
 
             pedals_api_set_brake(travel_pct);
             pedals_api_set_brake_pressure(brake_pressure);
+            break;
+        }
+
+        case CAN_PRIMARY_MESSAGE_FRAME_ID_TSACMAINBOARDESTIMATEDSOC: {
+            inverters_api_set_soc(message.tsacmainboardestimatedsoc.soc);
             break;
         }
 

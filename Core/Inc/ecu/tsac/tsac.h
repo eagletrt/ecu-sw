@@ -9,7 +9,7 @@ enum TsacReturnCode {
     TSAC_RC_NULL_POINTER, /*!< A null pointer was passed to an API function. */
 };
 
-#define TSAC_TIMEOUT_MS (can_primary_cycle_time_tsacstatus * 2.5) /*!< Timeout duration for TSAC status messages in milliseconds. */
+#define TSAC_TIMEOUT_MS ((uint32_t)(can_primary_cycle_time_tsacstatus * 2.5)) /*!< Timeout duration for TSAC status messages in milliseconds. */
 
 typedef uint32_t (*tsac_get_tick_callback)(void); /*!< Callback function type for retrieving the current system tick count. */
 

@@ -188,6 +188,7 @@ int main(void) {
         .shutdown_control_relay = gpio_shutdown_control_relay,
         .pedals_get_tick = HAL_GetTick,
         .tsac_get_tick = HAL_GetTick,
+        .vehicle_tson_pressed = gpio_read_tson_button,
     };
 
     // Populate buzzer configuration arrays
@@ -214,9 +215,9 @@ int main(void) {
     HAL_CAN_ActivateNotification(&hcan3, CAN_IT_RX_FIFO0_MSG_PENDING);
     HAL_CAN_ActivateNotification(&hcan3, CAN_IT_RX_FIFO1_MSG_PENDING);
 
-    inverters_api_init();
+    shutdown_api_control_relay(true);
 
-    gpio_shutdown_control_relay(true);
+    struct FsmData fsm_data;
     /* USER CODE END 2 */
 
     /* Infinite loop */
@@ -226,8 +227,10 @@ int main(void) {
 
         /* USER CODE BEGIN 3 */
 
+        fsm_data.tick = HAL_GetTick();
+
         //run the fsm
-        current_state = run_state(current_state, NULL);
+        current_state = run_state(current_state, &fsm_data);
     }
     /* USER CODE END 3 */
 }

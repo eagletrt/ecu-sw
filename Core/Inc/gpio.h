@@ -82,6 +82,15 @@ enum RaspberryReturnCode gpio_raspberry_set_pin(enum RaspberryControlPinState pi
  * \retval SHUTDOWN_RC_ERROR if an undefined or UNKNOWN state was requested.
  */
 enum ShutdownReturnCode gpio_shutdown_control_relay(bool state);
+
+/*!
+ * \brief Reads the state of the TSON button.
+ *
+ * \retval true if the TSON button is pressed (GPIO pin is HIGH).
+ * \retval false if the TSON button is not pressed (GPIO pin is LOW).
+ */
+bool gpio_read_tson_button(void);
+
 /* USER CODE END Prototypes */
 
 #ifdef __cplusplus

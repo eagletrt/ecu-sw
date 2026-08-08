@@ -67,8 +67,8 @@ void Error_Handler(void);
 #define DBG_TX_GPIO_Port GPIOA
 #define DBG_RX_Pin GPIO_PIN_1
 #define DBG_RX_GPIO_Port GPIOA
-#define KICK_WATCHDOG_Pin GPIO_PIN_3
-#define KICK_WATCHDOG_GPIO_Port GPIOA
+#define READ_TSON_Pin GPIO_PIN_3
+#define READ_TSON_GPIO_Port GPIOA
 #define SD_IN_READ_Pin GPIO_PIN_5
 #define SD_IN_READ_GPIO_Port GPIOA
 #define PTT_Pin GPIO_PIN_4

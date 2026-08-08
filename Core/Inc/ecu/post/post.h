@@ -15,6 +15,7 @@
 #include "shutdown.h"
 #include "pedals.h"
 #include "tsac.h"
+#include "vehicle.h"
 
 /*!
  * \brief Return codes for the post module APIs
@@ -52,6 +53,9 @@ struct PostConfig {
 
     /* --- TSAC callbacks --- */
     tsac_get_tick_callback tsac_get_tick; /*!< Callback to retrieve the current tick count from the TSAC module. */
+
+    /* --- Vehicle callbacks --- */
+    vehicle_tson_pressed_callback vehicle_tson_pressed; /*!< Callback to check if the TSON button is pressed. */
 };
 
 #endif

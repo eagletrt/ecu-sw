@@ -96,7 +96,6 @@ enum BuzzerReturnCode buzzer_api_play_sync(enum BuzzerType buzzer_type) {
     }
 
     return buzzer_handler->buzzer_play_sync(buzzer_handler->frequency, buzzer_handler->amplitude, buzzer_handler->duration);
-    ;
 }
 
 enum BuzzerReturnCode buzzer_api_play_async(enum BuzzerType buzzer_type) {

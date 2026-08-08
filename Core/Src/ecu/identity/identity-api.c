@@ -8,7 +8,7 @@
 EAGLETRT_STATIC struct IdentityHandler identity_handler;
 
 enum IdentityReturnCode identity_api_init(void) {
-    struct tm timeinfo;
+    struct tm timeinfo = { 0 };
     strptime(__DATE__ " " __TIME__, "%b %d %Y %H:%M:%S", &timeinfo);
     identity_handler = (struct IdentityHandler){
         .build_time = mktime(&timeinfo),

@@ -13,9 +13,11 @@
 /*!
  * \brief Initializes the internal vehicle handler flags to their default states.
  *
+ * \param ts_on_get_button_pressed A callback function to evaluate the state of the steering wheel button.
+ *
  * \retval VEHICLE_RC_OK on success.
  */
-enum VehicleReturnCode vehicle_api_init(void);
+enum VehicleReturnCode vehicle_api_init(vehicle_tson_pressed_callback ts_on_get_button_pressed);
 
 /*!
  * \brief Sets the internal edge-triggered Tractive System activation request flag.
