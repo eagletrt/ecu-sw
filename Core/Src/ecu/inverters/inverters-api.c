@@ -329,17 +329,8 @@ EAGLETRT_STATIC void prv_inverters_apply_cut_off(float *torque_front_left_nm, fl
 
 enum InvertersReturnCode inverters_api_init(void) {
     memset(&inverters_handler, 0, sizeof(inverters_handler));
-
     ephorus_api_init(&inverters_handler.driver);
-
-    // Four-wheel ECU: activate every wheel so it transmits and decodes.
-    enum InvertersReturnCode return_code = INVERTERS_RC_OK;
-    for (enum EphorusWheel wheel = 0; wheel < EPHORUS_WHEEL_COUNT; wheel++) {
-        if (ephorus_api_attach(&inverters_handler.driver, wheel) != EPHORUS_RC_OK) {
-            return_code = INVERTERS_RC_INVALID_WHEEL;
-        }
-    }
-    return return_code;
+    return INVERTERS_RC_OK;
 }
 
 enum InvertersReturnCode inverters_api_attach(enum EphorusWheel wheel) {

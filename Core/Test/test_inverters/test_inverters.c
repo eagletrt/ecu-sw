@@ -33,6 +33,10 @@ static void set_all_rpm(int16_t rpm) {
 
 void setUp(void) {
     inverters_api_init();
+    inverters_api_attach(EPHORUS_WHEEL_FRONT_LEFT);
+    inverters_api_attach(EPHORUS_WHEEL_FRONT_RIGHT);
+    inverters_api_attach(EPHORUS_WHEEL_REAR_LEFT);
+    inverters_api_attach(EPHORUS_WHEEL_REAR_RIGHT);
 }
 
 void tearDown(void) {

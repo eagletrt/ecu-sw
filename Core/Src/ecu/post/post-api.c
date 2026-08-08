@@ -67,6 +67,10 @@ enum PostReturnCode post_api_do_init(struct PostConfig *post_config) {
         final_status = POST_RC_ERROR;
     }
 
+    if (inverters_api_attach(EPHORUS_WHEEL_REAR_LEFT) != INVERTERS_RC_OK || inverters_api_attach(EPHORUS_WHEEL_REAR_RIGHT) != INVERTERS_RC_OK) {
+        final_status = POST_RC_ERROR;
+    }
+
     if (pedals_api_init(post_config->pedals_get_tick) != PEDALS_RC_OK) {
         final_status = POST_RC_ERROR;
     }
