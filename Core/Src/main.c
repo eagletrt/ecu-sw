@@ -33,7 +33,6 @@
 #include "eagletrt-api.h"
 #include "can-communication-router-api.h"
 #include "logger-api.h"
-#include "inverters-api.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -189,6 +188,7 @@ int main(void) {
         .pedals_get_tick = HAL_GetTick,
         .tsac_get_tick = HAL_GetTick,
         .vehicle_tson_pressed = gpio_read_tson_button,
+        .lights_set_state = gpio_set_light_state,
     };
 
     // Populate buzzer configuration arrays

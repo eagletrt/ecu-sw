@@ -8,7 +8,7 @@
 #include "can-communication-router-api.h"
 #include "can-primary-api.h"
 #include "inverters-api.h"
-#include "vehicle-api.h"
+#include "lights-api.h"
 #include "tsac-api.h"
 #include "pedals-api.h"
 
@@ -62,6 +62,7 @@ enum CanCommunicationReturnCode can_communication_router_api_receive_primary(str
                                     message.pedalsbrake.pressurerr) /
                                    pressure_count;
 
+            lights_api_set_light_state(LIGHTS_NAME_BRAKE, (brake_pressure > 1.0F));
             pedals_api_set_brake(travel_pct);
             pedals_api_set_brake_pressure(brake_pressure);
             break;

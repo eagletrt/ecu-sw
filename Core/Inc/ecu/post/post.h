@@ -11,6 +11,7 @@
 #include "as-driver.h"
 #include "buzzer.h"
 #include "can-communication.h"
+#include "lights.h"
 #include "raspberry.h"
 #include "shutdown.h"
 #include "pedals.h"
@@ -56,6 +57,9 @@ struct PostConfig {
 
     /* --- Vehicle callbacks --- */
     vehicle_tson_pressed_callback vehicle_tson_pressed; /*!< Callback to check if the TSON button is pressed. */
+
+    /* --- Lights callbacks --- */
+    lights_set_state_callback lights_set_state; /*!< Callback to set the state of the vehicle's lights. */
 };
 
 #endif

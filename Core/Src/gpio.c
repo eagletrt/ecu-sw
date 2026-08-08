@@ -171,4 +171,32 @@ bool gpio_read_tson_button(void) {
     return HAL_GPIO_ReadPin(READ_TSON_GPIO_Port, READ_TSON_Pin) == GPIO_PIN_SET;
 }
 
+enum LightsReturnCode gpio_set_light_state(enum LightsName light_name, bool state) {
+    GPIO_PinState pin_state = state ? GPIO_PIN_SET : GPIO_PIN_RESET;
+
+    switch (light_name) {
+        case LIGHTS_NAME_BRAKE:
+            HAL_GPIO_WritePin(BRAKE_LIGHT_GPIO_Port, BRAKE_LIGHT_Pin, pin_state);
+            break;
+
+        case LIGHTS_NAME_ASSI_RED:
+            HAL_GPIO_WritePin(ASSI_R_GPIO_Port, ASSI_R_Pin, pin_state);
+            break;
+
+        case LIGHTS_NAME_ASSI_GREEN:
+            HAL_GPIO_WritePin(ASSI_G_GPIO_Port, ASSI_G_Pin, pin_state);
+            break;
+
+        case LIGHTS_NAME_ASSI_BLUE:
+            HAL_GPIO_WritePin(ASSI_B_GPIO_Port, ASSI_B_Pin, pin_state);
+            break;
+
+        default:
+            // unknown light name requested, return an error
+            return LIGHTS_RC_ERROR;
+    }
+
+    return LIGHTS_RC_OK;
+}
+
 /* USER CODE END 2 */

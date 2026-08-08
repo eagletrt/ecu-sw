@@ -21,6 +21,7 @@
 #ifndef __GPIO_H__
 #define __GPIO_H__
 
+#include "lights.h"
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -90,6 +91,17 @@ enum ShutdownReturnCode gpio_shutdown_control_relay(bool state);
  * \retval false if the TSON button is not pressed (GPIO pin is LOW).
  */
 bool gpio_read_tson_button(void);
+
+/*!
+ * \brief Sets the state of a specific light.
+ *
+ * \param light_name The name of the light to set the state for.
+ * \param state The desired state of the light (true for on, false for off).
+ *
+ * \retval LIGHTS_RC_OK if the light state was set successfully
+ * \retval LIGHTS_RC_ERROR if there was an error setting the light state
+ */
+enum LightsReturnCode gpio_set_light_state(enum LightsName light_name, bool state);
 
 /* USER CODE END Prototypes */
 
