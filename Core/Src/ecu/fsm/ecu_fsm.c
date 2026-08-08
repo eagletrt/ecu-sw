@@ -132,9 +132,6 @@ state_t do_init(state_data_t *data) {
         buzzer_api_set_amplitude(BUZZER_TYPE_ASSI, 0.33f);
         buzzer_api_set_duration(BUZZER_TYPE_ASSI, 800);
         buzzer_api_play_sync(BUZZER_TYPE_ASSI);
-
-        buzzer_api_set_duration(BUZZER_TYPE_R2D, 1000);
-        buzzer_api_play_sync(BUZZER_TYPE_R2D);
     }
 
     identity_api_send_state(CAN_PRIMARY_ECUFSM_VEHICLESTATUS_INIT, CAN_PRIMARY_ECUFSM_KRAKENSTATUS_INIT);

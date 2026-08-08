@@ -23,6 +23,8 @@
 
 /* USER CODE BEGIN 0 */
 #include "eagletrt-api.h"
+#include "buzzer.h"
+#include "lights.h"
 /* USER CODE END 0 */
 
 /*----------------------------------------------------------------------------*/
@@ -58,7 +60,7 @@ void MX_GPIO_Init(void) {
     HAL_GPIO_WritePin(GPIOC, PTT_Pin | ASSI_G_Pin, GPIO_PIN_RESET);
 
     /*Configure GPIO pin Output Level */
-    HAL_GPIO_WritePin(GPIOB, ASSI_R_Pin | ASSI_B_Pin | BRAKE_LIGHT_Pin, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(GPIOB, ASSI_R_Pin | ASSI_B_Pin | BRAKE_LIGHT_Pin | R2D_BUZZER_Pin, GPIO_PIN_RESET);
 
     /*Configure GPIO pin Output Level */
     HAL_GPIO_WritePin(FLIPFLOP_2Q_GPIO_Port, FLIPFLOP_2Q_Pin, GPIO_PIN_SET);
@@ -93,8 +95,8 @@ void MX_GPIO_Init(void) {
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
     HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-    /*Configure GPIO pins : ASSI_R_Pin ASSI_B_Pin BRAKE_LIGHT_Pin */
-    GPIO_InitStruct.Pin = ASSI_R_Pin | ASSI_B_Pin | BRAKE_LIGHT_Pin;
+    /*Configure GPIO pins : ASSI_R_Pin ASSI_B_Pin BRAKE_LIGHT_Pin R2D_BUZZER_Pin */
+    GPIO_InitStruct.Pin = ASSI_R_Pin | ASSI_B_Pin | BRAKE_LIGHT_Pin | R2D_BUZZER_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;

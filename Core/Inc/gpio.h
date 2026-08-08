@@ -21,7 +21,6 @@
 #ifndef __GPIO_H__
 #define __GPIO_H__
 
-#include "lights.h"
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -33,6 +32,7 @@ extern "C" {
 #include "buzzer.h"
 #include "raspberry.h"
 #include "shutdown.h"
+#include "lights.h"
 /* USER CODE END Includes */
 
 /* USER CODE BEGIN Private defines */

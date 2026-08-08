@@ -43,10 +43,10 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 //TODO: Would be better to move the defines into a configuration file (e.g. ecu-config.h)
-#define LOGGER_ENABLED (true)          /*!< Logger status: true to enable active logging, false to mute entirely. */
-#define LOGGER_RX_CAPACITY (1U)        /*!< Receive queue depth. Set to 1 because the logger is transmit-only but needs to be > 0 because of arena allocator. */
-#define LOGGER_TX_CAPACITY (10U)       /*!< Maximum number of log message packets allowed to sit in the outbound transmission queue. */
-#define LOGGER_UART_MAX_MSG_SIZE (64U) /*!< Maximum allocation allowed for an individual log string. */
+#define LOGGER_ENABLED (true)           /*!< Logger status: true to enable active logging, false to mute entirely. */
+#define LOGGER_RX_CAPACITY (1U)         /*!< Receive queue depth. Set to 1 because the logger is transmit-only but needs to be > 0 because of arena allocator. */
+#define LOGGER_TX_CAPACITY (10U)        /*!< Maximum number of log message packets allowed to sit in the outbound transmission queue. */
+#define LOGGER_UART_MAX_MSG_SIZE (256U) /*!< Maximum allocation allowed for an individual log string. */
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -140,7 +140,6 @@ int main(void) {
     MX_SPI2_Init();
     MX_SPI3_Init();
     MX_ADC1_Init();
-    MX_TIM3_Init();
     /* USER CODE BEGIN 2 */
 
     // Initialize LOGGER configuration --------------------------------------------------
@@ -218,6 +217,7 @@ int main(void) {
     shutdown_api_control_relay(true);
 
     struct FsmData fsm_data;
+
     /* USER CODE END 2 */
 
     /* Infinite loop */
