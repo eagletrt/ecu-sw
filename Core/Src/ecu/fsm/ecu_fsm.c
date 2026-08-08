@@ -212,9 +212,14 @@ state_t do_idle(state_data_t *data) {
         tson_first_press_tick = 0;
     } else if (fsm_data.tick - tson_first_press_tick > tson_required_press_time) {
         // NOLINTNEXTLINE(bugprone-branch-clone)
-        if (!tsac_api_get_voltage_higher_than_60v() || tsac_api_is_tsac_status_timeout()) {
+        if (!tsac_api_get_voltage_higher_than_60v()) {
             logger_api_log(LOGGER_LEVEL_INFO, "FSM: TS ON requested. Moving to PRECHARGE.");
+            shutdown_api_control_relay(true);
             next_state = STATE_MANUAL_WAIT_TS_PRECHARGE;
+        } else if (tsac_api_is_tsac_status_timeout()) {
+            logger_api_log(LOGGER_LEVEL_ERROR, "FSM: Aborting Precharge. TSAC status timeout!");
+            shutdown_api_control_relay(false);
+            next_state = STATE_FATAL;
         } else {
             logger_api_log(LOGGER_LEVEL_ERROR, "FSM: Aborting Precharge. DC Link already >60V!");
             next_state = STATE_FATAL;
@@ -323,8 +328,12 @@ state_t do_manual_wait_ts_precharge(state_data_t *data) {
     } else if (tsac_api_get_tsac_status() == CAN_PRIMARY_TSACSTATUS_MAINBOARDSTATUS_TS_ON && tsac_api_get_voltage_higher_than_60v()) {
         logger_api_log(LOGGER_LEVEL_INFO, "FSM: Precharge completed. Moving to WAIT_DRIVER.");
         next_state = STATE_WAIT_DRIVER;
-    } else if (tsac_api_get_tsac_status() == CAN_PRIMARY_TSACSTATUS_MAINBOARDSTATUS_ERROR || tsac_api_is_tsac_status_timeout()) {
+    } else if (tsac_api_get_tsac_status() == CAN_PRIMARY_TSACSTATUS_MAINBOARDSTATUS_ERROR) {
         logger_api_log(LOGGER_LEVEL_ERROR, "FSM: Precharge failed. TSAC reported error!");
+        next_state = STATE_MANUAL_WAIT_TS_DISCHARGE;
+    } else if (tsac_api_is_tsac_status_timeout()) {
+        logger_api_log(LOGGER_LEVEL_ERROR, "FSM: Precharge failed. TSAC status timeout!");
+        shutdown_api_control_relay(false);
         next_state = STATE_MANUAL_WAIT_TS_DISCHARGE;
     }
 
@@ -413,8 +422,12 @@ state_t do_wait_driver(state_data_t *data) {
     } else if (fsm_data.tick - tson_first_press_tick > tson_required_press_time && pedals_api_is_brake_pressed()) {
         logger_api_log(LOGGER_LEVEL_INFO, "FSM: TS ON and pedal pressed. Moving to INV ENABLE.");
         next_state = STATE_MANUAL_WAIT_INV_ENABLE;
-    } else if (tsac_api_get_tsac_status() != CAN_PRIMARY_TSACSTATUS_MAINBOARDSTATUS_TS_ON || tsac_api_is_tsac_status_timeout()) {
+    } else if (tsac_api_get_tsac_status() != CAN_PRIMARY_TSACSTATUS_MAINBOARDSTATUS_TS_ON) {
         logger_api_log(LOGGER_LEVEL_ERROR, "FSM: TSAC not in TSON!");
+        next_state = STATE_MANUAL_WAIT_TS_DISCHARGE;
+    } else if (tsac_api_is_tsac_status_timeout()) {
+        logger_api_log(LOGGER_LEVEL_ERROR, "FSM: TSAC status timeout!");
+        shutdown_api_control_relay(false);
         next_state = STATE_MANUAL_WAIT_TS_DISCHARGE;
     }
 
@@ -465,6 +478,9 @@ state_t do_manual_wait_ts_discharge(state_data_t *data) {
     if (!tsac_api_get_voltage_higher_than_60v()) {
         logger_api_log(LOGGER_LEVEL_INFO, "FSM: TS DISCHARGE completed. Moving to IDLE.");
         next_state = STATE_IDLE;
+    } else if (tsac_api_is_tsac_status_timeout()) {
+        logger_api_log(LOGGER_LEVEL_ERROR, "FSM: TS DISCHARGE failed. TSAC status timeout!");
+        shutdown_api_control_relay(false);
     }
 
     prv_periodically_send_identity(CAN_PRIMARY_ECUFSM_VEHICLESTATUS_DISCHARGE, CAN_PRIMARY_ECUFSM_KRAKENSTATUS_MANUAL_WAIT_TS_DISCHARGE, fsm_data.tick);
@@ -534,8 +550,12 @@ state_t do_manual_wait_inv_enable(state_data_t *data) {
         next_state = STATE_MANUAL_WAIT_INV_DISABLE;
     }
 
-    if (tsac_api_get_tsac_status() != CAN_PRIMARY_TSACSTATUS_MAINBOARDSTATUS_TS_ON || tsac_api_is_tsac_status_timeout()) {
+    if (tsac_api_get_tsac_status() != CAN_PRIMARY_TSACSTATUS_MAINBOARDSTATUS_TS_ON) {
         logger_api_log(LOGGER_LEVEL_ERROR, "FSM: TSAC not in TSON!");
+        next_state = STATE_MANUAL_WAIT_INV_DISABLE;
+    } else if (tsac_api_is_tsac_status_timeout()) {
+        logger_api_log(LOGGER_LEVEL_ERROR, "FSM: TSAC status timeout!");
+        shutdown_api_control_relay(false);
         next_state = STATE_MANUAL_WAIT_INV_DISABLE;
     }
 
@@ -595,7 +615,11 @@ state_t do_driving(state_data_t *data) {
     } else if (!inverters_api_is_all_in_drive()) {
         logger_api_log(LOGGER_LEVEL_ERROR, "FSM: Not all inverters in drive!");
         next_state = STATE_MANUAL_WAIT_INV_DISABLE;
-    } else if (tsac_api_get_tsac_status() != CAN_PRIMARY_TSACSTATUS_MAINBOARDSTATUS_TS_ON || tsac_api_is_tsac_status_timeout()) {
+    } else if (tsac_api_is_tsac_status_timeout()) {
+        logger_api_log(LOGGER_LEVEL_ERROR, "FSM: TSAC status timeout!");
+        shutdown_api_control_relay(false);
+        next_state = STATE_MANUAL_WAIT_INV_DISABLE;
+    } else if (tsac_api_get_tsac_status() != CAN_PRIMARY_TSACSTATUS_MAINBOARDSTATUS_TS_ON) {
         logger_api_log(LOGGER_LEVEL_ERROR, "FSM: TSAC not in TSON!");
         next_state = STATE_MANUAL_WAIT_INV_DISABLE;
     } else if (pedals_api_is_timeout()) {
