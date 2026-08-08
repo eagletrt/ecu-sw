@@ -10,7 +10,6 @@
 #define VEHICLE_H
 
 #include <stdbool.h>
-#include "can-primary.h"
 
 /*!
  * \brief Return and status codes for vehicle-scoped subsystem operations.
@@ -33,21 +32,6 @@ struct VehicleHandler {
      * \details Evaluates to true when the button is pressed on the steering wheel.
      */
     bool ts_on_button_pressed;
-
-    /*! 
-     * \brief Tractive system safety voltage threshold flag.
-     * \details Evaluates to true if the DC link or Accumulator voltage exceeds 
-     * the mandatory safety-critical 60V threshold. Used as a permissive block.
-     */
-    bool voltage_higher_than_60v;
-
-    /*!
-     * \brief Tractive system state to be requested to TSAC.
-     * \details Set to true when the FSM requires the tractive system to be enabled.
-     */
-    bool ts_state_to_require;
-
-    enum CanPrimaryTsacstatusMainboardstatus tsac_status; /*!< Current state of the HV accumulator as reported by TSAC. */
 };
 
 #endif

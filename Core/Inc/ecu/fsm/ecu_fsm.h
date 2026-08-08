@@ -35,6 +35,7 @@ extern "C" {
 #include "can-primary.h"
 #include "identity-api.h"
 #include "shutdown-api.h"
+#include "tsac-api.h"
 // END USER includes --------------
 
 // State data object

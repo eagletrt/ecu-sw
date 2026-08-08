@@ -14,6 +14,7 @@
 #include "raspberry.h"
 #include "shutdown.h"
 #include "pedals.h"
+#include "tsac.h"
 
 /*!
  * \brief Return codes for the post module APIs
@@ -48,6 +49,9 @@ struct PostConfig {
 
     /* --- Pedals callbacks --- */
     pedals_get_tick_callback pedals_get_tick; /*!< Callback to retrieve the current tick count from the pedals module. */
+
+    /* --- TSAC callbacks --- */
+    tsac_get_tick_callback tsac_get_tick; /*!< Callback to retrieve the current tick count from the TSAC module. */
 };
 
 #endif

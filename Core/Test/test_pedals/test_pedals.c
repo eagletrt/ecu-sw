@@ -11,12 +11,16 @@
 #include <unity.h>
 #include <stdbool.h>
 #include "pedals-api.h"
-#include "eagletrt-api.h"
+#include "fff.h"
+
+DEFINE_FFF_GLOBALS;
+
+FAKE_VALUE_FUNC(enum PedalsReturnCode, mock_pedals_get_tick);
 
 extern struct PedalsHandler pedals_handler;
 
 void setUp(void) {
-    pedals_api_init();
+    pedals_api_init(mock_pedals_get_tick);
 }
 
 /* --- Test Cases --- */
@@ -27,12 +31,10 @@ void setUp(void) {
  */
 
 void test_pedals_api_init_initial_state(void) {
-    struct PedalsHandler expected_handler = { 0 };
-
-    enum PedalsReturnCode rc = pedals_api_init();
+    enum PedalsReturnCode rc = pedals_api_init(mock_pedals_get_tick);
 
     TEST_ASSERT_EQUAL_MESSAGE(PEDALS_RC_OK, rc, "Return code do not match. It should return OK");
-    TEST_ASSERT_EQUAL_MEMORY_MESSAGE(&expected_handler, &pedals_handler, sizeof(expected_handler), "Structure handler data do not match");
+    TEST_ASSERT_EQUAL_MESSAGE(mock_pedals_get_tick, pedals_handler.get_tick, "The get_tick function pointer should be set to the provided function");
 }
 
 /*! \} */

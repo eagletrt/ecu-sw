@@ -24,6 +24,8 @@ FAKE_VALUE_FUNC(enum CanCommunicationReturnCode, mock_can_send, const struct Can
 FAKE_VALUE_FUNC(enum CanCommunicationReturnCode, mock_can_on_receive, struct CanCommunicationFrame *);
 FAKE_VALUE_FUNC(enum RaspberryReturnCode, mock_raspberry_pin_control, enum RaspberryControlPinState);
 FAKE_VALUE_FUNC(enum ShutdownReturnCode, mock_shutdown_control_relay, bool);
+FAKE_VALUE_FUNC(uint32_t, mock_pedals_get_tick);
+FAKE_VALUE_FUNC(uint32_t, mock_tsac_get_tick);
 
 /*!
  * \brief Global configuration block instance managed per-test scenario execution frame.
@@ -60,6 +62,8 @@ EAGLETRT_STATIC void build_default_valid_config(struct PostConfig *cfg) {
     cfg->raspberry_pin_control = mock_raspberry_pin_control;
     cfg->raspberry_initial_state = RASPBERRY_CONTROL_PIN_STATE_ON;
     cfg->shutdown_control_relay = mock_shutdown_control_relay;
+    cfg->pedals_get_tick = mock_pedals_get_tick;
+    cfg->tsac_get_tick = mock_tsac_get_tick;
 }
 
 void setUp(void) {

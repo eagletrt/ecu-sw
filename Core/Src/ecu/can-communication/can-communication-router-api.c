@@ -9,6 +9,7 @@
 #include "can-primary-api.h"
 #include "inverters-api.h"
 #include "vehicle-api.h"
+#include "tsac-api.h"
 #include "pedals-api.h"
 
 enum CanCommunicationReturnCode can_communication_router_api_receive_primary(struct CanCommunicationFrame *frame) {
@@ -31,9 +32,14 @@ enum CanCommunicationReturnCode can_communication_router_api_receive_primary(str
             break;
         }
 
+        case CAN_PRIMARY_MESSAGE_FRAME_ID_TSACSTATUS: {
+            tsac_api_set_tsac_status(message.tsacstatus.mainboardstatus);
+            break;
+        }
+
         case CAN_PRIMARY_MESSAGE_FRAME_ID_TSACMAINBOARDFEEDBACK: {
             bool is_high = (message.tsacmainboardfeedback.tslessthan60v == 0);
-            vehicle_api_set_voltage_higher_than_60v(is_high);
+            tsac_api_set_voltage_higher_than_60v(is_high);
             break;
         }
 
