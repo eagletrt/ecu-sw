@@ -1,6 +1,7 @@
 #include "tsac-api.h"
 #include "can-primary-api.h"
 #include "can-communication-api.h"
+#include "logger-api.h"
 
 EAGLETRT_STATIC struct TsacHandler tsac_handler;
 
@@ -55,7 +56,7 @@ void tsac_api_periodically_require_tsac_status(uint32_t tick) {
         union CanPrimaryMessages msg = { 0 };
         msg.bmsset.status = tsac_handler.ts_state_to_require;
         struct CanCommunicationFrame frame = { 0 };
-        if (can_primary_api_serialize_from_index(CAN_PRIMARY_MESSAGE_INDEX_BMSSET, &msg, frame.data) == 8) {
+        if (can_primary_api_serialize_from_id(CAN_PRIMARY_MESSAGE_FRAME_ID_BMSSET, &msg, frame.data) >= 0) {
             frame.id = CAN_PRIMARY_MESSAGE_FRAME_ID_BMSSET;
             frame.length = can_primary_byte_size_bmsset;
             can_communication_api_add_to_tx(CAN_COMMUNICATION_NETWORK_PRIMARY, &frame);

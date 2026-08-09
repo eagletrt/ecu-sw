@@ -535,8 +535,8 @@ state_t do_manual_wait_inv_enable(state_data_t *data) {
             break;
     }
 
-    // inverters_api_arm(EPHORUS_WHEEL_FRONT_LEFT);
-    // inverters_api_arm(EPHORUS_WHEEL_FRONT_RIGHT);
+    inverters_api_arm(EPHORUS_WHEEL_FRONT_LEFT);
+    inverters_api_arm(EPHORUS_WHEEL_FRONT_RIGHT);
     inverters_api_arm(EPHORUS_WHEEL_REAR_LEFT);
     inverters_api_arm(EPHORUS_WHEEL_REAR_RIGHT);
 
@@ -644,6 +644,8 @@ state_t do_driving(state_data_t *data) {
         float requested_torque = pedals_api_get_requested_throttle_torque();
         inverters_api_set_torque(EPHORUS_WHEEL_REAR_LEFT, requested_torque);
         inverters_api_set_torque(EPHORUS_WHEEL_REAR_RIGHT, requested_torque);
+        inverters_api_set_torque(EPHORUS_WHEEL_FRONT_LEFT, requested_torque);
+        inverters_api_set_torque(EPHORUS_WHEEL_FRONT_RIGHT, requested_torque);
     }
 
     prv_periodically_send(CAN_PRIMARY_ECUFSM_VEHICLESTATUS_R2D, CAN_PRIMARY_ECUFSM_KRAKENSTATUS_DRIVING, fsm_data.tick);
@@ -694,8 +696,8 @@ state_t do_manual_wait_inv_disable(state_data_t *data) {
         logger_api_log(LOGGER_LEVEL_INFO, "FSM: INV DISABLE completed. Moving to TS DISCHARGE.");
         next_state = STATE_MANUAL_WAIT_TS_DISCHARGE;
     } else {
-        // inverters_api_disarm(EPHORUS_WHEEL_FRONT_LEFT);
-        // inverters_api_disarm(EPHORUS_WHEEL_FRONT_RIGHT);
+        inverters_api_disarm(EPHORUS_WHEEL_FRONT_LEFT);
+        inverters_api_disarm(EPHORUS_WHEEL_FRONT_RIGHT);
         inverters_api_disarm(EPHORUS_WHEEL_REAR_LEFT);
         inverters_api_disarm(EPHORUS_WHEEL_REAR_RIGHT);
     }
@@ -1010,8 +1012,8 @@ void start_inv_enable(state_data_t *data) {
     /* Your Code Here */
     EAGLETRT_API_UNUSED(data);
 
-    // inverters_api_arm(EPHORUS_WHEEL_FRONT_LEFT);
-    // inverters_api_arm(EPHORUS_WHEEL_FRONT_RIGHT);
+    inverters_api_arm(EPHORUS_WHEEL_FRONT_LEFT);
+    inverters_api_arm(EPHORUS_WHEEL_FRONT_RIGHT);
     inverters_api_arm(EPHORUS_WHEEL_REAR_LEFT);
     inverters_api_arm(EPHORUS_WHEEL_REAR_RIGHT);
 }
@@ -1026,8 +1028,8 @@ void start_inv_disable(state_data_t *data) {
     /* Your Code Here */
     EAGLETRT_API_UNUSED(data);
 
-    // inverters_api_disarm(EPHORUS_WHEEL_FRONT_LEFT);
-    // inverters_api_disarm(EPHORUS_WHEEL_FRONT_RIGHT);
+    inverters_api_disarm(EPHORUS_WHEEL_FRONT_LEFT);
+    inverters_api_disarm(EPHORUS_WHEEL_FRONT_RIGHT);
     inverters_api_disarm(EPHORUS_WHEEL_REAR_LEFT);
     inverters_api_disarm(EPHORUS_WHEEL_REAR_RIGHT);
 }
