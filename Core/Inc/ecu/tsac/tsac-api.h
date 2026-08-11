@@ -70,12 +70,10 @@ enum CanPrimaryTsacstatusMainboardstatus tsac_api_get_tsac_status(void);
 /*!
  * \brief Periodically checks and updates the TSAC status based on the specified tick interval.
  *
- * \param tick The current system tick count used to determine if a status update is required.
- *
  * \retval TSAC_RC_OK on success.
  * \retval TSAC_RC_ERROR if an error occurs during the periodic check.
  */
-void tsac_api_periodically_require_tsac_status(uint32_t tick);
+enum TsacReturnCode tsac_api_periodically_require_tsac_status(void);
 
 /*!
  * \brief Checks if the TSAC status has timed out based on the last received timestamp.

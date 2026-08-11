@@ -34,12 +34,10 @@ bool tsac_api_get_ts_state_to_require(void) {
 }
 
 enum TsacReturnCode tsac_api_set_tsac_status(enum CanPrimaryTsacstatusMainboardstatus status) {
-    if (status >= CAN_PRIMARY_TSACSTATUS_MAINBOARDSTATUS_TS_ON + 1) {
+    if (status >= CAN_PRIMARY_TSACSTATUS_MAINBOARDSTATUS_TS_ON + 1 || tsac_handler.get_tick == NULL) {
         return TSAC_RC_ERROR; // Invalid status, do not update
     }
-    if (tsac_handler.get_tick != NULL) {
-        tsac_handler.last_status_received_tick = tsac_handler.get_tick();
-    }
+    tsac_handler.last_status_received_tick = tsac_handler.get_tick();
     tsac_handler.tsac_status = status;
     return TSAC_RC_OK;
 }
@@ -48,8 +46,14 @@ enum CanPrimaryTsacstatusMainboardstatus tsac_api_get_tsac_status(void) {
     return tsac_handler.tsac_status;
 }
 
-void tsac_api_periodically_require_tsac_status(uint32_t tick) {
+enum TsacReturnCode tsac_api_periodically_require_tsac_status(void) {
     EAGLETRT_STATIC uint32_t last_tick = 0;
+
+    if (tsac_handler.get_tick == NULL) {
+        return TSAC_RC_ERROR;
+    }
+
+    uint32_t tick = tsac_handler.get_tick();
 
     if ((tick - last_tick) >= can_primary_cycle_time_bmsset) {
         last_tick = tick;
@@ -62,6 +66,8 @@ void tsac_api_periodically_require_tsac_status(uint32_t tick) {
             can_communication_api_add_to_tx(CAN_COMMUNICATION_NETWORK_PRIMARY, &frame);
         }
     }
+
+    return TSAC_RC_OK;
 }
 
 bool tsac_api_is_tsac_status_timeout(void) {

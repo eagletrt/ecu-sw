@@ -56,6 +56,9 @@ void MX_CAN1_Init(void) {
     }
     /* USER CODE BEGIN CAN1_Init 2 */
 
+    HAL_CAN_ConfigFilter(&hcan1, &(CAN_FilterTypeDef){ .FilterBank = 0, .FilterMode = CAN_FILTERMODE_IDMASK, .FilterScale = CAN_FILTERSCALE_32BIT, .FilterIdHigh = 0x0000, .FilterIdLow = 0x0000, .FilterMaskIdHigh = 0x0000, .FilterMaskIdLow = 0x0000, .FilterFIFOAssignment = CAN_RX_FIFO0, .FilterActivation = ENABLE, .SlaveStartFilterBank = 14 });
+    HAL_CAN_ConfigFilter(&hcan1, &(CAN_FilterTypeDef){ .FilterBank = 1, .FilterMode = CAN_FILTERMODE_IDMASK, .FilterScale = CAN_FILTERSCALE_32BIT, .FilterIdHigh = 0x0000, .FilterIdLow = 0x0000, .FilterMaskIdHigh = 0x0000, .FilterMaskIdLow = 0x0000, .FilterFIFOAssignment = CAN_RX_FIFO1, .FilterActivation = ENABLE, .SlaveStartFilterBank = 14 });
+
     /* USER CODE END CAN1_Init 2 */
 }
 /* CAN2 init function */
@@ -85,6 +88,9 @@ void MX_CAN2_Init(void) {
     }
     /* USER CODE BEGIN CAN2_Init 2 */
 
+    HAL_CAN_ConfigFilter(&hcan2, &(CAN_FilterTypeDef){ .FilterBank = 14, .FilterMode = CAN_FILTERMODE_IDMASK, .FilterScale = CAN_FILTERSCALE_32BIT, .FilterIdHigh = 0x0000, .FilterIdLow = 0x0000, .FilterMaskIdHigh = 0x0000, .FilterMaskIdLow = 0x0000, .FilterFIFOAssignment = CAN_RX_FIFO0, .FilterActivation = ENABLE, .SlaveStartFilterBank = 14 });
+    HAL_CAN_ConfigFilter(&hcan2, &(CAN_FilterTypeDef){ .FilterBank = 15, .FilterMode = CAN_FILTERMODE_IDMASK, .FilterScale = CAN_FILTERSCALE_32BIT, .FilterIdHigh = 0x0000, .FilterIdLow = 0x0000, .FilterMaskIdHigh = 0x0000, .FilterMaskIdLow = 0x0000, .FilterFIFOAssignment = CAN_RX_FIFO1, .FilterActivation = ENABLE, .SlaveStartFilterBank = 14 });
+
     /* USER CODE END CAN2_Init 2 */
 }
 /* CAN3 init function */
@@ -113,6 +119,11 @@ void MX_CAN3_Init(void) {
         Error_Handler();
     }
     /* USER CODE BEGIN CAN3_Init 2 */
+
+    // CAN3 is an independent bxCAN instance with its own 14 filter banks (0..13);
+    // it does not share CAN1/CAN2's 0..27 bank space, so bank indices restart at 0.
+    HAL_CAN_ConfigFilter(&hcan3, &(CAN_FilterTypeDef){ .FilterBank = 0, .FilterMode = CAN_FILTERMODE_IDMASK, .FilterScale = CAN_FILTERSCALE_32BIT, .FilterIdHigh = 0x0000, .FilterIdLow = 0x0000, .FilterMaskIdHigh = 0x0000, .FilterMaskIdLow = 0x0000, .FilterFIFOAssignment = CAN_RX_FIFO0, .FilterActivation = ENABLE, .SlaveStartFilterBank = 14 });
+    HAL_CAN_ConfigFilter(&hcan3, &(CAN_FilterTypeDef){ .FilterBank = 1, .FilterMode = CAN_FILTERMODE_IDMASK, .FilterScale = CAN_FILTERSCALE_32BIT, .FilterIdHigh = 0x0000, .FilterIdLow = 0x0000, .FilterMaskIdHigh = 0x0000, .FilterMaskIdLow = 0x0000, .FilterFIFOAssignment = CAN_RX_FIFO1, .FilterActivation = ENABLE, .SlaveStartFilterBank = 14 });
 
     /* USER CODE END CAN3_Init 2 */
 }
@@ -422,7 +433,7 @@ void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef *hcan) {
     CAN_RxHeaderTypeDef header = { 0 };
     struct CanCommunicationFrame msg = { 0 };
 
-    if (HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO0, &header, msg.data) == HAL_OK) {
+    if (HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO1, &header, msg.data) == HAL_OK) {
         msg.id = (header.IDE == CAN_ID_EXT) ? header.ExtId : header.StdId;
         msg.length = (uint8_t)header.DLC;
 

@@ -361,6 +361,7 @@ void ephorus_api_set_torque(struct EphorusHandler *handle, enum EphorusWheel whe
 }
 
 bool ephorus_api_is_all_in_drive(struct EphorusHandler *handle) {
+    // TODO: this logic returns true if all wheels are not attached (not enabled). Should be fine for now, but needs fixing.
     if (handle == NULL) {
         return false;
     }
