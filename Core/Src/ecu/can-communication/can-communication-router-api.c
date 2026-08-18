@@ -56,15 +56,17 @@ enum CanCommunicationReturnCode can_communication_router_api_receive_primary(str
 
         case CAN_PRIMARY_MESSAGE_FRAME_ID_PEDALSBRAKE: {
             float travel_pct = message.pedalsbrake.travel;
+            /*
             constexpr float pressure_count = 2.0F;
 
             float brake_pressure = (message.pedalsbrake.pressurefl +
                                     message.pedalsbrake.pressurerr) /
                                    pressure_count;
+            */
 
-            lights_api_set_light_state(LIGHTS_NAME_BRAKE, (brake_pressure > 1.0F));
+            lights_api_set_light_state(LIGHTS_NAME_BRAKE, (message.pedalsbrake.pressurefl > 1.0F));
             pedals_api_set_brake(travel_pct);
-            pedals_api_set_brake_pressure(brake_pressure);
+            pedals_api_set_brake_pressure(message.pedalsbrake.pressurefl);
             break;
         }
 
