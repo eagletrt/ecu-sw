@@ -36,6 +36,22 @@ EAGLETRT_STATIC void prv_drain_can_rx_buffers(void) {
     can_communication_api_process_rx(CAN_COMMUNICATION_NETWORK_INVERTER);
 }
 
+// Advances the inverter driver's periodic setpoint transmission for this tick and
+// logs any error. Every powertrain-active state runs this once per cycle, so the
+// step-and-log boilerplate lives here instead of being copy-pasted into each state.
+EAGLETRT_STATIC void prv_step_inverters(uint32_t tick) {
+    switch (inverters_api_step(tick)) {
+        case INVERTERS_RC_OK:
+            break;
+        case INVERTERS_RC_TX_ERROR:
+            logger_api_log(LOGGER_LEVEL_ERROR, "FSM: Inverter TX error");
+            break;
+        default:
+            logger_api_log(LOGGER_LEVEL_ERROR, "FSM: Inverter error");
+            break;
+    }
+}
+
 // GLOBALS
 // State human-readable names
 const char *state_names[] = { "init", "fatal", "idle", "flash", "pause", "manual_wait_ts_precharge", "as_off", "wait_driver", "manual_wait_ts_discharge", "manual_wait_inv_enable", "driving", "manual_wait_inv_disable", "as_off_wait_ts_precharge", "as_ready", "as_ready_wait_inv_enable", "as_emergency", "as_r2d", "as_driving", "as_finished", "as_off_wait_ts_discharge", "as_ready_wait_inv_disable", "as_finished_wait_inv_disable", "as_finished_wait_ts_discharge", "as_emergency_wait_inv_disable", "as_emergency_wait_ts_discharge" };
@@ -178,6 +194,8 @@ state_t do_idle(state_data_t *data) {
     constexpr uint32_t tson_required_press_time = 2000;
     EAGLETRT_STATIC uint32_t tson_first_press_tick = 0;
 
+    constexpr uint32_t ready_buzzer_duration = 1000;
+
     logger_api_log(LOGGER_LEVEL_INFO, "FSM: IDLE state");
 
     if (data == NULL) {
@@ -188,16 +206,7 @@ state_t do_idle(state_data_t *data) {
 
     prv_drain_can_rx_buffers();
 
-    switch (inverters_api_step(fsm_data.tick)) {
-        case INVERTERS_RC_OK:
-            break;
-        case INVERTERS_RC_TX_ERROR:
-            logger_api_log(LOGGER_LEVEL_ERROR, "Inverter TX error");
-            break;
-        default:
-            logger_api_log(LOGGER_LEVEL_ERROR, "Inverter error");
-            break;
-    }
+    prv_step_inverters(fsm_data.tick);
 
     // this logic does:
     // 1. If the TS ON button is pressed and this is the first time it is pressed, record the current tick.
@@ -216,6 +225,8 @@ state_t do_idle(state_data_t *data) {
         } else if (!tsac_api_get_voltage_higher_than_60v()) {
             logger_api_log(LOGGER_LEVEL_INFO, "FSM: TS ON requested. Moving to PRECHARGE.");
             shutdown_api_control_relay(true);
+            buzzer_api_set_duration(BUZZER_TYPE_ASSI, ready_buzzer_duration);
+            buzzer_api_request(BUZZER_TYPE_ASSI);
             next_state = STATE_MANUAL_WAIT_TS_PRECHARGE;
         } else {
             logger_api_log(LOGGER_LEVEL_ERROR, "FSM: Aborting Precharge. DC Link already >60V!");
@@ -308,17 +319,13 @@ state_t do_manual_wait_ts_precharge(state_data_t *data) {
 
     prv_drain_can_rx_buffers();
 
-    switch (inverters_api_step(fsm_data.tick)) {
-        case INVERTERS_RC_OK:
-            break;
-        case INVERTERS_RC_TX_ERROR:
-            logger_api_log(LOGGER_LEVEL_ERROR, "Inverter TX error");
-            break;
-        default:
-            logger_api_log(LOGGER_LEVEL_ERROR, "Inverter error");
-            break;
-    }
+    prv_step_inverters(fsm_data.tick);
 
+    // Logic is:
+    // 1. If the TSAC status times out, log an error and transition to the TS DISCHARGE state.
+    // 2. If the shutdown is open, log an error and transition to the TS DISCHARGE state.
+    // 3. If the TSAC status is TSON and the voltage is higher than 60V, log an info message and transition to the WAIT DRIVER state.
+    // 4. If the TSAC status is ERROR, log an error and transition to the TS DISCHARGE state.
     // NOLINTNEXTLINE(bugprone-branch-clone)
     if (tsac_api_is_tsac_status_timeout()) {
         logger_api_log(LOGGER_LEVEL_ERROR, "FSM: Precharge failed. TSAC status timeout!");
@@ -393,22 +400,15 @@ state_t do_wait_driver(state_data_t *data) {
 
     prv_drain_can_rx_buffers();
 
-    switch (inverters_api_step(fsm_data.tick)) {
-        case INVERTERS_RC_OK:
-            break;
-        case INVERTERS_RC_TX_ERROR:
-            logger_api_log(LOGGER_LEVEL_ERROR, "Inverter TX error");
-            break;
-        default:
-            logger_api_log(LOGGER_LEVEL_ERROR, "Inverter error");
-            break;
-    }
+    prv_step_inverters(fsm_data.tick);
 
     // This logic does:
-    // 1. If the TS ON button is pressed and this is the first time it is pressed, record the current tick.
-    // 2. If the TS ON button is released, reset the recorded tick to 0.
-    // 3. If the TS ON button has been pressed for more than 2 seconds and the pedal has also been pressed for that time, transition to the INV ENABLE state.
-    // 4. If the TS ON button has been pressed even once without the pedal, transition to the TS DISCHARGE state.
+    // 1. If the TSAC status times out, log an error and transition to the TS DISCHARGE state.
+    // 2. If the TSAC status is not TSON, log an error and transition to the TS DISCHARGE state.
+    // 3. If the TS ON button is pressed without the brake pedal being pressed, transition to the TS DISCHARGE state.
+    // 4. If the TS ON button is pressed and this is the first time it is pressed, record the current tick.
+    // 5. If the TS ON button is released, reset the recorded tick to 0.
+    // 6. If the TS ON button has been pressed for more than 2 seconds and the brake pedal is pressed, transition to the INV ENABLE state.
     // NOLINTNEXTLINE(bugprone-branch-clone)
     if (tsac_api_is_tsac_status_timeout()) {
         logger_api_log(LOGGER_LEVEL_ERROR, "FSM: TSAC status timeout!");
@@ -418,7 +418,7 @@ state_t do_wait_driver(state_data_t *data) {
         logger_api_log(LOGGER_LEVEL_ERROR, "FSM: TSAC not in TSON!");
         next_state = STATE_MANUAL_WAIT_TS_DISCHARGE;
     } else if (vehicle_api_get_ts_on_button_pressed() && !pedals_api_is_brake_pressed()) {
-        logger_api_log(LOGGER_LEVEL_ERROR, "FSM: TS ON pressed without pedal. Moving to TS DISCHARGE.");
+        logger_api_log(LOGGER_LEVEL_INFO, "FSM: TS ON pressed without pedal. Moving to TS DISCHARGE.");
         next_state = STATE_MANUAL_WAIT_TS_DISCHARGE;
     } else if (vehicle_api_get_ts_on_button_pressed() && tson_first_press_tick == 0) {
         tson_first_press_tick = fsm_data.tick;
@@ -466,16 +466,7 @@ state_t do_manual_wait_ts_discharge(state_data_t *data) {
 
     prv_drain_can_rx_buffers();
 
-    switch (inverters_api_step(fsm_data.tick)) {
-        case INVERTERS_RC_OK:
-            break;
-        case INVERTERS_RC_TX_ERROR:
-            logger_api_log(LOGGER_LEVEL_ERROR, "Inverter TX error");
-            break;
-        default:
-            logger_api_log(LOGGER_LEVEL_ERROR, "Inverter error");
-            break;
-    }
+    prv_step_inverters(fsm_data.tick);
 
     // NOLINTNEXTLINE(bugprone-branch-clone)
     if (!tsac_api_get_voltage_higher_than_60v() || !tsac_api_is_tsac_status_timeout()) {
@@ -513,8 +504,12 @@ state_t do_manual_wait_inv_enable(state_data_t *data) {
     state_t next_state = NO_CHANGE;
     /* Your Code Here */
 
-    constexpr uint32_t buzzer_required_play_time = 2000;
-    EAGLETRT_STATIC uint32_t buzzer_played_tick = 0;
+    // If the inverters never all reach "drive" within this window, stop waiting and
+    // unwind back toward idle (through INV_DISABLE -> TS discharge) instead of hanging.
+    constexpr uint32_t inverter_enable_timeout_ms = 2000;
+    // Tick at which this state was entered, used only for the enable timeout above.
+    // Reset to 0 on exit so it re-arms cleanly on the next entry.
+    EAGLETRT_STATIC uint32_t enter_tick = 0;
 
     logger_api_log(LOGGER_LEVEL_INFO, "FSM: MANUAL WAIT INV ENABLE state");
 
@@ -524,28 +519,29 @@ state_t do_manual_wait_inv_enable(state_data_t *data) {
     }
     struct FsmData fsm_data = *(struct FsmData *)data;
 
-    prv_drain_can_rx_buffers();
-
-    switch (inverters_api_step(fsm_data.tick)) {
-        case INVERTERS_RC_OK:
-            break;
-        case INVERTERS_RC_TX_ERROR:
-            logger_api_log(LOGGER_LEVEL_ERROR, "Inverter TX error");
-            break;
-        default:
-            logger_api_log(LOGGER_LEVEL_ERROR, "Inverter error");
-            break;
+    // Latch the entry tick on the first cycle spent in this state.
+    if (enter_tick == 0) {
+        enter_tick = fsm_data.tick;
     }
 
+    prv_drain_can_rx_buffers();
+    prv_step_inverters(fsm_data.tick);
+
+    // Keep commanding all four inverters toward their armed/drive state while we wait.
     inverters_api_arm(EPHORUS_WHEEL_FRONT_LEFT);
     inverters_api_arm(EPHORUS_WHEEL_FRONT_RIGHT);
     inverters_api_arm(EPHORUS_WHEEL_REAR_LEFT);
     inverters_api_arm(EPHORUS_WHEEL_REAR_RIGHT);
 
-    // Logic is:
-    // 1. If all inverters are in drive and the buzzer has not been played yet, play the buzzer and record the current tick.
-    // 2. If all inverters are in drive and the buzzer has been played and the required play time has passed, transition to the DRIVING state.
-    // 3. If not all inverters are in drive and the buzzer has been played, reset the buzzer played tick and transition to the MANUAL WAIT INV DISABLE state.
+    // Decision order (first match wins):
+    //   1. The tractive system must stay in TS_ON with a live TSAC link; otherwise
+    //      abort the enable and disarm.
+    //   2. Once every inverter reports "drive", play the R2D tone once and hand over
+    //      to DRIVING when the tone (serviced by the main-loop buzzer poll) finishes.
+    //   3. If the tone had already started (we were in drive) but the inverters fell
+    //      back out of drive, abort and disarm.
+    //   4. If the inverters simply never reach drive within the timeout, abort and
+    //      disarm so we fall back toward idle rather than waiting forever.
     if (tsac_api_get_tsac_status() != CAN_PRIMARY_TSACSTATUS_MAINBOARDSTATUS_TS_ON) {
         logger_api_log(LOGGER_LEVEL_ERROR, "FSM: TSAC not in TSON!");
         next_state = STATE_MANUAL_WAIT_INV_DISABLE;
@@ -553,21 +549,33 @@ state_t do_manual_wait_inv_enable(state_data_t *data) {
         logger_api_log(LOGGER_LEVEL_ERROR, "FSM: TSAC status timeout!");
         shutdown_api_control_relay(false);
         next_state = STATE_MANUAL_WAIT_INV_DISABLE;
-    } else if (inverters_api_is_all_in_drive() && buzzer_played_tick == 0) {
-        buzzer_api_set_duration(BUZZER_TYPE_R2D, buzzer_required_play_time);
-        buzzer_api_play_async(BUZZER_TYPE_R2D);
-        buzzer_played_tick = fsm_data.tick;
-    } else if (inverters_api_is_all_in_drive() && (fsm_data.tick - buzzer_played_tick) > buzzer_required_play_time) {
-        logger_api_log(LOGGER_LEVEL_INFO, "FSM: INV ENABLE completed. Moving to DRIVING.");
-        next_state = STATE_DRIVING;
-    } else if (!inverters_api_is_all_in_drive() && buzzer_played_tick != 0) {
-        buzzer_played_tick = 0;
+    } else if (inverters_api_is_all_in_drive()) {
+        // Request the R2D tone the first time we see full drive, then wait for the
+        // buzzer poll to report DONE. The buzzer tracks its own timing, so this state
+        // keeps no play timer of its own.
+        enum BuzzerPlayState r2d_state = buzzer_api_get_play_state(BUZZER_TYPE_R2D);
+        if (r2d_state == BUZZER_PLAY_STATE_IDLE) {
+            buzzer_api_set_duration(BUZZER_TYPE_R2D, BUZZER_RD2_SOUND_DURATION_MS);
+            buzzer_api_request(BUZZER_TYPE_R2D);
+        } else if (r2d_state == BUZZER_PLAY_STATE_DONE) {
+            logger_api_log(LOGGER_LEVEL_INFO, "FSM: INV ENABLE completed. Moving to DRIVING.");
+            next_state = STATE_DRIVING;
+        }
+    } else if (buzzer_api_get_play_state(BUZZER_TYPE_R2D) != BUZZER_PLAY_STATE_IDLE) {
+        // The R2D tone had already started (we had reached drive) but the inverters
+        // left drive before it finished: abort the enable.
+        logger_api_log(LOGGER_LEVEL_ERROR, "FSM: Inverters left drive during enable!");
+        next_state = STATE_MANUAL_WAIT_INV_DISABLE;
+    } else if (fsm_data.tick - enter_tick > inverter_enable_timeout_ms) {
+        // The inverters never reached drive within the timeout: give up and unwind.
+        logger_api_log(LOGGER_LEVEL_ERROR, "FSM: Inverter enable timeout. Aborting.");
         next_state = STATE_MANUAL_WAIT_INV_DISABLE;
     }
 
+    // On any transition out, silence the R2D tone and re-arm the entry timer.
     if (next_state != NO_CHANGE) {
         buzzer_api_reset(BUZZER_TYPE_R2D);
-        buzzer_played_tick = 0;
+        enter_tick = 0;
     }
 
     prv_periodically_send(CAN_PRIMARY_ECUFSM_VEHICLESTATUS_TSON, CAN_PRIMARY_ECUFSM_KRAKENSTATUS_MANUAL_WAIT_INV_ENABLE, fsm_data.tick);
@@ -603,28 +611,22 @@ state_t do_driving(state_data_t *data) {
 
     prv_drain_can_rx_buffers();
 
-    switch (inverters_api_step(fsm_data.tick)) {
-        case INVERTERS_RC_OK:
-            break;
-        case INVERTERS_RC_TX_ERROR:
-            logger_api_log(LOGGER_LEVEL_ERROR, "Inverter TX error");
-            break;
-        default:
-            logger_api_log(LOGGER_LEVEL_ERROR, "Inverter error");
-            break;
-    }
+    prv_step_inverters(fsm_data.tick);
 
     // Logic is:
-    // 1. If the TS ON button is pressed, transition to the MANUAL WAIT INV DISABLE state.
-    // 2. If not all inverters are in drive, log an error and transition to the MANUAL WAIT INV DISABLE state.
-    // 3. If the TSAC is not in TSON, log an error and transition to the MANUAL WAIT INV DISABLE state.
-    // 4. If the pedals have timed out, log an error and transition to the MANUAL WAIT INV DISABLE state.
-    // 5. If all conditions are met, get the requested torque from the pedals and set it for all inverters.
+    // 1. If the TS ON button is pressed, abort and disarm.
+    // 2. If any inverter is not in drive, abort and disarm, and open the shutdown relay to discharge the TS.
+    // 3. If the TSAC status times out, abort and disarm, and open the shutdown relay to discharge the TS.
+    // 4. If the TSAC status is not in TSON, abort and disarm.
+    // 5. If the pedals timeout, abort and disarm.
+    // 6. If the shutdown relay is open, abort and disarm.
+    // 7. Otherwise, read the requested torque from the pedals and command it to all four inverters.
     // NOLINTNEXTLINE(bugprone-branch-clone)
     if (vehicle_api_get_ts_on_button_pressed()) {
         next_state = STATE_MANUAL_WAIT_INV_DISABLE;
     } else if (!inverters_api_is_all_in_drive()) {
         logger_api_log(LOGGER_LEVEL_ERROR, "FSM: Not all inverters in drive!");
+        shutdown_api_control_relay(false);
         next_state = STATE_MANUAL_WAIT_INV_DISABLE;
     } else if (tsac_api_is_tsac_status_timeout()) {
         logger_api_log(LOGGER_LEVEL_ERROR, "FSM: TSAC status timeout!");
@@ -679,16 +681,7 @@ state_t do_manual_wait_inv_disable(state_data_t *data) {
 
     prv_drain_can_rx_buffers();
 
-    switch (inverters_api_step(fsm_data.tick)) {
-        case INVERTERS_RC_OK:
-            break;
-        case INVERTERS_RC_TX_ERROR:
-            logger_api_log(LOGGER_LEVEL_ERROR, "Inverter TX error");
-            break;
-        default:
-            logger_api_log(LOGGER_LEVEL_ERROR, "Inverter error");
-            break;
-    }
+    prv_step_inverters(fsm_data.tick);
 
     // NOLINTNEXTLINE(bugprone-branch-clone)
     if (!inverters_api_is_all_in_drive()) {

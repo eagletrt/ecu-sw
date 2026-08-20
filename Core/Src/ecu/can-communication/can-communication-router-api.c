@@ -11,6 +11,8 @@
 #include "lights-api.h"
 #include "tsac-api.h"
 #include "pedals-api.h"
+#include "buzzer-api.h"
+#include "eagletrt.h"
 
 enum CanCommunicationReturnCode can_communication_router_api_receive_primary(struct CanCommunicationFrame *frame) {
     if (frame == NULL) {
@@ -72,6 +74,32 @@ enum CanCommunicationReturnCode can_communication_router_api_receive_primary(str
 
         case CAN_PRIMARY_MESSAGE_FRAME_ID_TSACMAINBOARDESTIMATEDSOC: {
             inverters_api_set_soc(message.tsacmainboardestimatedsoc.soc);
+            break;
+        }
+
+        case CAN_PRIMARY_MESSAGE_FRAME_ID_TELEMETRYFSM: {
+            // Beep once whenever telemetry logging (the RUN state) starts or stops, so
+            // the driver gets an audible cue independently of the ECU's own FSM state.
+            // The edge is detected against the previous status; the 1 s tone plays on
+            // the ASSI buzzer and is serviced by the main-loop buzzer poll, which is
+            // why a single request() here is enough.
+            EAGLETRT_STATIC uint8_t previous_status = CAN_PRIMARY_TELEMETRYFSM_STATUS_INIT;
+            uint8_t status = message.telemetryfsm.status;
+
+            bool was_logging = (previous_status == CAN_PRIMARY_TELEMETRYFSM_STATUS_RUN);
+            bool is_logging = (status == CAN_PRIMARY_TELEMETRYFSM_STATUS_RUN);
+            if (was_logging != is_logging) {
+                constexpr uint32_t telemetry_beep_ms = 1000;
+                constexpr uint32_t telemetry_beep_frequency_hz = 1000;
+                constexpr float telemetry_beep_amplitude = 0.33F;
+                // ASSI is a PWM buzzer, so set frequency/amplitude here to keep the
+                // tone self-contained rather than relying on values set elsewhere.
+                buzzer_api_set_frequency(BUZZER_TYPE_ASSI, telemetry_beep_frequency_hz);
+                buzzer_api_set_amplitude(BUZZER_TYPE_ASSI, telemetry_beep_amplitude);
+                buzzer_api_set_duration(BUZZER_TYPE_ASSI, telemetry_beep_ms);
+                buzzer_api_request(BUZZER_TYPE_ASSI);
+            }
+            previous_status = status;
             break;
         }
 

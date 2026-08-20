@@ -98,7 +98,18 @@ enum BuzzerReturnCode buzzer_api_play_sync(enum BuzzerType buzzer_type) {
     return buzzer_handler->buzzer_play_sync(buzzer_handler->frequency, buzzer_handler->amplitude, buzzer_handler->duration);
 }
 
-enum BuzzerReturnCode buzzer_api_play_async(enum BuzzerType buzzer_type) {
+enum BuzzerReturnCode buzzer_api_request(enum BuzzerType buzzer_type) {
+    if (!prv_is_buzzer_type_valid(buzzer_type)) {
+        return BUZZER_RC_ERROR;
+    }
+
+    // Arm a one-shot play. The next buzzer_api_poll() starts it from scratch, so
+    // requesting again always restarts the sound, even mid-play or after it finished.
+    buzzer_handlers[buzzer_type].play_state = BUZZER_PLAY_STATE_REQUESTED;
+    return BUZZER_RC_OK;
+}
+
+enum BuzzerReturnCode buzzer_api_poll(enum BuzzerType buzzer_type) {
     if (!prv_is_buzzer_type_valid(buzzer_type)) {
         return BUZZER_RC_ERROR;
     }
@@ -109,32 +120,41 @@ enum BuzzerReturnCode buzzer_api_play_async(enum BuzzerType buzzer_type) {
         return BUZZER_RC_ERROR;
     }
 
-    // Check elapsed time
-    uint32_t current_time = buzzer_handler->buzzer_get_tick();
+    switch (buzzer_handler->play_state) {
+        case BUZZER_PLAY_STATE_REQUESTED:
+            // First poll after a request: turn the buzzer on and start the timer.
+            if (buzzer_handler->buzzer_on(buzzer_handler->frequency, buzzer_handler->amplitude) == BUZZER_RC_ERROR) {
+                return BUZZER_RC_ERROR;
+            }
+            buzzer_handler->start_time = buzzer_handler->buzzer_get_tick();
+            buzzer_handler->play_state = BUZZER_PLAY_STATE_PLAYING;
+            return BUZZER_RC_PLAYING;
 
-    // If NOT playing, start the buzzer
-    if (!buzzer_handler->is_playing) {
-        if (buzzer_handler->buzzer_on(buzzer_handler->frequency, buzzer_handler->amplitude) == BUZZER_RC_ERROR) {
-            return BUZZER_RC_ERROR;
-        }
+        case BUZZER_PLAY_STATE_PLAYING:
+            // Keep sounding until the configured duration elapses, then latch DONE.
+            if ((buzzer_handler->buzzer_get_tick() - buzzer_handler->start_time) >= buzzer_handler->duration) {
+                if (buzzer_handler->buzzer_off() != BUZZER_RC_OK) {
+                    return BUZZER_RC_ERROR;
+                }
+                buzzer_handler->play_state = BUZZER_PLAY_STATE_DONE;
+                return BUZZER_RC_OK;
+            }
+            return BUZZER_RC_PLAYING;
 
-        buzzer_handler->start_time = current_time;
-        buzzer_handler->is_playing = true;
-        return BUZZER_RC_PLAYING;
+        case BUZZER_PLAY_STATE_IDLE:
+        case BUZZER_PLAY_STATE_DONE:
+        default:
+            // No request pending, or the sound already finished: polling never
+            // auto-restarts a finished play, so there is nothing to do.
+            return BUZZER_RC_OK;
     }
+}
 
-    // Buzzer is currently playing, check if duration has elapsed
-    if ((current_time - buzzer_handler->start_time) >= buzzer_handler->duration) {
-        if (buzzer_handler->buzzer_off() != BUZZER_RC_OK) {
-            return BUZZER_RC_ERROR;
-        }
-
-        buzzer_handler->is_playing = false;
-        return BUZZER_RC_OK;
+enum BuzzerPlayState buzzer_api_get_play_state(enum BuzzerType buzzer_type) {
+    if (!prv_is_buzzer_type_valid(buzzer_type)) {
+        return BUZZER_PLAY_STATE_IDLE;
     }
-
-    // Buzzer is currently playing and duration hasn't expired yet
-    return BUZZER_RC_PLAYING;
+    return buzzer_handlers[buzzer_type].play_state;
 }
 
 enum BuzzerReturnCode buzzer_api_reset(enum BuzzerType buzzer_type) {
@@ -151,7 +171,7 @@ enum BuzzerReturnCode buzzer_api_reset(enum BuzzerType buzzer_type) {
         }
     }
 
-    buzzer_handler->is_playing = false;
+    buzzer_handler->play_state = BUZZER_PLAY_STATE_IDLE;
     buzzer_handler->duration = 0;
     buzzer_handler->frequency = 0;
     buzzer_handler->amplitude = 0;
@@ -215,12 +235,4 @@ float buzzer_api_get_amplitude(enum BuzzerType buzzer_type) {
     }
 
     return buzzer_handlers[buzzer_type].amplitude;
-}
-
-bool buzzer_api_is_playing(enum BuzzerType buzzer_type) {
-    if (!prv_is_buzzer_type_valid(buzzer_type)) {
-        return false;
-    }
-
-    return buzzer_handlers[buzzer_type].is_playing;
 }

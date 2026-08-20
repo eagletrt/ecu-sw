@@ -52,17 +52,46 @@ enum BuzzerReturnCode buzzer_api_init(
 enum BuzzerReturnCode buzzer_api_play_sync(enum BuzzerType buzzer_type);
 
 /*!
- * \brief Starts the buzzer is not already playing and monitors the playing duration
- * in a non-blocking way.
- * \note Should be called in the main loop. If the duration has passed,
- * it automatically calls the buzzer off callback.
- * \param[in] buzzer_type The buzzer type on which to operate
- * \retval BUZZER_RC_OK if the buzzer just finished playing.
- * \retval BUZZER_RC_PLAYING if the buzzer is currently playing.
- * \retval BUZZER_RC_ERROR if it was not possible to update the state or it was not possible
- * to start/stop the buzzer.
+ * \brief Requests a one-shot buzzer play, serviced by \ref buzzer_api_poll.
+ *
+ * \details Moves the buzzer to \c BUZZER_PLAY_STATE_REQUESTED so the next
+ * \ref buzzer_api_poll starts it and sounds it for the currently configured
+ * \c duration. Call \ref buzzer_api_set_duration (and frequency/amplitude if
+ * needed) before requesting. Requesting again always restarts the sound, even
+ * if it is currently playing or already finished.
+ *
+ * \note This is the trigger half of the "request once, poll every loop" model and
+ * uses no caller-side timing state. It does not touch the hardware itself; the
+ * following \ref buzzer_api_poll does.
+ *
+ * \param[in] buzzer_type The buzzer type on which to operate.
+ * \retval BUZZER_RC_OK if the play was requested.
+ * \retval BUZZER_RC_ERROR if \c buzzer_type is unknown.
  */
-enum BuzzerReturnCode buzzer_api_play_async(enum BuzzerType buzzer_type);
+enum BuzzerReturnCode buzzer_api_request(enum BuzzerType buzzer_type);
+
+/*!
+ * \brief Services a requested one-shot play in a non-blocking, non-restarting way.
+ *
+ * \details Meant to be called every loop iteration (e.g. once per main-loop cycle),
+ * even when nothing was requested. It advances the play lifecycle: it starts the
+ * buzzer on the first poll after a request, keeps it on until \c duration elapses,
+ * then turns it off and latches \c BUZZER_PLAY_STATE_DONE. Unlike
+ * \ref buzzer_api_play_async, a finished sound is NOT restarted by further polls.
+ *
+ * \param[in] buzzer_type The buzzer type on which to operate.
+ * \retval BUZZER_RC_PLAYING if the buzzer is currently sounding.
+ * \retval BUZZER_RC_OK if nothing is playing (idle/finished) or the sound just stopped.
+ * \retval BUZZER_RC_ERROR if the hardware callbacks are missing or \c buzzer_type is unknown.
+ */
+enum BuzzerReturnCode buzzer_api_poll(enum BuzzerType buzzer_type);
+
+/*!
+ * \brief Returns the current lifecycle state of the request/poll play model.
+ * \param[in] buzzer_type The buzzer type on which to operate.
+ * \return The current \ref BuzzerPlayState, or \c BUZZER_PLAY_STATE_IDLE if \c buzzer_type is invalid.
+ */
+enum BuzzerPlayState buzzer_api_get_play_state(enum BuzzerType buzzer_type);
 
 /*!
  * \brief Forces the buzzer OFF and resets the buzzer state.
@@ -122,14 +151,5 @@ uint32_t buzzer_api_get_frequency(enum BuzzerType buzzer_type);
  * \note Returns 0 if \c buzzer_type is invalid.
  */
 float buzzer_api_get_amplitude(enum BuzzerType buzzer_type);
-
-/*!
- * \brief Check if the buzzer is playing a sound.
- * \param[in] buzzer_type The buzzer type on which to operate
- * \retval \c true The buzzer is currently active/playing.
- * \retval \c false The buzzer is idle, or the \c buzzer_type is invalid.
- * 
- */
-bool buzzer_api_is_playing(enum BuzzerType buzzer_type);
 
 #endif

@@ -231,6 +231,11 @@ int main(void) {
 
         //run the fsm
         current_state = run_state(current_state, &fsm_data);
+
+        // Service the asynchronous buzzers once per loop, regardless of FSM state.
+        // Sounds are triggered elsewhere with buzzer_api_request()
+        buzzer_api_poll(BUZZER_TYPE_R2D);
+        buzzer_api_poll(BUZZER_TYPE_ASSI);
     }
     /* USER CODE END 3 */
 }

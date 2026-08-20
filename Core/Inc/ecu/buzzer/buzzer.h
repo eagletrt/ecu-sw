@@ -30,6 +30,17 @@ enum BuzzerReturnCode {
 };
 
 /*!
+ * \brief Lifecycle of a one-shot buzzer play driven by \ref buzzer_api_request and
+ * serviced by \ref buzzer_api_poll.
+ */
+enum BuzzerPlayState {
+    BUZZER_PLAY_STATE_IDLE,      /*!< No sound requested; buzzer is off. */
+    BUZZER_PLAY_STATE_REQUESTED, /*!< A play was requested; the next poll starts it. */
+    BUZZER_PLAY_STATE_PLAYING,   /*!< Currently sounding; the poll stops it once the duration elapses. */
+    BUZZER_PLAY_STATE_DONE       /*!< Finished sounding; latched until the next request or reset. */
+};
+
+/*!
  * \brief Selection of the buzzer to be used to play the sound.
  * This enum serves as the index for the internal handler array. 
  * \warning BUZZER_TYPE_COUNT must always remain the final element in this enum. 
@@ -87,11 +98,11 @@ struct BuzzerHandler {
     buzzer_delay_callback buzzer_play_sync; /*!< Callback for synchronous blocking playing */
     buzzer_tick_callback buzzer_get_tick;   /*!< Callback to retrieve elapsed time for async logic */
 
-    uint32_t frequency;  /*!< Desired buzzer frequency in Hz */
-    float amplitude;     /*!< Desired volume as a percentage (0-1) */
-    uint32_t duration;   /*!< Target sound duration in milliseconds */
-    uint32_t start_time; /*!< Timestamp (ms) when async play started */
-    bool is_playing;     /*!< Flag indicating if buzzer is physically active */
+    uint32_t frequency;              /*!< Desired buzzer frequency in Hz */
+    float amplitude;                 /*!< Desired volume as a percentage (0-1) */
+    uint32_t duration;               /*!< Target sound duration in milliseconds */
+    uint32_t start_time;             /*!< Timestamp (ms) when the current play started */
+    enum BuzzerPlayState play_state; /*!< Current lifecycle state of the buzzer play */
 };
 
 #endif
