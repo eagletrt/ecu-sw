@@ -60,30 +60,30 @@ enum LoggerReturnCode logger_api_log(enum LoggerLevel level, const char *format,
     // For default [LOG] will be left in case the logger level specified is not valid
     const char *header = (level < LOGGER_LEVEL_COUNT) ? log_headers[level] : "[LOG]";
 
-    int16_t offset = snprintf(final_buffer, sizeof(final_buffer), "%s ", header);
+    int32_t offset = snprintf(final_buffer, sizeof(final_buffer), "%s ", header);
 
     // Verify no anomalies or truncations occurred during tag placement
-    if (offset < 0 || offset >= (int16_t)LOGGER_MAX_LINE_SIZE) {
+    if (offset < 0 || offset >= (int)LOGGER_MAX_LINE_SIZE) {
         return LOGGER_RC_TRANSMISSION_ERROR;
     }
 
     // Process variable args into the remaining space of the local buffer
     va_list args;
     va_start(args, format);
-    int body_len = vsnprintf(final_buffer + offset, (int16_t)LOGGER_MAX_LINE_SIZE - offset - length_of_closing_characters, format, args);
+    int32_t body_len = vsnprintf(final_buffer + offset, (int)LOGGER_MAX_LINE_SIZE - offset - length_of_closing_characters, format, args);
     va_end(args);
 
     if (body_len < 0) {
         return LOGGER_RC_TRANSMISSION_ERROR; // Format parsing exception
     }
 
-    const int16_t max_wrote =
-        (int16_t)(LOGGER_MAX_LINE_SIZE - offset - length_of_closing_characters);
+    const int32_t max_wrote =
+        (int)(LOGGER_MAX_LINE_SIZE - offset - length_of_closing_characters);
 
-    int16_t wrote = EAGLETRT_API_MIN(body_len, max_wrote);
+    int32_t wrote = EAGLETRT_API_MIN(body_len, max_wrote);
 
     // Measure the actual string safely populated inside the buffer boundary
-    int16_t actual_len = offset + wrote;
+    int32_t actual_len = offset + wrote;
 
     final_buffer[actual_len++] = '\n';
     final_buffer[actual_len++] = '\r';

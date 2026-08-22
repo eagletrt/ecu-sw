@@ -144,9 +144,12 @@ state_t do_init(state_data_t *data) {
         logger_api_log(LOGGER_LEVEL_ERROR, "FSM: POST failed. Going to FATAL");
         next_state = STATE_FATAL;
     } else {
-        buzzer_api_set_frequency(BUZZER_TYPE_ASSI, 1000);
-        buzzer_api_set_amplitude(BUZZER_TYPE_ASSI, 0.33f);
-        buzzer_api_set_duration(BUZZER_TYPE_ASSI, 800);
+        constexpr uint32_t frequency = 1000;
+        constexpr float amplitude = 0.33f;
+        constexpr uint32_t duration = 800;
+        buzzer_api_set_frequency(BUZZER_TYPE_ASSI, frequency);
+        buzzer_api_set_amplitude(BUZZER_TYPE_ASSI, amplitude);
+        buzzer_api_set_duration(BUZZER_TYPE_ASSI, duration);
         buzzer_api_play_sync(BUZZER_TYPE_ASSI);
     }
 
@@ -542,6 +545,7 @@ state_t do_manual_wait_inv_enable(state_data_t *data) {
     //      back out of drive, abort and disarm.
     //   4. If the inverters simply never reach drive within the timeout, abort and
     //      disarm so we fall back toward idle rather than waiting forever.
+    // NOLINTNEXTLINE(bugprone-branch-clone)
     if (tsac_api_get_tsac_status() != CAN_PRIMARY_TSACSTATUS_MAINBOARDSTATUS_TS_ON) {
         logger_api_log(LOGGER_LEVEL_ERROR, "FSM: TSAC not in TSON!");
         next_state = STATE_MANUAL_WAIT_INV_DISABLE;
@@ -554,12 +558,21 @@ state_t do_manual_wait_inv_enable(state_data_t *data) {
         // buzzer poll to report DONE. The buzzer tracks its own timing, so this state
         // keeps no play timer of its own.
         enum BuzzerPlayState r2d_state = buzzer_api_get_play_state(BUZZER_TYPE_R2D);
-        if (r2d_state == BUZZER_PLAY_STATE_IDLE) {
-            buzzer_api_set_duration(BUZZER_TYPE_R2D, BUZZER_RD2_SOUND_DURATION_MS);
-            buzzer_api_request(BUZZER_TYPE_R2D);
-        } else if (r2d_state == BUZZER_PLAY_STATE_DONE) {
-            logger_api_log(LOGGER_LEVEL_INFO, "FSM: INV ENABLE completed. Moving to DRIVING.");
-            next_state = STATE_DRIVING;
+        switch (r2d_state) {
+            case BUZZER_PLAY_STATE_IDLE: {
+                buzzer_api_set_duration(BUZZER_TYPE_R2D, BUZZER_RD2_SOUND_DURATION_MS);
+                buzzer_api_request(BUZZER_TYPE_R2D);
+                break;
+            }
+            case BUZZER_PLAY_STATE_DONE: {
+                logger_api_log(LOGGER_LEVEL_INFO, "FSM: INV ENABLE completed. Moving to DRIVING.");
+                next_state = STATE_DRIVING;
+                break;
+            }
+            default: {
+                // The R2D tone is still playing, so stay in this state until it finishes.
+                break;
+            }
         }
     } else if (buzzer_api_get_play_state(BUZZER_TYPE_R2D) != BUZZER_PLAY_STATE_IDLE) {
         // The R2D tone had already started (we had reached drive) but the inverters
@@ -1042,8 +1055,9 @@ void start_inv_disable(state_data_t *data) {
 
 state_t run_state(state_t cur_state, state_data_t *data) {
     state_t new_state = state_table[cur_state](data);
-    if (new_state == NO_CHANGE)
+    if (new_state == NO_CHANGE) {
         new_state = cur_state;
+    }
 
     transition_func_t *transition = transition_table[cur_state][new_state];
     if (transition) {

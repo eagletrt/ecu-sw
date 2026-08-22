@@ -113,9 +113,8 @@ EAGLETRT_STATIC float prv_inverters_get_motor_torque_limit(const float rpm) {
     // Motor power limit (Torque = Power / Omega)
     const float current_max_torque = INVERTERS_MOTOR_MAX_MECHANICAL_POWER_W / (absolute_rpm * INVERTERS_RPM_TO_RAD_COEFFICIENT);
 
-    // Return the lowest of the three.
-    // This protects the motor and the inverter
-    return EAGLETRT_API_MIN(INVERTERS_MOTOR_PEAK_TORQUE_NM, EAGLETRT_API_MIN(current_max_current, current_max_torque));
+    // not using EAGLETRT_API_MIN because the ternary inside it was triggering clang-tidy with the constexprs
+    return fminf(INVERTERS_MOTOR_PEAK_TORQUE_NM, fminf(current_max_current, current_max_torque));
 }
 
 /*!
@@ -386,8 +385,8 @@ enum InvertersReturnCode inverters_api_step(uint32_t tick) {
     enum InvertersReturnCode return_code = INVERTERS_RC_OK;
     for (enum EphorusWheel wheel = 0; wheel < EPHORUS_WHEEL_COUNT; wheel++) {
         struct CanCommunicationFrame frame = { 0 };
-        uint32_t id = 0;
-        enum EphorusReturnCode build = ephorus_api_build_setpoints(&inverters_handler.driver, wheel, &id, frame.data);
+        uint32_t frame_id = 0;
+        enum EphorusReturnCode build = ephorus_api_build_setpoints(&inverters_handler.driver, wheel, &frame_id, frame.data);
         if (build == EPHORUS_RC_INACTIVE) {
             continue; // wheel not attached
         }
@@ -395,7 +394,7 @@ enum InvertersReturnCode inverters_api_step(uint32_t tick) {
             return_code = INVERTERS_RC_TX_ERROR;
             continue;
         }
-        frame.id = id;
+        frame.id = frame_id;
         frame.length = EPHORUS_FRAME_DATA_SIZE;
         if (can_communication_api_add_to_tx(INVERTERS_NETWORK, &frame) != CAN_COMMUNICATION_RC_OK) {
             return_code = INVERTERS_RC_TX_ERROR;

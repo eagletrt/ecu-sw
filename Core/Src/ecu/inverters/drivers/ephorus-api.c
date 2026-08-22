@@ -237,14 +237,14 @@ EAGLETRT_STATIC uint32_t prv_ephorus_get_general_fault_bits(const struct CanInve
  * \return true if any shared fault affects this wheel, else false.
  */
 EAGLETRT_STATIC bool prv_ephorus_has_wheel_general_faults(uint32_t general_bits, enum EphorusWheel wheel) {
-    uint32_t global = EAGLETRT_API_BIT_SET(0, EPHORUS_GENERAL_FAULT_CONTROL_DISABLED) | EAGLETRT_API_BIT_SET(0, EPHORUS_GENERAL_FAULT_LV_SUPPLY);
-    uint32_t dc = 0;
+    uint32_t global_faults = EAGLETRT_API_BIT_SET(0, EPHORUS_GENERAL_FAULT_CONTROL_DISABLED) | EAGLETRT_API_BIT_SET(0, EPHORUS_GENERAL_FAULT_LV_SUPPLY);
+    uint32_t dc_line_faults = 0;
     bool is_pair_12 = prv_ephorus_wheel_is_pair_12(wheel);
-    dc = EAGLETRT_API_BIT_SET_IF(dc, EPHORUS_GENERAL_FAULT_DC_UNDERVOLTAGE_12, is_pair_12);
-    dc = EAGLETRT_API_BIT_SET_IF(dc, EPHORUS_GENERAL_FAULT_DC_OVERVOLTAGE_12, is_pair_12);
-    dc = EAGLETRT_API_BIT_SET_IF(dc, EPHORUS_GENERAL_FAULT_DC_UNDERVOLTAGE_34, !is_pair_12);
-    dc = EAGLETRT_API_BIT_SET_IF(dc, EPHORUS_GENERAL_FAULT_DC_OVERVOLTAGE_34, !is_pair_12);
-    return (general_bits & (global | dc)) != 0;
+    dc_line_faults = EAGLETRT_API_BIT_SET_IF(dc_line_faults, EPHORUS_GENERAL_FAULT_DC_UNDERVOLTAGE_12, is_pair_12);
+    dc_line_faults = EAGLETRT_API_BIT_SET_IF(dc_line_faults, EPHORUS_GENERAL_FAULT_DC_OVERVOLTAGE_12, is_pair_12);
+    dc_line_faults = EAGLETRT_API_BIT_SET_IF(dc_line_faults, EPHORUS_GENERAL_FAULT_DC_UNDERVOLTAGE_34, !is_pair_12);
+    dc_line_faults = EAGLETRT_API_BIT_SET_IF(dc_line_faults, EPHORUS_GENERAL_FAULT_DC_OVERVOLTAGE_34, !is_pair_12);
+    return (general_bits & (global_faults | dc_line_faults)) != 0;
 }
 
 /*!
