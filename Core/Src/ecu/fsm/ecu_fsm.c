@@ -138,7 +138,6 @@ state_t do_init(state_data_t *data) {
     // convert state data into POST struct configuration
     struct PostConfig *post_configuration = (struct PostConfig *)data;
 
-    // NOLINTNEXTLINE(bugprone-branch-clone)
     if (post_api_do_init(post_configuration) != POST_RC_OK) {
         // Error during POST initialization
         logger_api_log(LOGGER_LEVEL_ERROR, "FSM: POST failed. Going to FATAL");
@@ -220,7 +219,6 @@ state_t do_idle(state_data_t *data) {
     } else if (!vehicle_api_get_ts_on_button_pressed()) {
         tson_first_press_tick = 0;
     } else if (fsm_data.tick - tson_first_press_tick > tson_required_press_time) {
-        // NOLINTNEXTLINE(bugprone-branch-clone)
         if (tsac_api_is_tsac_status_timeout()) {
             logger_api_log(LOGGER_LEVEL_ERROR, "FSM: Aborting Precharge. TSAC status timeout!");
             shutdown_api_control_relay(false);
@@ -329,7 +327,6 @@ state_t do_manual_wait_ts_precharge(state_data_t *data) {
     // 2. If the shutdown is open, log an error and transition to the TS DISCHARGE state.
     // 3. If the TSAC status is TSON and the voltage is higher than 60V, log an info message and transition to the WAIT DRIVER state.
     // 4. If the TSAC status is ERROR, log an error and transition to the TS DISCHARGE state.
-    // NOLINTNEXTLINE(bugprone-branch-clone)
     if (tsac_api_is_tsac_status_timeout()) {
         logger_api_log(LOGGER_LEVEL_ERROR, "FSM: Precharge failed. TSAC status timeout!");
         shutdown_api_control_relay(false);
@@ -412,7 +409,6 @@ state_t do_wait_driver(state_data_t *data) {
     // 4. If the TS ON button is pressed and this is the first time it is pressed, record the current tick.
     // 5. If the TS ON button is released, reset the recorded tick to 0.
     // 6. If the TS ON button has been pressed for more than 2 seconds and the brake pedal is pressed, transition to the INV ENABLE state.
-    // NOLINTNEXTLINE(bugprone-branch-clone)
     if (tsac_api_is_tsac_status_timeout()) {
         logger_api_log(LOGGER_LEVEL_ERROR, "FSM: TSAC status timeout!");
         shutdown_api_control_relay(false);
@@ -471,7 +467,6 @@ state_t do_manual_wait_ts_discharge(state_data_t *data) {
 
     prv_step_inverters(fsm_data.tick);
 
-    // NOLINTNEXTLINE(bugprone-branch-clone)
     if (!tsac_api_get_voltage_higher_than_60v() || !tsac_api_is_tsac_status_timeout()) {
         logger_api_log(LOGGER_LEVEL_INFO, "FSM: TS DISCHARGE completed. Moving to IDLE.");
         next_state = STATE_IDLE;
@@ -545,7 +540,6 @@ state_t do_manual_wait_inv_enable(state_data_t *data) {
     //      back out of drive, abort and disarm.
     //   4. If the inverters simply never reach drive within the timeout, abort and
     //      disarm so we fall back toward idle rather than waiting forever.
-    // NOLINTNEXTLINE(bugprone-branch-clone)
     if (tsac_api_get_tsac_status() != CAN_PRIMARY_TSACSTATUS_MAINBOARDSTATUS_TS_ON) {
         logger_api_log(LOGGER_LEVEL_ERROR, "FSM: TSAC not in TSON!");
         next_state = STATE_MANUAL_WAIT_INV_DISABLE;
@@ -634,7 +628,6 @@ state_t do_driving(state_data_t *data) {
     // 5. If the pedals timeout, abort and disarm.
     // 6. If the shutdown relay is open, abort and disarm.
     // 7. Otherwise, read the requested torque from the pedals and command it to all four inverters.
-    // NOLINTNEXTLINE(bugprone-branch-clone)
     if (vehicle_api_get_ts_on_button_pressed()) {
         next_state = STATE_MANUAL_WAIT_INV_DISABLE;
     } else if (!inverters_api_is_all_in_drive()) {
@@ -696,7 +689,6 @@ state_t do_manual_wait_inv_disable(state_data_t *data) {
 
     prv_step_inverters(fsm_data.tick);
 
-    // NOLINTNEXTLINE(bugprone-branch-clone)
     if (!inverters_api_is_all_in_drive()) {
         logger_api_log(LOGGER_LEVEL_INFO, "FSM: INV DISABLE completed. Moving to TS DISCHARGE.");
         next_state = STATE_MANUAL_WAIT_TS_DISCHARGE;
