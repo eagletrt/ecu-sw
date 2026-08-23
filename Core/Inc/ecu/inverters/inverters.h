@@ -21,7 +21,16 @@
 
 #include "ephorus.h"
 
-#define INVERTERS_HV_MAX_POWER_W (80000.0F) /*!< Maximum battery power allowed by Formula Student rules (80kW). */
+#define INVERTERS_HV_MAX_POWER_W (80000.0F) /*!< Maximum battery (electrical) power allowed by Formula Student rules (80kW), measured at the accumulator. */
+
+/*!
+ * \brief Combined drivetrain (inverter x motor) efficiency used to convert the
+ *     requested mechanical shaft power into the electrical power the battery must
+ *     supply, so the power limits are enforced in the ELECTRICAL domain.
+ *
+ * TODO: This value needs tuning based on the actual efficiency that needs to be measured.
+ */
+#define INVERTERS_DRIVETRAIN_EFFICIENCY (0.9F)
 
 #define INVERTERS_RPM_TO_RAD_COEFFICIENT ((2 * (float)M_PI) / 60.0F) /*!< Conversion factor: RPM to radians per second. */
 
@@ -43,14 +52,22 @@
 
 #define INVERTERS_HV_CELL_COUNT (144) /*!< Total number of battery cells in series. */
 
-#define INVERTERS_HV_MAX_REGEN_POWER_W (INVERTERS_HV_MAX_REGEN_CURRENT_A * INVERTERS_HV_MIN_CELL_VOLTAGE_V * INVERTERS_HV_CELL_COUNT) /*!< Maximum regenerative power allowed into the battery. */
-
 #define INVERTERS_HV_MAX_CURRENT_A (130.0F) /*!< Maximum DC current allowed to be drawn from the battery. */
 
 #define INVERTERS_HV_CELLS_PARALLEL_COUNT (3) /*!< Number of individual battery cells connected in parallel */
 
+/*!
+ * \brief Maximum age (ms) of the last received inverter frame before the link is
+ *     considered timed out. The Ephorus telemetry is sent well faster than this,
+ *     so a few missed frames is tolerated before \ref inverters_api_is_timeout trips.
+ */
+#define INVERTERS_RX_TIMEOUT_MS (100U)
+
 /*! \brief The single CAN network every inverter lives on. */
 #define INVERTERS_NETWORK CAN_COMMUNICATION_NETWORK_INVERTER
+
+/*! \brief Callback type for retrieving the current system tick [ms] (e.g. HAL_GetTick). */
+typedef uint32_t (*inverters_get_tick_callback)(void);
 
 /*!
  * \brief Return codes for the inverters module APIs.
@@ -71,6 +88,8 @@ struct InvertersHandler {
     float requested_torque_nm[EPHORUS_WHEEL_COUNT]; /*!< Latest raw torque request per wheel [Nm], before cut-off. */
     float hv_bms_soc;                               /*!< Latest State of Charge of the battery pack [0.0, 1.0]. */
     uint32_t last_tx_tick;                          /*!< Tick of the last setpoint broadcast. */
+    uint32_t last_rx_tick;                          /*!< Tick of the last received inverter frame (for the RX timeout). */
+    inverters_get_tick_callback get_tick;           /*!< Callback to read the current system tick, used for the RX timeout. */
 };
 
 #endif // INVERTERS_H

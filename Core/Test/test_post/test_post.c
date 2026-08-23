@@ -26,6 +26,7 @@ FAKE_VALUE_FUNC(enum RaspberryReturnCode, mock_raspberry_pin_control, enum Raspb
 FAKE_VALUE_FUNC(enum ShutdownReturnCode, mock_shutdown_control_relay, bool);
 FAKE_VALUE_FUNC(uint32_t, mock_pedals_get_tick);
 FAKE_VALUE_FUNC(uint32_t, mock_tsac_get_tick);
+FAKE_VALUE_FUNC(uint32_t, mock_inverters_get_tick);
 FAKE_VALUE_FUNC(bool, mock_vehicle_tson_pressed);
 FAKE_VALUE_FUNC(enum LightsReturnCode, mock_lights_set_state, enum LightsName, bool);
 
@@ -66,6 +67,7 @@ EAGLETRT_STATIC void build_default_valid_config(struct PostConfig *cfg) {
     cfg->shutdown_control_relay = mock_shutdown_control_relay;
     cfg->pedals_get_tick = mock_pedals_get_tick;
     cfg->tsac_get_tick = mock_tsac_get_tick;
+    cfg->inverters_get_tick = mock_inverters_get_tick;
     cfg->vehicle_tson_pressed = mock_vehicle_tson_pressed;
     cfg->lights_set_state = mock_lights_set_state;
 }

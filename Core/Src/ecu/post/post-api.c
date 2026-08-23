@@ -30,6 +30,7 @@ enum PostReturnCode post_api_do_init(struct PostConfig *post_config) {
         post_config->shutdown_control_relay == NULL ||
         post_config->pedals_get_tick == NULL ||
         post_config->tsac_get_tick == NULL ||
+        post_config->inverters_get_tick == NULL ||
         post_config->vehicle_tson_pressed == NULL ||
         post_config->lights_set_state == NULL) {
         return POST_RC_ERROR;
@@ -64,7 +65,7 @@ enum PostReturnCode post_api_do_init(struct PostConfig *post_config) {
         final_status = POST_RC_ERROR;
     }
 
-    if (inverters_api_init() != INVERTERS_RC_OK) {
+    if (inverters_api_init(post_config->inverters_get_tick) != INVERTERS_RC_OK) {
         final_status = POST_RC_ERROR;
     }
 

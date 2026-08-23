@@ -36,11 +36,8 @@ EAGLETRT_STATIC void prv_drain_can_rx_buffers(void) {
     can_communication_api_process_rx(CAN_COMMUNICATION_NETWORK_INVERTER);
 }
 
-// Advances the inverter driver's periodic setpoint transmission for this tick and
-// logs any error. Every powertrain-active state runs this once per cycle, so the
-// step-and-log boilerplate lives here instead of being copy-pasted into each state.
-EAGLETRT_STATIC void prv_step_inverters(uint32_t tick) {
-    switch (inverters_api_step(tick)) {
+EAGLETRT_STATIC void prv_step_inverters(void) {
+    switch (inverters_api_step()) {
         case INVERTERS_RC_OK:
             break;
         case INVERTERS_RC_TX_ERROR:
@@ -211,7 +208,7 @@ state_t do_idle(state_data_t *data) {
 
     prv_drain_can_rx_buffers();
 
-    prv_step_inverters(fsm_data.tick);
+    prv_step_inverters();
 
     // this logic does:
     // 1. If the TS ON button is pressed and this is the first time it is pressed, record the current tick.
@@ -322,7 +319,7 @@ state_t do_manual_wait_ts_precharge(state_data_t *data) {
 
     prv_drain_can_rx_buffers();
 
-    prv_step_inverters(fsm_data.tick);
+    prv_step_inverters();
 
     // Logic is:
     // 1. If the TSAC status times out, log an error and transition to the TS DISCHARGE state.
@@ -402,7 +399,7 @@ state_t do_wait_driver(state_data_t *data) {
 
     prv_drain_can_rx_buffers();
 
-    prv_step_inverters(fsm_data.tick);
+    prv_step_inverters();
 
     // This logic does:
     // 1. If the TSAC status times out, log an error and transition to the TS DISCHARGE state.
@@ -467,7 +464,7 @@ state_t do_manual_wait_ts_discharge(state_data_t *data) {
 
     prv_drain_can_rx_buffers();
 
-    prv_step_inverters(fsm_data.tick);
+    prv_step_inverters();
 
     if (!tsac_api_get_voltage_higher_than_60v() || !tsac_api_is_tsac_status_timeout()) {
         logger_api_log(LOGGER_LEVEL_INFO, "FSM: TS DISCHARGE completed. Moving to IDLE.");
@@ -525,17 +522,18 @@ state_t do_manual_wait_inv_enable(state_data_t *data) {
     inverters_api_arm(EPHORUS_WHEEL_REAR_LEFT);
     inverters_api_arm(EPHORUS_WHEEL_REAR_RIGHT);
 
-    prv_step_inverters(fsm_data.tick);
+    prv_step_inverters();
 
     // Decision order (first match wins):
     //   1. If the TSAC status times out, abort and disarm.
     //   2. The tractive system must stay in TS_ON with a live TSAC link; otherwise
     //      abort the enable and disarm.
-    //   3. Once every inverter reports "drive", play the R2D tone once and hand over
+    //   3. If the inverter link has timed out, abort and disarm.
+    //   4. Once every inverter reports "drive", play the R2D tone once and hand over
     //      to DRIVING when the tone (serviced by the main-loop buzzer poll) finishes.
-    //   4. If the tone had already started (we were in drive) but the inverters fell
+    //   5. If the tone had already started (we were in drive) but the inverters fell
     //      back out of drive, abort and disarm.
-    //   5. If the inverters simply never reach drive within the timeout, abort and
+    //   6. If the inverters simply never reach drive within the timeout, abort and
     //      disarm so we fall back toward idle rather than waiting forever.
     if (tsac_api_is_tsac_status_timeout()) {
         logger_api_log(LOGGER_LEVEL_ERROR, "FSM: TSAC status timeout!");
@@ -543,6 +541,9 @@ state_t do_manual_wait_inv_enable(state_data_t *data) {
         next_state = STATE_MANUAL_WAIT_INV_DISABLE;
     } else if (tsac_api_get_tsac_status() != CAN_PRIMARY_TSACSTATUS_MAINBOARDSTATUS_TS_ON) {
         logger_api_log(LOGGER_LEVEL_ERROR, "FSM: TSAC not in TSON!");
+        next_state = STATE_MANUAL_WAIT_INV_DISABLE;
+    } else if (inverters_api_is_timeout()) {
+        logger_api_log(LOGGER_LEVEL_ERROR, "FSM: Inverter comms timeout!");
         next_state = STATE_MANUAL_WAIT_INV_DISABLE;
     } else if (inverters_api_is_all_in_drive()) {
         // Request the R2D tone the first time we see full drive, then wait for the
@@ -614,17 +615,22 @@ state_t do_driving(state_data_t *data) {
 
     prv_drain_can_rx_buffers();
 
-    prv_step_inverters(fsm_data.tick);
+    prv_step_inverters();
 
     // Logic is:
     // 1. If the TS ON button is pressed, abort and disarm.
-    // 2. If any inverter is not in drive, abort and disarm, and open the shutdown relay to discharge the TS.
-    // 3. If the TSAC status times out, abort and disarm, and open the shutdown relay to discharge the TS.
-    // 4. If the TSAC status is not in TSON, abort and disarm.
-    // 5. If the pedals timeout, abort and disarm.
-    // 6. If the shutdown relay is open, abort and disarm.
-    // 7. Otherwise, read the requested torque from the pedals and command it to all four inverters.
+    // 2. If the inverter link has timed out, abort and disarm.
+    // 3. If any inverter is not in drive, abort and disarm, and open the shutdown relay to discharge the TS.
+    // 4. If the TSAC status times out, abort and disarm, and open the shutdown relay to discharge the TS.
+    // 5. If the TSAC status is not in TSON, abort and disarm.
+    // 6. If the pedals timeout, abort and disarm.
+    // 7. If the shutdown relay is open, abort and disarm.
+    // 8. Otherwise, read the requested torque from the pedals and command it to all four inverters.
     if (vehicle_api_get_ts_on_button_pressed()) {
+        next_state = STATE_MANUAL_WAIT_INV_DISABLE;
+    } else if (inverters_api_is_timeout()) {
+        logger_api_log(LOGGER_LEVEL_ERROR, "FSM: Inverter comms timeout!");
+        shutdown_api_control_relay(false);
         next_state = STATE_MANUAL_WAIT_INV_DISABLE;
     } else if (!inverters_api_is_all_in_drive()) {
         logger_api_log(LOGGER_LEVEL_ERROR, "FSM: Not all inverters in drive!");
@@ -684,10 +690,14 @@ state_t do_manual_wait_inv_disable(state_data_t *data) {
 
     prv_drain_can_rx_buffers();
 
-    prv_step_inverters(fsm_data.tick);
+    prv_step_inverters();
 
     if (!inverters_api_is_all_in_drive()) {
         logger_api_log(LOGGER_LEVEL_INFO, "FSM: INV DISABLE completed. Moving to TS DISCHARGE.");
+        next_state = STATE_MANUAL_WAIT_TS_DISCHARGE;
+    } else if (inverters_api_is_timeout()) {
+        logger_api_log(LOGGER_LEVEL_ERROR, "FSM: Inverter comms timeout!");
+        shutdown_api_control_relay(false);
         next_state = STATE_MANUAL_WAIT_TS_DISCHARGE;
     } else {
         inverters_api_disarm(EPHORUS_WHEEL_FRONT_LEFT);

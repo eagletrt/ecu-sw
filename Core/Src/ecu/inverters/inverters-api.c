@@ -38,6 +38,12 @@ EAGLETRT_STATIC float prv_inverters_wheel_rpm(enum EphorusWheel wheel) {
     return (float)inverters_handler.driver.wheels[wheel].tlm.speed_rpm;
 }
 
+EAGLETRT_STATIC float prv_inverters_get_lowest_dc_link_voltage(void) {
+    float dc_link_12 = inverters_handler.driver.general.dclink_voltage_12_v;
+    float dc_link_34 = inverters_handler.driver.general.dclink_voltage_34_v;
+    return EAGLETRT_API_MIN(dc_link_12, dc_link_34);
+}
+
 /*!
  * \brief Calculates a global hardware reduction ratio to keep all motors within limits.
  *
@@ -166,12 +172,15 @@ EAGLETRT_STATIC float prv_inverters_internal_resistance_model(void) {
 /*!
  * \brief Limits total vehicle torque to respect battery power and current constraints.
  *
- * \details Calculates the instantaneous mechanical power and compares it against three limits:
- * 1. The provided 'power_max' (usually the 80kW regulatory limit or voltage sag limit).
- * 2. The physical DC current limit (Battery voltage * Max pack current).
- * 3. The hard-coded battery regeneration limit ( \ref INVERTERS_HV_MAX_REGEN_POWER_W ).
+ * \details Converts the requested mechanical (shaft) power into the ELECTRICAL power
+ * the battery actually sees - drive is divided by \ref INVERTERS_DRIVETRAIN_EFFICIENCY
+ * (the pack also covers drivetrain losses), regen is left on the mechanical figure
+ * (conservative) - then compares it against:
+ * 1. The provided 'power_max' (the 80 kW regulatory limit or the voltage-sag headroom).
+ * 2. The DC discharge-current limit, evaluated at the measured DC-link voltage.
+ * 3. The DC regen (charge) current limit, evaluated at the measured DC-link voltage.
  * If any limit is exceeded, a uniform reduction ratio is applied to all wheels to
- * maintain the torque-vectoring balance while reducing total power consumption or absorption.
+ * maintain the torque-vectoring balance while reducing total power draw or absorption.
  *
  * \param[in] power_max The maximum allowable total power (Watts).
  * \param[in] angular_velocity_front_left Angular velocity (rad/s) of the front left wheel.
@@ -184,32 +193,43 @@ EAGLETRT_STATIC float prv_inverters_internal_resistance_model(void) {
  * \param[in,out] torque_rear_right Pointer to the rear right torque; to be scaled on low voltage.
  */
 EAGLETRT_STATIC void prv_inverters_limit_torque_by_power(float power_max, float angular_velocity_front_left, float angular_velocity_front_right, float angular_velocity_rear_left, float angular_velocity_rear_right, float *torque_front_left, float *torque_front_right, float *torque_rear_left, float *torque_rear_right) {
-    // Total mechanical power: P = Sum(T * w)
+    // Requested mechanical (shaft) power for the current torque request: P = Sum(T * w).
     float total_mechanical_power = (*torque_front_left * angular_velocity_front_left) + (*torque_front_right * angular_velocity_front_right) + (*torque_rear_left * angular_velocity_rear_left) + (*torque_rear_right * angular_velocity_rear_right);
+
+    // Convert to the ELECTRICAL power the battery actually sees, so every limit below
+    // is enforced at the accumulator (where the 80 kW rule is measured):
+    //  - drive (P_mech >= 0): the pack must also cover drivetrain losses, so it supplies
+    //    MORE than the shaft -> divide by the efficiency (this is what makes the cap electrical).
+    //  - regen (P_mech < 0): losses are burned before the energy reaches the pack, so it
+    //    absorbs LESS than the shaft -> keeping the raw mechanical figure stays conservative.
+    float total_battery_power = (total_mechanical_power >= 0.0F)
+                                    ? (total_mechanical_power / INVERTERS_DRIVETRAIN_EFFICIENCY)
+                                    : total_mechanical_power;
+
+    // Real, loaded DC-link voltage (present after precharge). Using the measured value
+    // instead of the open-circuit model turns the battery current caps into true ampere
+    // limits: I = P / V, so an over-estimated voltage would silently allow I > I_max.
+    float dc_link_voltage = prv_inverters_get_lowest_dc_link_voltage();
+
+    // Electrical budgets at the measured voltage. The discharge budget is the tighter of
+    // the caller's limit (80 kW rule / sag headroom) and the DC discharge-current limit.
+    float discharge_power_limit = EAGLETRT_API_MIN(power_max, dc_link_voltage * INVERTERS_HV_MAX_CURRENT_A);
+    float regen_power_limit = dc_link_voltage * INVERTERS_HV_MAX_REGEN_CURRENT_A; // negative (charge into the pack)
+
     float reduction_ratio = 1.0F;
-
-    // Physical DC current limit
-    // Using the Voc model and cell count to find the real-time battery voltage
-    float pack_voltage = prv_inverters_pack_voc_model() * INVERTERS_HV_CELL_COUNT;
-    float physical_limit = pack_voltage * INVERTERS_HV_MAX_CURRENT_A;
-
-    // Update power_max to the most restrictive limit
-    // This ensures we respect both the 80kW rule and the 140A battery limit
-    power_max = EAGLETRT_API_MIN(power_max, physical_limit);
-
-    constexpr float low_power_threshold = 0.5F; // Watts, below which we consider the battery "dead"
-    if (fabsf(power_max) < low_power_threshold) {
-        reduction_ratio = 0.0F; // kill torque if battery is almost "dead"
-    } else if (total_mechanical_power > power_max && total_mechanical_power >= 0.0F) {
-        // discharge and power limit scaling
-        reduction_ratio = EAGLETRT_API_CLAMP(power_max / total_mechanical_power, 0.0F, 1.0F);
-    } else if (total_mechanical_power < INVERTERS_HV_MAX_REGEN_POWER_W && total_mechanical_power < 0.0F) {
-        // regen scaling, avoid  "pushing" more than the cells can absorb
-        constexpr float inv_max_regen_power = INVERTERS_HV_MAX_REGEN_POWER_W;
-        reduction_ratio = EAGLETRT_API_CLAMP(inv_max_regen_power / total_mechanical_power, 0.0F, 1.0F);
+    constexpr float low_power_threshold = 0.5F; // Watts, below which there is no usable budget.
+    if (discharge_power_limit < low_power_threshold) {
+        // No usable discharge budget (e.g. DC-link voltage not yet available): cut torque.
+        reduction_ratio = 0.0F;
+    } else if (total_battery_power > discharge_power_limit && total_battery_power >= 0.0F) {
+        // Drawing more than allowed: scale every wheel down uniformly.
+        reduction_ratio = EAGLETRT_API_CLAMP(discharge_power_limit / total_battery_power, 0.0F, 1.0F);
+    } else if (total_battery_power < regen_power_limit && total_battery_power < 0.0F) {
+        // Pushing more into the pack than it may absorb: scale regen down uniformly.
+        reduction_ratio = EAGLETRT_API_CLAMP(regen_power_limit / total_battery_power, 0.0F, 1.0F);
     }
 
-    // Apply the same ratio to all motors
+    // Apply the same ratio to all motors (preserves the torque-vectoring balance).
     *torque_front_left *= reduction_ratio;
     *torque_front_right *= reduction_ratio;
     *torque_rear_left *= reduction_ratio;
@@ -326,8 +346,12 @@ EAGLETRT_STATIC void prv_inverters_apply_cut_off(float *torque_front_left_nm, fl
     prv_inverters_maximum_allowable_power(rpm_front_left, rpm_front_right, rpm_rear_left, rpm_rear_right, torque_front_left_nm, torque_front_right_nm, torque_rear_left_nm, torque_rear_right_nm);
 }
 
-enum InvertersReturnCode inverters_api_init(void) {
+enum InvertersReturnCode inverters_api_init(inverters_get_tick_callback get_tick) {
+    if (get_tick == NULL) {
+        return INVERTERS_RC_NULL_POINTER;
+    }
     memset(&inverters_handler, 0, sizeof(inverters_handler));
+    inverters_handler.get_tick = get_tick;
     ephorus_api_init(&inverters_handler.driver);
     return INVERTERS_RC_OK;
 }
@@ -362,7 +386,12 @@ void inverters_api_set_soc(float hv_bms_soc) {
     inverters_handler.hv_bms_soc = EAGLETRT_API_CLAMP(hv_bms_soc, 0.0F, 1.0F);
 }
 
-enum InvertersReturnCode inverters_api_step(uint32_t tick) {
+enum InvertersReturnCode inverters_api_step(void) {
+    if (inverters_handler.get_tick == NULL) {
+        return INVERTERS_RC_OK; // No tick source: cannot time the setpoint cadence.
+    }
+    uint32_t tick = inverters_handler.get_tick();
+
     if ((tick - inverters_handler.last_tx_tick) < EPHORUS_TX_PERIOD_MS) {
         return INVERTERS_RC_OK;
     }
@@ -415,6 +444,19 @@ enum CanCommunicationReturnCode inverters_api_on_receive(const struct CanCommuni
     if (frame == NULL) {
         return CAN_COMMUNICATION_RC_NULL_POINTER;
     }
+    // A frame reached us on the inverter network: the link is alive, so refresh the
+    // RX-timeout timestamp. The driver ignores any id it does not recognise.
+    if (inverters_handler.get_tick != NULL) {
+        inverters_handler.last_rx_tick = inverters_handler.get_tick();
+    }
     ephorus_api_handle_frame(&inverters_handler.driver, frame->id, frame->data);
     return CAN_COMMUNICATION_RC_OK;
+}
+
+bool inverters_api_is_timeout(void) {
+    if (inverters_handler.get_tick == NULL) {
+        return true; // No tick source: treat the link as timed out (fail safe).
+    }
+    uint32_t current_tick = inverters_handler.get_tick();
+    return (current_tick - inverters_handler.last_rx_tick) > INVERTERS_RX_TIMEOUT_MS;
 }

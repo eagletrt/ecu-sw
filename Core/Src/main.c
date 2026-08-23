@@ -186,6 +186,7 @@ int main(void) {
         .shutdown_control_relay = gpio_shutdown_control_relay,
         .pedals_get_tick = HAL_GetTick,
         .tsac_get_tick = HAL_GetTick,
+        .inverters_get_tick = HAL_GetTick,
         .vehicle_tson_pressed = gpio_read_tson_button,
         .lights_set_state = gpio_set_light_state,
     };

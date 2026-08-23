@@ -31,12 +31,34 @@ static void set_all_rpm(int16_t rpm) {
     }
 }
 
+/*!
+ * \brief Inject the same (loaded) DC-link voltage into both buses. The cut-off now
+ *     derives the battery current limits from this measured voltage, so tests must
+ *     set it just like they set rpm and SoC.
+ */
+static void set_dc_link_voltage(float voltage) {
+    inverters_handler.driver.general.dclink_voltage_12_v = voltage;
+    inverters_handler.driver.general.dclink_voltage_34_v = voltage;
+}
+
+// A plausible loaded pack voltage used by default so the current limit does not
+// spuriously bind in tests that exercise other limits.
+#define TEST_DC_LINK_NOMINAL_V (550.0F)
+
+// Controllable clock for the inverters RX-timeout tests.
+static uint32_t test_tick = 0;
+static uint32_t mock_inverters_get_tick(void) {
+    return test_tick;
+}
+
 void setUp(void) {
-    inverters_api_init();
+    test_tick = 0;
+    inverters_api_init(mock_inverters_get_tick);
     inverters_api_attach(EPHORUS_WHEEL_FRONT_LEFT);
     inverters_api_attach(EPHORUS_WHEEL_FRONT_RIGHT);
     inverters_api_attach(EPHORUS_WHEEL_REAR_LEFT);
     inverters_api_attach(EPHORUS_WHEEL_REAR_RIGHT);
+    set_dc_link_voltage(TEST_DC_LINK_NOMINAL_V);
 }
 
 void tearDown(void) {
@@ -136,13 +158,16 @@ void test_cut_off_preserves_ratio_with_mixed_directions(void) {
 void test_cut_off_regen_power_safety_limit(void) {
     set_all_rpm(10000);
     inverters_api_set_soc(1.0F);
+    set_dc_link_voltage(TEST_DC_LINK_NOMINAL_V);
     float fl = -21.0f, fr = -21.0f, rl = -21.0f, rr = -21.0f;
     float omega = 10000.0f * INVERTERS_RPM_TO_RAD_COEFFICIENT;
 
     prv_inverters_apply_cut_off(&fl, &fr, &rl, &rr);
 
+    // Regen is capped in the electrical domain at (measured DC-link voltage * regen current).
+    float regen_power_limit = TEST_DC_LINK_NOMINAL_V * INVERTERS_HV_MAX_REGEN_CURRENT_A;
     float actual_p = (fl + fr + rl + rr) * omega;
-    TEST_ASSERT_TRUE_MESSAGE(actual_p >= INVERTERS_HV_MAX_REGEN_POWER_W - 1.0f, "Regen power exceeded battery safety limits");
+    TEST_ASSERT_TRUE_MESSAGE(actual_p >= regen_power_limit - 1.0f, "Regen power exceeded battery safety limits");
 }
 
 void test_cut_off_regen_preserves_ratio_during_cut(void) {
@@ -233,22 +258,22 @@ void test_internal_resistance_model_reference_values_100(void) {
 }
 
 void test_physical_dc_current_limit_binds_below_80kw(void) {
-    // At mid SoC the pack voltage is low enough that the 140 A DC-current limit
-    // (pack_voltage * 140) falls BELOW the 80 kW regulatory ceiling, so it must
-    // be the binding constraint. At 0.3 SoC: VOC ~= 3.5143 V/cell ->
-    // pack ~= 506.06 V -> physical limit ~= 70.85 kW. This path is never reached
-    // by the SoC = 1.0 tests, where 80 kW always dominates.
+    // At a low DC-link voltage the discharge-current limit (V * I_max) falls BELOW the
+    // 80 kW ceiling, so it must be the binding constraint. At 400 V: 400 V * 130 A = 52 kW
+    // electrical, which maps to ~52 kW * efficiency of mechanical power at the shaft.
     set_all_rpm(12000);
-    inverters_api_set_soc(0.3F);
+    inverters_api_set_soc(1.0F);
+    set_dc_link_voltage(400.0F);
     float fl = 21.0f, fr = 21.0f, rl = 21.0f, rr = 21.0f;
 
     const float omega = 12000.0f * INVERTERS_RPM_TO_RAD_COEFFICIENT;
+    const float expected_mech_cap = 400.0F * INVERTERS_HV_MAX_CURRENT_A * INVERTERS_DRIVETRAIN_EFFICIENCY;
 
     prv_inverters_apply_cut_off(&fl, &fr, &rl, &rr);
 
     float total_power = (fl + fr + rl + rr) * omega;
-    TEST_ASSERT_TRUE_MESSAGE(total_power <= 72000.0f, "Total power must respect the ~70.85 kW DC-current limit, not the 80 kW ceiling");
-    TEST_ASSERT_TRUE_MESSAGE(total_power > 60000.0f, "Limit should bind near the DC-current limit, not collapse torque");
+    TEST_ASSERT_TRUE_MESSAGE(total_power <= expected_mech_cap + 500.0f, "Total power must respect the DC-current limit at the measured voltage, not the 80 kW ceiling");
+    TEST_ASSERT_TRUE_MESSAGE(total_power > expected_mech_cap - 2000.0f, "Limit should bind near the DC-current limit, not collapse torque");
 }
 
 void test_cut_off_leaves_within_limit_request_untouched(void) {
@@ -337,6 +362,30 @@ void test_on_receive_null_frame_is_rejected(void) {
     TEST_ASSERT_EQUAL(CAN_COMMUNICATION_RC_NULL_POINTER, inverters_api_on_receive(NULL));
 }
 
+void test_is_timeout_true_before_any_frame(void) {
+    // setUp leaves last_rx_tick at 0; once the clock passes the window it must time out.
+    test_tick = INVERTERS_RX_TIMEOUT_MS + 1;
+    TEST_ASSERT_TRUE_MESSAGE(inverters_api_is_timeout(), "Link must read timed out before any frame is received");
+}
+
+void test_is_timeout_false_within_window_after_frame(void) {
+    struct CanCommunicationFrame frame = { 0 };
+    test_tick = 1000;
+    inverters_api_on_receive(&frame); // refreshes last_rx_tick to 1000
+
+    test_tick = 1000 + INVERTERS_RX_TIMEOUT_MS; // exactly at the boundary (not past it)
+    TEST_ASSERT_FALSE_MESSAGE(inverters_api_is_timeout(), "Link must be considered alive within the timeout window");
+}
+
+void test_is_timeout_true_after_window(void) {
+    struct CanCommunicationFrame frame = { 0 };
+    test_tick = 1000;
+    inverters_api_on_receive(&frame);
+
+    test_tick = 1000 + INVERTERS_RX_TIMEOUT_MS + 1; // one tick past the window
+    TEST_ASSERT_TRUE_MESSAGE(inverters_api_is_timeout(), "Link must time out once the window elapses");
+}
+
 int main(void) {
     UNITY_BEGIN();
 
@@ -373,6 +422,11 @@ int main(void) {
 
     // RX telemetry decode + fault latching
     RUN_TEST(test_on_receive_null_frame_is_rejected);
+
+    // Inverter link RX timeout
+    RUN_TEST(test_is_timeout_true_before_any_frame);
+    RUN_TEST(test_is_timeout_false_within_window_after_frame);
+    RUN_TEST(test_is_timeout_true_after_window);
 
     return UNITY_END();
 }

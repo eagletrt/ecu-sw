@@ -15,15 +15,17 @@
 #include "can-communication.h"
 
 /*!
- * \brief Initialize the module: reset the driver and attach all four wheels.
- * 
+ * \brief Initialize the module: reset the driver and store the tick source.
+ *
  * \details Clears the pending torque requests and battery SoC. Every wheel starts
  *     disarmed, so nothing is commanded until it is armed and set to run.
- *      
+ *
+ * \param get_tick Callback returning the current system tick [ms]. Must not be NULL.
+ *
  * \retval INVERTERS_RC_OK If the module is fully initialized and ready.
- * \retval INVERTERS_RC_ERROR If initialization failed.
+ * \retval INVERTERS_RC_NULL_POINTER If \p get_tick is NULL.
  */
-enum InvertersReturnCode inverters_api_init(void);
+enum InvertersReturnCode inverters_api_init(inverters_get_tick_callback get_tick);
 
 /*!
  * \brief Attach (activate) a wheel so it transmits and decodes.
@@ -88,12 +90,10 @@ void inverters_api_set_soc(float hv_bms_soc);
  *     frame per attached wheel into the can-communication TX queue. Call
  *     can_communication_api_process_tx afterwards to flush them.
  *
- * \param tick Current tick.
- *
  * \retval INVERTERS_RC_OK frames queued or not yet due.
  * \retval INVERTERS_RC_TX_ERROR a TX queue rejected a frame.
  */
-enum InvertersReturnCode inverters_api_step(uint32_t tick);
+enum InvertersReturnCode inverters_api_step(void);
 
 /*!
  * \brief Borrow a wheel's telemetry (NULL if \p wheel out of range).
@@ -123,5 +123,17 @@ const struct EphorusGeneralTelemetry *inverters_api_get_general_telemetry(void);
  * \retval CAN_COMMUNICATION_RC_NULL_POINTER if \p frame is NULL.
  */
 enum CanCommunicationReturnCode inverters_api_on_receive(const struct CanCommunicationFrame *frame);
+
+/*!
+ * \brief Reports whether the inverter link has gone silent.
+ *
+ * \details True when no inverter frame has been received for longer than
+ *     \ref INVERTERS_RX_TIMEOUT_MS, or when no tick source was provided. Mirrors the
+ *     TSAC and pedals timeout checks so the FSM can fault out on a lost link.
+ *
+ * \retval true the inverter telemetry is stale (link lost).
+ * \retval false a fresh inverter frame was received within the timeout window.
+ */
+bool inverters_api_is_timeout(void);
 
 #endif // INVERTERS_API_H
