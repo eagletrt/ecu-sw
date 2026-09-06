@@ -33,6 +33,7 @@ extern "C" {
 #include "raspberry.h"
 #include "shutdown.h"
 #include "lights.h"
+#include "vehicle.h"
 /* USER CODE END Includes */
 
 /* USER CODE BEGIN Private defines */
@@ -85,14 +86,6 @@ enum RaspberryReturnCode gpio_raspberry_set_pin(enum RaspberryControlPinState pi
 enum ShutdownReturnCode gpio_shutdown_control_relay(bool state);
 
 /*!
- * \brief Reads the state of the TSON button.
- *
- * \retval true if the TSON button is pressed (GPIO pin is HIGH).
- * \retval false if the TSON button is not pressed (GPIO pin is LOW).
- */
-bool gpio_read_tson_button(void);
-
-/*!
  * \brief Sets the state of a specific light.
  *
  * \param light_name The name of the light to set the state for.
@@ -102,6 +95,15 @@ bool gpio_read_tson_button(void);
  * \retval LIGHTS_RC_ERROR if there was an error setting the light state
  */
 enum LightsReturnCode gpio_set_light_state(enum LightsName light_name, bool state);
+
+/*!
+ * \brief Drives the PTT output pin.
+ *
+ * \param state true to assert the PTT line (pin HIGH), false to release it (pin LOW).
+ *
+ * \retval VEHICLE_RC_OK always (the write cannot fail).
+ */
+enum VehicleReturnCode gpio_set_ptt(bool state);
 
 /* USER CODE END Prototypes */
 

@@ -12,6 +12,7 @@
 #include "tsac-api.h"
 #include "pedals-api.h"
 #include "buzzer-api.h"
+#include "vehicle-api.h"
 #include "eagletrt.h"
 
 enum CanCommunicationReturnCode can_communication_router_api_receive_primary(struct CanCommunicationFrame *frame) {
@@ -30,8 +31,8 @@ enum CanCommunicationReturnCode can_communication_router_api_receive_primary(str
 
     switch (frame->id) {
         case CAN_PRIMARY_MESSAGE_FRAME_ID_STEERINGWHEELBUTTONSTATUS: {
-            // TODO: add this back in once the steering wheel works
-            // vehicle_api_set_ts_on_button_pressed(message.steeringwheelbuttonstatus.tson);
+            vehicle_api_set_ts_on_button_pressed(message.steeringwheelbuttonstatus.tson != 0);
+            vehicle_api_set_ptt(message.steeringwheelbuttonstatus.ptt != 0);
             break;
         }
 

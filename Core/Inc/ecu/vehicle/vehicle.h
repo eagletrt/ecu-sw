@@ -20,7 +20,11 @@ enum VehicleReturnCode {
     VEHICLE_RC_NULL_POINTER, /*!< A null pointer was passed to an API function. */
 };
 
-typedef bool (*vehicle_tson_pressed_callback)(void);
+/*!
+ * \brief Callback used to drive the PTT output pin.
+ * \param state true to assert the PTT line, false to release it.
+ */
+typedef enum VehicleReturnCode (*vehicle_ptt_control_callback)(bool state);
 
 /*!
  * \struct VehicleHandler
@@ -30,15 +34,15 @@ typedef bool (*vehicle_tson_pressed_callback)(void);
 struct VehicleHandler {
 
     /*!
-     * \brief Callback function to evaluate the state of the steering wheel button.
-     *
-     * \details This function pointer should be set to a function that returns true when the steering wheel button is pressed and false otherwise.
+     * \brief Callback that drives the PTT output pin.
+     * \details Mirrors the steering-wheel PTT button (received over CAN) onto a GPIO.
      */
-    vehicle_tson_pressed_callback ts_on_get_button_pressed;
+    vehicle_ptt_control_callback ptt_control;
 
-    /*! 
+    /*!
      * \brief Edge-triggered activation command from the steering wheel.
-     * \details Evaluates to true when the button is pressed on the steering wheel.
+     * \details Evaluates to true when the TSON button is pressed on the steering wheel,
+     *     as reported over CAN (no longer read from a local pin).
      */
     bool ts_on_button_pressed;
 };
