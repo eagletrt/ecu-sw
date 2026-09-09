@@ -7,9 +7,12 @@
  * This module mangaes both startup and shutdown of the raspberry board.
  */
 
+// TODO: update the whole module as this does not work
+
 #include <string.h>
 #include "raspberry-api.h"
 #include "eagletrt-api.h"
+#include "raspberry.h"
 
 /*!
  * \brief Static raspberry handler
@@ -33,6 +36,7 @@ enum RaspberryReturnCode raspberry_api_init(raspberry_pin_control_callback pin_c
 }
 
 enum RaspberryReturnCode raspberry_api_change_pin_state(enum RaspberryControlPinState pin_state) {
+    return RASPBERRY_RC_OK;
     if (raspberry_handler.pin_control == NULL ||
         (pin_state >= RASPBERRY_CONTROL_PIN_STATE_COUNT)) {
         // leave as it is the current pin state as the callback

@@ -49,6 +49,14 @@ EAGLETRT_STATIC void prv_step_inverters(void) {
     }
 }
 
+EAGLETRT_STATIC void prv_log_state_entry(state_t state) {
+    EAGLETRT_STATIC state_t last_logged = NUM_STATES; // sentinel: nothing logged yet
+    if (state != last_logged) {
+        logger_api_log(LOGGER_LEVEL_INFO, "FSM: entered %s state", state_names[state]);
+        last_logged = state;
+    }
+}
+
 // GLOBALS
 // State human-readable names
 const char *state_names[] = { "init", "fatal", "idle", "flash", "pause", "manual_wait_ts_precharge", "as_off", "wait_driver", "manual_wait_ts_discharge", "manual_wait_inv_enable", "driving", "manual_wait_inv_disable", "as_off_wait_ts_precharge", "as_ready", "as_ready_wait_inv_enable", "as_emergency", "as_r2d", "as_driving", "as_finished", "as_off_wait_ts_discharge", "as_ready_wait_inv_disable", "as_finished_wait_inv_disable", "as_finished_wait_ts_discharge", "as_emergency_wait_inv_disable", "as_emergency_wait_ts_discharge" };
@@ -130,7 +138,7 @@ transition_func_t *const transition_table[NUM_STATES][NUM_STATES] = {
 state_t do_init(state_data_t *data) {
     state_t next_state = STATE_IDLE;
     /* Your Code Here */
-    logger_api_log(LOGGER_LEVEL_INFO, "FSM: INIT state");
+    prv_log_state_entry(STATE_INIT);
 
     // convert state data into POST struct configuration
     struct PostConfig *post_configuration = (struct PostConfig *)data;
@@ -172,7 +180,7 @@ state_t do_fatal(state_data_t *data) {
     EAGLETRT_API_UNUSED(data);
 
     // fatal state is a sink, no other operation should be made
-    logger_api_log(LOGGER_LEVEL_ERROR, "FSM: FATAL state");
+    prv_log_state_entry(STATE_FATAL);
 
     // prevent the tractive system from being enabled in case of a fatal error
     shutdown_api_control_relay(false);
@@ -198,7 +206,7 @@ state_t do_idle(state_data_t *data) {
 
     constexpr uint32_t ready_buzzer_duration = 1000;
 
-    logger_api_log(LOGGER_LEVEL_INFO, "FSM: IDLE state");
+    prv_log_state_entry(STATE_IDLE);
 
     if (data == NULL) {
         logger_api_log(LOGGER_LEVEL_ERROR, "FSM: State data is NULL. Going to FATAL");
@@ -264,7 +272,8 @@ state_t do_flash(state_data_t *data) {
     state_t next_state = STATE_IDLE;
     /* Your Code Here */
     EAGLETRT_API_UNUSED(data);
-    logger_api_log(LOGGER_LEVEL_INFO, "FSM: FLASH state");
+
+    prv_log_state_entry(STATE_FLASH);
 
     // Remain in flash until an external request is received
     // to indicate that flashing is aborted/terminated
@@ -290,7 +299,8 @@ state_t do_pause(state_data_t *data) {
     state_t next_state = STATE_IDLE;
     /* Your Code Here */
     EAGLETRT_API_UNUSED(data);
-    logger_api_log(LOGGER_LEVEL_INFO, "FSM: PAUSE state");
+
+    prv_log_state_entry(STATE_PAUSE);
 
     switch (next_state) {
         case NO_CHANGE:
@@ -309,7 +319,8 @@ state_t do_pause(state_data_t *data) {
 state_t do_manual_wait_ts_precharge(state_data_t *data) {
     state_t next_state = NO_CHANGE;
     /* Your Code Here */
-    logger_api_log(LOGGER_LEVEL_INFO, "FSM: MANUAL WAIT TS PRECHARGE state");
+
+    prv_log_state_entry(STATE_MANUAL_WAIT_TS_PRECHARGE);
 
     if (data == NULL) {
         logger_api_log(LOGGER_LEVEL_ERROR, "FSM: State data is NULL. Going to FATAL");
@@ -389,7 +400,7 @@ state_t do_wait_driver(state_data_t *data) {
     constexpr uint32_t tson_required_press_time = 2000;
     EAGLETRT_STATIC uint32_t tson_first_press_tick = 0;
 
-    logger_api_log(LOGGER_LEVEL_INFO, "FSM: WAIT DRIVER state");
+    prv_log_state_entry(STATE_WAIT_DRIVER);
 
     if (data == NULL) {
         logger_api_log(LOGGER_LEVEL_ERROR, "FSM: State data is NULL. Going to FATAL");
@@ -454,7 +465,7 @@ state_t do_manual_wait_ts_discharge(state_data_t *data) {
     state_t next_state = NO_CHANGE;
     /* Your Code Here */
 
-    logger_api_log(LOGGER_LEVEL_INFO, "FSM: WAIT TS DISCHARGE state");
+    prv_log_state_entry(STATE_MANUAL_WAIT_TS_DISCHARGE);
 
     if (data == NULL) {
         logger_api_log(LOGGER_LEVEL_ERROR, "FSM: State data is NULL. Going to FATAL");
@@ -502,7 +513,7 @@ state_t do_manual_wait_inv_enable(state_data_t *data) {
     constexpr uint32_t inverter_enable_timeout_ms = 2000;
     EAGLETRT_STATIC uint32_t enter_tick = 0;
 
-    logger_api_log(LOGGER_LEVEL_INFO, "FSM: MANUAL WAIT INV ENABLE state");
+    prv_log_state_entry(STATE_MANUAL_WAIT_INV_ENABLE);
 
     if (data == NULL) {
         logger_api_log(LOGGER_LEVEL_ERROR, "FSM: State data is NULL. Going to FATAL");
@@ -605,7 +616,7 @@ state_t do_driving(state_data_t *data) {
     state_t next_state = NO_CHANGE;
     /* Your Code Here */
 
-    logger_api_log(LOGGER_LEVEL_INFO, "FSM: DRIVING state");
+    prv_log_state_entry(STATE_DRIVING);
 
     if (data == NULL) {
         logger_api_log(LOGGER_LEVEL_ERROR, "FSM: State data is NULL. Going to FATAL");
@@ -680,7 +691,7 @@ state_t do_manual_wait_inv_disable(state_data_t *data) {
     state_t next_state = NO_CHANGE;
     /* Your Code Here */
 
-    logger_api_log(LOGGER_LEVEL_INFO, "FSM: MANUAL WAIT INV DISABLE state");
+    prv_log_state_entry(STATE_MANUAL_WAIT_INV_DISABLE);
 
     if (data == NULL) {
         logger_api_log(LOGGER_LEVEL_ERROR, "FSM: State data is NULL. Going to FATAL");
