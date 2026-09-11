@@ -29,6 +29,7 @@ enum ShutdownReturnCode shutdown_api_set_voltage(enum ShutdownName name, float v
 }
 
 enum ShutdownState shutdown_api_get_state(enum ShutdownName name) {
+
     if (name >= SHUTDOWN_NAME_COUNT) {
         return SHUTDOWN_STATE_ERROR; // Invalid reading position
     }

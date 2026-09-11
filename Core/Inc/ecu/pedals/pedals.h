@@ -13,7 +13,7 @@
 
 #define PEDALS_MAX_BRAKE_PRESSURE_BAR (100.0F)
 #define PEDALS_MAX_TORQUE_NM (29.1F)
-#define PEDALS_BRAKE_THRESHOLD_PERCENTAGE (0.05F)
+#define PEDALS_BRAKE_THRESHOLD_BAR (1.2F)
 
 /*!
  * \brief Callback type for retrieving the current system tick.

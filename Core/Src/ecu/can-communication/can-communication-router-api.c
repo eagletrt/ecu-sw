@@ -67,9 +67,9 @@ enum CanCommunicationReturnCode can_communication_router_api_receive_primary(str
                                    pressure_count;
             */
 
-            lights_api_set_light_state(LIGHTS_NAME_BRAKE, (message.pedalsbrake.pressurefl > 1.0F));
             pedals_api_set_brake(travel_pct);
             pedals_api_set_brake_pressure(message.pedalsbrake.pressurefl);
+            lights_api_set_light_state(LIGHTS_NAME_BRAKE, pedals_api_is_brake_pressed());
             break;
         }
 

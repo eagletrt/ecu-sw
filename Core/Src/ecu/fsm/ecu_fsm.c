@@ -477,7 +477,7 @@ state_t do_manual_wait_ts_discharge(state_data_t *data) {
 
     prv_step_inverters();
 
-    if (!tsac_api_get_voltage_higher_than_60v() || !tsac_api_is_tsac_status_timeout()) {
+    if (!tsac_api_get_voltage_higher_than_60v() && !tsac_api_is_tsac_status_timeout()) {
         logger_api_log(LOGGER_LEVEL_INFO, "FSM: TS DISCHARGE completed. Moving to IDLE.");
         next_state = STATE_IDLE;
     } else if (tsac_api_is_tsac_status_timeout()) {
