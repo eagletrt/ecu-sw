@@ -177,10 +177,15 @@ state_t do_init(state_data_t *data) {
 state_t do_fatal(state_data_t *data) {
     state_t next_state = NO_CHANGE;
     /* Your Code Here */
-    EAGLETRT_API_UNUSED(data);
+    if (data == NULL) {
+        logger_api_log(LOGGER_LEVEL_ERROR, "FSM: State data is NULL.");
+        return STATE_FATAL;
+    }
+    struct FsmData fsm_data = *(struct FsmData *)data;
 
     // fatal state is a sink, no other operation should be made
     prv_log_state_entry(STATE_FATAL);
+    prv_periodically_send(CAN_PRIMARY_ECUFSM_VEHICLESTATUS_ERROR, CAN_PRIMARY_ECUFSM_KRAKENSTATUS_FATAL, fsm_data.tick);
 
     // prevent the tractive system from being enabled in case of a fatal error
     shutdown_api_control_relay(false);
