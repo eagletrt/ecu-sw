@@ -404,6 +404,8 @@ state_t do_wait_driver(state_data_t *data) {
 
     constexpr uint32_t tson_required_press_time = 2000;
     EAGLETRT_STATIC uint32_t tson_first_press_tick = 0;
+    EAGLETRT_STATIC bool state_entered = false;
+    EAGLETRT_STATIC bool ignore_button_until_release = false;
 
     prv_log_state_entry(STATE_WAIT_DRIVER);
 
@@ -416,6 +418,16 @@ state_t do_wait_driver(state_data_t *data) {
     prv_drain_can_rx_buffers();
 
     prv_step_inverters();
+
+    bool button_pressed = vehicle_api_get_ts_on_button_pressed();
+    if (!state_entered) {
+        state_entered = true;
+        ignore_button_until_release = button_pressed;
+    }
+    if (ignore_button_until_release && !button_pressed) {
+        ignore_button_until_release = false;
+    }
+    bool button_active = button_pressed && !ignore_button_until_release;
 
     // This logic does:
     // 1. If the TSAC status times out, log an error and transition to the TS DISCHARGE state.
@@ -431,12 +443,12 @@ state_t do_wait_driver(state_data_t *data) {
     } else if (tsac_api_get_tsac_status() != CAN_PRIMARY_TSACSTATUS_MAINBOARDSTATUS_TS_ON) {
         logger_api_log(LOGGER_LEVEL_ERROR, "FSM: TSAC not in TSON!");
         next_state = STATE_MANUAL_WAIT_TS_DISCHARGE;
-    } else if (vehicle_api_get_ts_on_button_pressed() && !pedals_api_is_brake_pressed()) {
+    } else if (button_active && !pedals_api_is_brake_pressed()) {
         logger_api_log(LOGGER_LEVEL_INFO, "FSM: TS ON pressed without pedal. Moving to TS DISCHARGE.");
         next_state = STATE_MANUAL_WAIT_TS_DISCHARGE;
-    } else if (vehicle_api_get_ts_on_button_pressed() && tson_first_press_tick == 0) {
+    } else if (button_active && tson_first_press_tick == 0) {
         tson_first_press_tick = fsm_data.tick;
-    } else if (!vehicle_api_get_ts_on_button_pressed()) {
+    } else if (!button_active) {
         tson_first_press_tick = 0;
     } else if (fsm_data.tick - tson_first_press_tick > tson_required_press_time && pedals_api_is_brake_pressed()) {
         logger_api_log(LOGGER_LEVEL_INFO, "FSM: TS ON and pedal pressed. Moving to INV ENABLE.");
@@ -445,6 +457,8 @@ state_t do_wait_driver(state_data_t *data) {
 
     if (next_state != NO_CHANGE) {
         tson_first_press_tick = 0;
+        state_entered = false;
+        ignore_button_until_release = false;
     }
 
     prv_periodically_send(CAN_PRIMARY_ECUFSM_VEHICLESTATUS_TSON, CAN_PRIMARY_ECUFSM_KRAKENSTATUS_WAIT_DRIVER, fsm_data.tick);
