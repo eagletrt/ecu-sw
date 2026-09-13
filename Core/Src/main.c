@@ -22,6 +22,7 @@
 #include "can.h"
 #include "dma.h"
 #include "spi.h"
+#include "stm32f7xx_hal.h"
 #include "tim.h"
 #include "usart.h"
 #include "gpio.h"
@@ -33,6 +34,7 @@
 #include "eagletrt-api.h"
 #include "can-communication-router-api.h"
 #include "logger-api.h"
+#include <stdint.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -223,8 +225,14 @@ int main(void) {
 
     /* Infinite loop */
     /* USER CODE BEGIN WHILE */
+    uint32_t t = HAL_GetTick();
     while (1) {
         /* USER CODE END WHILE */
+
+        if (HAL_GetTick() - t >= 100) {
+            start_adc_conversion();
+            t = HAL_GetTick();
+        }
 
         /* USER CODE BEGIN 3 */
 

@@ -1,5 +1,8 @@
 #include "shutdown-api.h"
 #include "eagletrt.h"
+#include "logger-api.h"
+#include "logger.h"
+#include "shutdown.h"
 #include <string.h>
 
 EAGLETRT_STATIC struct ShutdownHandler shutdown_handler;
