@@ -1,8 +1,8 @@
 #include "shutdown-api.h"
 #include "eagletrt.h"
-#include "logger-api.h"
-#include "logger.h"
 #include "shutdown.h"
+#include "can-primary-api.h"
+#include "can-communication-api.h"
 #include <string.h>
 
 EAGLETRT_STATIC struct ShutdownHandler shutdown_handler;
@@ -51,4 +51,24 @@ float shutdown_api_get_voltage(enum ShutdownName name) {
         return 0.0F; // Invalid reading position
     }
     return shutdown_handler.voltages[name];
+}
+
+enum ShutdownReturnCode shutdown_api_periodically_send_voltages(uint32_t tick_ms) {
+    if (tick_ms - shutdown_handler.last_tick_ms_can_send >= can_primary_cycle_time_shutdownstate) {
+        shutdown_handler.last_tick_ms_can_send = tick_ms;
+
+        union CanPrimaryMessages message;
+        message.shutdownstate = (struct CanPrimaryShutdownstate){
+            .voltagein = shutdown_handler.voltages[SHUTDOWN_NAME_BEFORE_ECU],
+            .voltageout = shutdown_handler.voltages[SHUTDOWN_NAME_AFTER_ECU],
+        };
+        struct CanCommunicationFrame frame;
+        if (can_primary_api_serialize_from_id(CAN_PRIMARY_MESSAGE_FRAME_ID_SHUTDOWNSTATE, &message, frame.data) != -1) {
+            frame.id = CAN_PRIMARY_MESSAGE_FRAME_ID_SHUTDOWNSTATE;
+            frame.length = can_primary_byte_size_shutdownstate;
+            EAGLETRT_API_UNUSED(can_communication_api_add_to_tx(CAN_COMMUNICATION_NETWORK_PRIMARY, &frame));
+        }
+    }
+
+    return SHUTDOWN_RC_OK;
 }

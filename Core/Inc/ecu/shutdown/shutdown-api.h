@@ -60,4 +60,14 @@ enum ShutdownState shutdown_api_get_state(enum ShutdownName name);
  */
 float shutdown_api_get_voltage(enum ShutdownName name);
 
+/*!
+ * \brief Periodically sends the voltage readings for all shutdown line positions over CAN.
+ *
+ * \param[in] tick_ms The current tick in milliseconds.
+ *
+ * \retval SHUTDOWN_RC_OK if the voltage readings were sent successfully.
+ * \retval SHUTDOWN_RC_ERROR if an error occurred while sending the voltage readings (e.g. CAN transmission failure).
+ */
+enum ShutdownReturnCode shutdown_api_periodically_send_voltages(uint32_t tick_ms);
+
 #endif // SHUTDOWN_API_H
