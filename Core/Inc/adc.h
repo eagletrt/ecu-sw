@@ -53,3 +53,4 @@ enum ShutdownReturnCode start_adc_conversion(void);
 #endif
 
 #endif /* __ADC_H__ */
+

@@ -23,6 +23,9 @@
 /* USER CODE BEGIN 0 */
 #include "can-communication-api.h"
 #include "eagletrt-api.h"
+#include "logger-api.h"
+#include "can-inverters.h"
+#include "stm32f7xx_hal_def.h"
 /* USER CODE END 0 */
 
 CAN_HandleTypeDef hcan1;
@@ -380,7 +383,11 @@ EAGLETRT_STATIC enum CanCommunicationReturnCode prv_can_send_to_hardware(enum Ca
     tx_header.DLC = frame->length;
     tx_header.TransmitGlobalTime = DISABLE;
 
-    if (HAL_CAN_AddTxMessage(hcan, &tx_header, (uint8_t *)frame->data, &tx_mailbox) != HAL_OK) {
+    HAL_StatusTypeDef res = HAL_CAN_AddTxMessage(hcan, &tx_header, (uint8_t *)frame->data, &tx_mailbox);
+    if (res != HAL_OK) {
+        if (frame->id == CAN_INVERTERS_MESSAGE_FRAME_ID_EPHORUSINVERTER4SETPOINTS) {
+            logger_api_log(LOGGER_LEVEL_DEBUG, "Inverter 4 send setpoint error %d", tx_mailbox);
+        }
         return CAN_COMMUNICATION_RC_TRANSMISSION_ERROR;
     }
 

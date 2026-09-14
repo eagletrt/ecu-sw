@@ -16,6 +16,10 @@
 #include "ephorus-api.h"
 #include "can-communication-api.h"
 #include "eagletrt-api.h"
+#include "ephorus.h"
+#include "logger-api.h"
+#include "logger.h"
+#include <stdint.h>
 #include <string.h>
 
 /* The driver fills a fixed-size payload; it must match the transport's frame. */
@@ -412,10 +416,15 @@ enum InvertersReturnCode inverters_api_step(void) {
     ephorus_api_set_torque(&inverters_handler.driver, EPHORUS_WHEEL_REAR_RIGHT, torque_rear_right_nm);
 
     enum InvertersReturnCode return_code = INVERTERS_RC_OK;
-    for (enum EphorusWheel wheel = 0; wheel < EPHORUS_WHEEL_COUNT; wheel++) {
+    static enum EphorusWheel wheel = 0;
+    for (uint8_t i = 0; i < 2; ++i, ++wheel) {
+        if (wheel >= EPHORUS_WHEEL_COUNT) {
+            wheel = 0;
+        }
         struct CanCommunicationFrame frame = { 0 };
         uint32_t frame_id = 0;
         enum EphorusReturnCode build = ephorus_api_build_setpoints(&inverters_handler.driver, wheel, &frame_id, frame.data);
+
         if (build == EPHORUS_RC_INACTIVE) {
             continue; // wheel not attached
         }

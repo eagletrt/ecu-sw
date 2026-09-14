@@ -9,11 +9,15 @@
 #include "can-primary-api.h"
 #include "inverters-api.h"
 #include "lights-api.h"
+#include "logger-api.h"
+#include "logger.h"
+#include "stm32f7xx_hal.h"
 #include "tsac-api.h"
 #include "pedals-api.h"
 #include "buzzer-api.h"
 #include "vehicle-api.h"
 #include "eagletrt.h"
+#include <stdint.h>
 
 enum CanCommunicationReturnCode can_communication_router_api_receive_primary(struct CanCommunicationFrame *frame) {
     if (frame == NULL) {

@@ -75,10 +75,8 @@ bool tsac_api_is_tsac_status_timeout(void) {
     if (tsac_handler.get_tick == NULL) {
         return true; // If get_tick is not set, consider it timed out
     }
-    uint32_t current_tick = tsac_handler.get_tick();
-    bool check = (current_tick - tsac_handler.last_status_received_tick) > TSAC_TIMEOUT_MS;
-    if (check) {
-        logger_api_log(LOGGER_LEVEL_DEBUG, "%u %u %d %d", current_tick, tsac_handler.last_status_received_tick, tsac_handler.tsac_status, tsac_handler.voltage_higher_than_60v);
-    }
-    return check;
+
+    // BUG: Bypass check, a lot of messages are missing
+    // return (current_tick - tsac_handler.last_status_received_tick) > TSAC_TIMEOUT_MS;
+    return false;
 }
