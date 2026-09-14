@@ -111,4 +111,3 @@ enum VehicleReturnCode gpio_set_ptt(bool state);
 }
 #endif
 #endif /*__ GPIO_H__ */
-

@@ -102,4 +102,3 @@ enum ASDriverReturnCode can_air_release_from_line(enum ASDriverAirLine air_line)
 #endif
 
 #endif /* __CAN_H__ */
-

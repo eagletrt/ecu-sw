@@ -455,7 +455,7 @@ state_t do_wait_driver(state_data_t *data) {
         next_state = STATE_MANUAL_WAIT_INV_ENABLE;
     }
 
-    if (next_state != NO_CHANGE && next_state != STATE_WAIT_DRIVER) {
+    if (next_state != NO_CHANGE /* TODO: whu? && next_state != STATE_WAIT_DRIVER */) {
         tson_first_press_tick = 0;
         state_entered = false;
         ignore_button_until_release = false;

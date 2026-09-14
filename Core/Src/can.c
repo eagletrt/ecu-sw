@@ -25,7 +25,6 @@
 #include "eagletrt-api.h"
 #include "logger-api.h"
 #include "can-inverters.h"
-#include "stm32f7xx_hal_def.h"
 /* USER CODE END 0 */
 
 CAN_HandleTypeDef hcan1;
