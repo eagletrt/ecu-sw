@@ -25,6 +25,15 @@
 #include "eagletrt-api.h"
 #include "logger-api.h"
 #include "can-inverters.h"
+
+/*!
+ * \brief Upper bound (ms) spent waiting for a free bxCAN TX mailbox before giving up.
+ * \details Only reached when all three mailboxes stay busy, which needs a genuinely
+ *     stuck/off bus; a normal 1 Mbit/s frame clears a mailbox in ~130 us, so the wait
+ *     loop almost always exits far sooner. Kept small so a stuck bus cannot stall the
+ *     main loop for long.
+ */
+#define CAN_TX_MAILBOX_FREE_TIMEOUT_MS (2U)
 /* USER CODE END 0 */
 
 CAN_HandleTypeDef hcan1;
@@ -58,8 +67,9 @@ void MX_CAN1_Init(void) {
     }
     /* USER CODE BEGIN CAN1_Init 2 */
 
-    HAL_CAN_ConfigFilter(&hcan1, &(CAN_FilterTypeDef){ .FilterBank = 0, .FilterMode = CAN_FILTERMODE_IDMASK, .FilterScale = CAN_FILTERSCALE_32BIT, .FilterIdHigh = 0x0000, .FilterIdLow = 0x0000, .FilterMaskIdHigh = 0x0000, .FilterMaskIdLow = 0x0000, .FilterFIFOAssignment = CAN_RX_FIFO0, .FilterActivation = ENABLE, .SlaveStartFilterBank = 14 });
-    HAL_CAN_ConfigFilter(&hcan1, &(CAN_FilterTypeDef){ .FilterBank = 1, .FilterMode = CAN_FILTERMODE_IDMASK, .FilterScale = CAN_FILTERSCALE_32BIT, .FilterIdHigh = 0x0000, .FilterIdLow = 0x0000, .FilterMaskIdHigh = 0x0000, .FilterMaskIdLow = 0x0000, .FilterFIFOAssignment = CAN_RX_FIFO1, .FilterActivation = ENABLE, .SlaveStartFilterBank = 14 });
+    // odd IDs go to FIFO1, even IDs go to FIFO0
+    HAL_CAN_ConfigFilter(&hcan1, &(CAN_FilterTypeDef){ .FilterBank = 0, .FilterMode = CAN_FILTERMODE_IDMASK, .FilterScale = CAN_FILTERSCALE_32BIT, .FilterIdHigh = 0x0000, .FilterIdLow = 0x0000, .FilterMaskIdHigh = 0x0020, .FilterMaskIdLow = 0x0000, .FilterFIFOAssignment = CAN_RX_FIFO0, .FilterActivation = ENABLE, .SlaveStartFilterBank = 14 });
+    HAL_CAN_ConfigFilter(&hcan1, &(CAN_FilterTypeDef){ .FilterBank = 1, .FilterMode = CAN_FILTERMODE_IDMASK, .FilterScale = CAN_FILTERSCALE_32BIT, .FilterIdHigh = 0x0020, .FilterIdLow = 0x0000, .FilterMaskIdHigh = 0x0020, .FilterMaskIdLow = 0x0000, .FilterFIFOAssignment = CAN_RX_FIFO1, .FilterActivation = ENABLE, .SlaveStartFilterBank = 14 });
 
     /* USER CODE END CAN1_Init 2 */
 }
@@ -90,8 +100,9 @@ void MX_CAN2_Init(void) {
     }
     /* USER CODE BEGIN CAN2_Init 2 */
 
-    HAL_CAN_ConfigFilter(&hcan2, &(CAN_FilterTypeDef){ .FilterBank = 14, .FilterMode = CAN_FILTERMODE_IDMASK, .FilterScale = CAN_FILTERSCALE_32BIT, .FilterIdHigh = 0x0000, .FilterIdLow = 0x0000, .FilterMaskIdHigh = 0x0000, .FilterMaskIdLow = 0x0000, .FilterFIFOAssignment = CAN_RX_FIFO0, .FilterActivation = ENABLE, .SlaveStartFilterBank = 14 });
-    HAL_CAN_ConfigFilter(&hcan2, &(CAN_FilterTypeDef){ .FilterBank = 15, .FilterMode = CAN_FILTERMODE_IDMASK, .FilterScale = CAN_FILTERSCALE_32BIT, .FilterIdHigh = 0x0000, .FilterIdLow = 0x0000, .FilterMaskIdHigh = 0x0000, .FilterMaskIdLow = 0x0000, .FilterFIFOAssignment = CAN_RX_FIFO1, .FilterActivation = ENABLE, .SlaveStartFilterBank = 14 });
+    // odd IDs go to FIFO1, even IDs go to FIFO0
+    HAL_CAN_ConfigFilter(&hcan2, &(CAN_FilterTypeDef){ .FilterBank = 14, .FilterMode = CAN_FILTERMODE_IDMASK, .FilterScale = CAN_FILTERSCALE_32BIT, .FilterIdHigh = 0x0000, .FilterIdLow = 0x0000, .FilterMaskIdHigh = 0x0020, .FilterMaskIdLow = 0x0000, .FilterFIFOAssignment = CAN_RX_FIFO0, .FilterActivation = ENABLE, .SlaveStartFilterBank = 14 });
+    HAL_CAN_ConfigFilter(&hcan2, &(CAN_FilterTypeDef){ .FilterBank = 15, .FilterMode = CAN_FILTERMODE_IDMASK, .FilterScale = CAN_FILTERSCALE_32BIT, .FilterIdHigh = 0x0020, .FilterIdLow = 0x0000, .FilterMaskIdHigh = 0x0020, .FilterMaskIdLow = 0x0000, .FilterFIFOAssignment = CAN_RX_FIFO1, .FilterActivation = ENABLE, .SlaveStartFilterBank = 14 });
 
     /* USER CODE END CAN2_Init 2 */
 }
@@ -122,10 +133,9 @@ void MX_CAN3_Init(void) {
     }
     /* USER CODE BEGIN CAN3_Init 2 */
 
-    // CAN3 is an independent bxCAN instance with its own 14 filter banks (0..13);
-    // it does not share CAN1/CAN2's 0..27 bank space, so bank indices restart at 0.
-    HAL_CAN_ConfigFilter(&hcan3, &(CAN_FilterTypeDef){ .FilterBank = 0, .FilterMode = CAN_FILTERMODE_IDMASK, .FilterScale = CAN_FILTERSCALE_32BIT, .FilterIdHigh = 0x0000, .FilterIdLow = 0x0000, .FilterMaskIdHigh = 0x0000, .FilterMaskIdLow = 0x0000, .FilterFIFOAssignment = CAN_RX_FIFO0, .FilterActivation = ENABLE, .SlaveStartFilterBank = 14 });
-    HAL_CAN_ConfigFilter(&hcan3, &(CAN_FilterTypeDef){ .FilterBank = 1, .FilterMode = CAN_FILTERMODE_IDMASK, .FilterScale = CAN_FILTERSCALE_32BIT, .FilterIdHigh = 0x0000, .FilterIdLow = 0x0000, .FilterMaskIdHigh = 0x0000, .FilterMaskIdLow = 0x0000, .FilterFIFOAssignment = CAN_RX_FIFO1, .FilterActivation = ENABLE, .SlaveStartFilterBank = 14 });
+    // odd IDs go to FIFO1, even IDs go to FIFO0
+    HAL_CAN_ConfigFilter(&hcan3, &(CAN_FilterTypeDef){ .FilterBank = 0, .FilterMode = CAN_FILTERMODE_IDMASK, .FilterScale = CAN_FILTERSCALE_32BIT, .FilterIdHigh = 0x0000, .FilterIdLow = 0x0000, .FilterMaskIdHigh = 0x0020, .FilterMaskIdLow = 0x0000, .FilterFIFOAssignment = CAN_RX_FIFO0, .FilterActivation = ENABLE, .SlaveStartFilterBank = 14 });
+    HAL_CAN_ConfigFilter(&hcan3, &(CAN_FilterTypeDef){ .FilterBank = 1, .FilterMode = CAN_FILTERMODE_IDMASK, .FilterScale = CAN_FILTERSCALE_32BIT, .FilterIdHigh = 0x0020, .FilterIdLow = 0x0000, .FilterMaskIdHigh = 0x0020, .FilterMaskIdLow = 0x0000, .FilterFIFOAssignment = CAN_RX_FIFO1, .FilterActivation = ENABLE, .SlaveStartFilterBank = 14 });
 
     /* USER CODE END CAN3_Init 2 */
 }
@@ -372,6 +382,13 @@ EAGLETRT_STATIC enum CanCommunicationReturnCode prv_can_send_to_hardware(enum Ca
         return CAN_COMMUNICATION_RC_INVALID_LENGTH;
     }
 
+    uint32_t wait_start_tick = HAL_GetTick();
+    while (HAL_CAN_GetTxMailboxesFreeLevel(hcan) == 0U) {
+        if ((HAL_GetTick() - wait_start_tick) >= CAN_TX_MAILBOX_FREE_TIMEOUT_MS) {
+            return CAN_COMMUNICATION_RC_TRANSMISSION_ERROR;
+        }
+    }
+
     CAN_TxHeaderTypeDef tx_header;
     uint32_t tx_mailbox = 0U;
 
@@ -384,9 +401,6 @@ EAGLETRT_STATIC enum CanCommunicationReturnCode prv_can_send_to_hardware(enum Ca
 
     HAL_StatusTypeDef res = HAL_CAN_AddTxMessage(hcan, &tx_header, (uint8_t *)frame->data, &tx_mailbox);
     if (res != HAL_OK) {
-        if (frame->id == CAN_INVERTERS_MESSAGE_FRAME_ID_EPHORUSINVERTER4SETPOINTS) {
-            logger_api_log(LOGGER_LEVEL_DEBUG, "Inverter 4 send setpoint error %d", tx_mailbox);
-        }
         return CAN_COMMUNICATION_RC_TRANSMISSION_ERROR;
     }
 
@@ -410,53 +424,72 @@ enum ASDriverReturnCode can_air_release_from_line(enum ASDriverAirLine air_line)
     return AS_DRIVER_RC_OK;
 }
 
-void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan) {
-    CAN_RxHeaderTypeDef header = { 0 };
-    struct CanCommunicationFrame msg = { 0 };
+/*!
+ * \brief Per-network count of hardware RX-FIFO overruns (frames the peripheral
+ *     dropped because the FIFO was full when a new one arrived).
+ * \details Purely observational: a value that keeps growing is direct evidence
+ *     that the ISR is not draining fast enough (or the bus bursts harder than the
+ *     6 buffered frames tolerate) - i.e. the "FIFO too shallow" failure. If this
+ *     stays at zero while frames still go missing, the losses are NOT overrun
+ *     (look at the bus/physical layer instead). Read it with
+ *     \ref can_get_rx_overrun_count. Marked volatile: written in ISR, read in main.
+ */
+EAGLETRT_STATIC volatile uint32_t prv_can_rx_overrun_count[CAN_COMMUNICATION_NETWORK_COUNT] = { 0 };
 
-    if (HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO0, &header, msg.data) == HAL_OK) {
+uint32_t can_get_rx_overrun_count(enum CanCommunicationNetwork network) {
+    if (network >= CAN_COMMUNICATION_NETWORK_COUNT) {
+        return 0U;
+    }
+    return prv_can_rx_overrun_count[network];
+}
+
+/*!
+ * \brief Drains every pending frame from one RX FIFO and enqueues them for processing.
+ * \details Reads in a loop until the FIFO fill level reaches zero, so a burst that
+ *     lands several frames before the ISR runs is emptied in a single interrupt
+ *     entry instead of one frame per interrupt - the strongest guard against
+ *     overrun. It also detects and clears the FIFO overrun flag so a genuine
+ *     hardware drop is counted rather than lost silently.
+ * \param[in] hcan Pointer to the ST HAL CAN handle that raised the interrupt.
+ * \param[in] rx_fifo Either \c CAN_RX_FIFO0 or \c CAN_RX_FIFO1.
+ */
+EAGLETRT_STATIC void prv_can_drain_rx_fifo(CAN_HandleTypeDef *hcan, uint32_t rx_fifo) {
+    enum CanCommunicationNetwork network = prv_can_get_network(hcan);
+    if (network >= CAN_COMMUNICATION_NETWORK_COUNT) {
+        return;
+    }
+
+    // A set overrun flag means the hardware already dropped at least one frame
+    // because this FIFO was full. Count it for diagnostics, then clear it.
+    const uint32_t overrun_flag = (rx_fifo == CAN_RX_FIFO0) ? CAN_FLAG_FOV0 : CAN_FLAG_FOV1;
+    if (__HAL_CAN_GET_FLAG(hcan, overrun_flag) != 0U) {
+        prv_can_rx_overrun_count[network]++;
+        __HAL_CAN_CLEAR_FLAG(hcan, overrun_flag);
+    }
+
+    // Empty the whole FIFO in this single interrupt entry (its 3-frame depth plus
+    // anything that arrives while we drain) so bursts do not pile up.
+    while (HAL_CAN_GetRxFifoFillLevel(hcan, rx_fifo) > 0U) {
+        CAN_RxHeaderTypeDef header = { 0 };
+        struct CanCommunicationFrame msg = { 0 };
+
+        if (HAL_CAN_GetRxMessage(hcan, rx_fifo, &header, msg.data) != HAL_OK) {
+            break;
+        }
         msg.id = (header.IDE == CAN_ID_EXT) ? header.ExtId : header.StdId;
         msg.length = (uint8_t)header.DLC;
 
-        // Based on the handler, retrieve the selected network
-        enum CanCommunicationNetwork network = prv_can_get_network(hcan);
-
-        if (network < CAN_COMMUNICATION_NETWORK_COUNT) {
-            /*
-            The return value of the call is not used as no action can be taken within the interrupt
-            such as retry, waiting or heavy error-handling.
-            It is possible, if needed, to add a logger line to let know the user that something
-            bad happened during the queueing of the frame.
-            */
-            EAGLETRT_API_UNUSED(can_communication_api_add_to_rx(network, &msg));
-        }
+        EAGLETRT_API_UNUSED(can_communication_api_add_to_rx(network, &msg));
     }
+}
 
+void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan) {
+    prv_can_drain_rx_fifo(hcan, CAN_RX_FIFO0);
     HAL_CAN_ActivateNotification(hcan, CAN_IT_RX_FIFO0_MSG_PENDING);
 }
 
 void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef *hcan) {
-    CAN_RxHeaderTypeDef header = { 0 };
-    struct CanCommunicationFrame msg = { 0 };
-
-    if (HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO1, &header, msg.data) == HAL_OK) {
-        msg.id = (header.IDE == CAN_ID_EXT) ? header.ExtId : header.StdId;
-        msg.length = (uint8_t)header.DLC;
-
-        // Based on the handler, retrieve the selected network
-        enum CanCommunicationNetwork network = prv_can_get_network(hcan);
-
-        if (network < CAN_COMMUNICATION_NETWORK_COUNT) {
-            /*
-            The return value of the call is not used as no action can be taken within the interrupt
-            such as retry, waiting or heavy error-handling.
-            It is possible, if needed, to add a logger line to let know the user that something
-            bad happened during the queueing of the frame.
-            */
-            EAGLETRT_API_UNUSED(can_communication_api_add_to_rx(network, &msg));
-        }
-    }
-
+    prv_can_drain_rx_fifo(hcan, CAN_RX_FIFO1);
     HAL_CAN_ActivateNotification(hcan, CAN_IT_RX_FIFO1_MSG_PENDING);
 }
 /* USER CODE END 1 */

@@ -415,12 +415,14 @@ enum InvertersReturnCode inverters_api_step(void) {
     ephorus_api_set_torque(&inverters_handler.driver, EPHORUS_WHEEL_REAR_LEFT, torque_rear_left_nm);
     ephorus_api_set_torque(&inverters_handler.driver, EPHORUS_WHEEL_REAR_RIGHT, torque_rear_right_nm);
 
+    // Serialize and enqueue a setpoint frame for every wheel. Each inverter has
+    // its own CAN id, so a full update is four separate frames. The transport
+    // layer waits (briefly, bounded) for a free bxCAN TX mailbox, so all four
+    // frames are queued and sent within the same cycle even though the hardware
+    // only has three mailboxes - no more dropping the fourth setpoint, and every
+    // inverter receives a coherent, full-cadence update.
     enum InvertersReturnCode return_code = INVERTERS_RC_OK;
-    static enum EphorusWheel wheel = 0;
-    for (uint8_t i = 0; i < 2; ++i, ++wheel) {
-        if (wheel >= EPHORUS_WHEEL_COUNT) {
-            wheel = 0;
-        }
+    for (enum EphorusWheel wheel = 0; wheel < EPHORUS_WHEEL_COUNT; ++wheel) {
         struct CanCommunicationFrame frame = { 0 };
         uint32_t frame_id = 0;
         enum EphorusReturnCode build = ephorus_api_build_setpoints(&inverters_handler.driver, wheel, &frame_id, frame.data);

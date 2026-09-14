@@ -230,9 +230,6 @@ int main(void) {
     uint32_t t = HAL_GetTick();
     while (1) {
         if (HAL_GetTick() - t >= 200) {
-            float pressure = pedals_api_get_brake_pressure();
-            logger_api_log(LOGGER_LEVEL_DEBUG, "Brake pressure = %f bar", pressure);
-
             start_adc_conversion();
             t = HAL_GetTick();
         }
