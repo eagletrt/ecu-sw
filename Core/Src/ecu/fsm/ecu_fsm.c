@@ -440,6 +440,13 @@ state_t do_pause(state_data_t *data) {
 state_t do_manual_wait_ts_precharge(state_data_t *data) {
     state_t next_state = NO_CHANGE;
     /* Your Code Here */
+
+    // If the inverters never all reach "drive" within this window, stop waiting and
+    // unwind back toward idle instead of hanging.
+    constexpr uint32_t precharge_timeout_ms = 10000;
+    EAGLETRT_STATIC uint32_t enter_tick = 0;
+    EAGLETRT_STATIC bool precharge_started = false;
+
     if (data == NULL) {
         logger_api_log(LOGGER_LEVEL_ERROR, "FSM: State data is NULL. Going to FATAL");
         return STATE_FATAL;
@@ -451,6 +458,10 @@ state_t do_manual_wait_ts_precharge(state_data_t *data) {
     prv_drain_can_rx_buffers();
 
     prv_step_inverters();
+
+    if (enter_tick == 0) {
+        enter_tick = fsm_data.tick;
+    }
 
     // Logic is:
     // 1. If the TSAC status times out, log an error and transition to the TS DISCHARGE state.
@@ -470,6 +481,29 @@ state_t do_manual_wait_ts_precharge(state_data_t *data) {
     } else if (tsac_api_get_tsac_status() == CAN_PRIMARY_TSACSTATUS_MAINBOARDSTATUS_ERROR) {
         logger_api_log(LOGGER_LEVEL_ERROR, "FSM: Precharge failed. TSAC reported error!");
         next_state = STATE_MANUAL_WAIT_TS_DISCHARGE;
+    } else if (fsm_data.tick - enter_tick > precharge_timeout_ms) {
+        // The precharge did not happen within the timeout: give up and unwind.
+        logger_api_log(LOGGER_LEVEL_ERROR, "FSM: Precharge outside timeout.");
+        next_state = STATE_MANUAL_WAIT_TS_DISCHARGE;
+    }
+    /*
+     else if (tsac_api_get_tsac_status() == CAN_PRIMARY_TSACSTATUS_MAINBOARDSTATUS_PRECHARGE && !precharge_started) {
+        logger_api_log(LOGGER_LEVEL_INFO, "FSM: Precharge started.");
+        precharge_started = true;
+    } else if (tsac_api_get_tsac_status() != CAN_PRIMARY_TSACSTATUS_MAINBOARDSTATUS_PRECHARGE && precharge_started) {
+        logger_api_log(LOGGER_LEVEL_ERROR, "FSM: Precharge failed. TSAC reported error!");
+        next_state = STATE_MANUAL_WAIT_TS_DISCHARGE;
+    }
+    */
+
+    if (next_state != NO_CHANGE) {
+        enter_tick = 0;
+    }
+
+    // On any transition out, silence the R2D tone and re-arm the entry timer.
+    if (next_state != NO_CHANGE) {
+        buzzer_api_reset(BUZZER_TYPE_R2D);
+        enter_tick = 0;
     }
 
     tsac_api_periodically_require_tsac_status();
