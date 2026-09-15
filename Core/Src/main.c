@@ -22,7 +22,6 @@
 #include "can.h"
 #include "dma.h"
 #include "logger.h"
-#include "pedals-api.h"
 #include "spi.h"
 #include "stm32f7xx_hal.h"
 #include "tim.h"
@@ -229,7 +228,7 @@ int main(void) {
     /* USER CODE BEGIN WHILE */
     uint32_t t = HAL_GetTick();
     while (1) {
-        if (HAL_GetTick() - t >= 200) {
+        if (HAL_GetTick() - t >= 100) {
             start_adc_conversion();
             t = HAL_GetTick();
         }
