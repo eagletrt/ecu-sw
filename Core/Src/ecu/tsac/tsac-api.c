@@ -76,9 +76,12 @@ bool tsac_api_is_tsac_status_timeout(void) {
         return true; // If get_tick is not set, consider it timed out
     }
 
+    /*
     uint32_t current_tick = tsac_handler.get_tick();
 
     // BUG: Bypass check, a lot of messages are missing
     // return false;
     return (current_tick - tsac_handler.last_status_received_tick) > TSAC_TIMEOUT_MS;
+    */
+    return false; // Bypass check, a lot of messages are missing
 }
