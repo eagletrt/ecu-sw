@@ -463,11 +463,16 @@ state_t do_manual_wait_ts_precharge(state_data_t *data) {
         enter_tick = fsm_data.tick;
     }
 
+    enum CanPrimaryTsacstatusMainboardstatus tsac_status = tsac_api_get_tsac_status();
+
     // Logic is:
     // 1. If the TSAC status times out, log an error and transition to the TS DISCHARGE state.
     // 2. If the shutdown is open, log an error and transition to the TS DISCHARGE state.
     // 3. If the TSAC status is TSON and the voltage is higher than 60V, log an info message and transition to the WAIT DRIVER state.
     // 4. If the TSAC status is ERROR, log an error and transition to the TS DISCHARGE state.
+    // 5. If the precharge has not completed within the timeout, log an error and transition to the TS DISCHARGE state.
+    // 6. If the TSAC status is AIRN_CHECK, PRECHARGE, or AIRP_CHECK, and precharge has not started yet, log an info message and set precharge_started to true.
+    // 7. If precharge has started and the TSAC status is IDLE or INIT, log an error and transition to the TS DISCHARGE state.
     if (tsac_api_is_tsac_status_timeout()) {
         logger_api_log(LOGGER_LEVEL_ERROR, "FSM: Precharge failed. TSAC status timeout!");
         shutdown_api_control_relay(false);
@@ -485,25 +490,24 @@ state_t do_manual_wait_ts_precharge(state_data_t *data) {
         // The precharge did not happen within the timeout: give up and unwind.
         logger_api_log(LOGGER_LEVEL_ERROR, "FSM: Precharge outside timeout.");
         next_state = STATE_MANUAL_WAIT_TS_DISCHARGE;
-    }
-    /*
-     else if (tsac_api_get_tsac_status() == CAN_PRIMARY_TSACSTATUS_MAINBOARDSTATUS_PRECHARGE && !precharge_started) {
-        logger_api_log(LOGGER_LEVEL_INFO, "FSM: Precharge started.");
-        precharge_started = true;
-    } else if (tsac_api_get_tsac_status() != CAN_PRIMARY_TSACSTATUS_MAINBOARDSTATUS_PRECHARGE && precharge_started) {
-        logger_api_log(LOGGER_LEVEL_ERROR, "FSM: Precharge failed. TSAC reported error!");
+    } else if (tsac_status == CAN_PRIMARY_TSACSTATUS_MAINBOARDSTATUS_AIRN_CHECK ||
+               tsac_status == CAN_PRIMARY_TSACSTATUS_MAINBOARDSTATUS_PRECHARGE ||
+               tsac_status == CAN_PRIMARY_TSACSTATUS_MAINBOARDSTATUS_AIRP_CHECK) {
+        if (!precharge_started) {
+            logger_api_log(LOGGER_LEVEL_INFO, "FSM: TSAC precharge started.");
+            precharge_started = true;
+        }
+    } else if (precharge_started &&
+               (tsac_status == CAN_PRIMARY_TSACSTATUS_MAINBOARDSTATUS_IDLE ||
+                tsac_status == CAN_PRIMARY_TSACSTATUS_MAINBOARDSTATUS_INIT)) {
+        logger_api_log(LOGGER_LEVEL_ERROR, "FSM: Precharge stopped by TSAC. Aborting.");
         next_state = STATE_MANUAL_WAIT_TS_DISCHARGE;
     }
-    */
 
-    if (next_state != NO_CHANGE) {
-        enter_tick = 0;
-    }
-
-    // On any transition out, silence the R2D tone and re-arm the entry timer.
     if (next_state != NO_CHANGE) {
         buzzer_api_reset(BUZZER_TYPE_R2D);
         enter_tick = 0;
+        precharge_started = false;
     }
 
     tsac_api_periodically_require_tsac_status();
