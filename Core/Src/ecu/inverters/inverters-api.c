@@ -301,6 +301,34 @@ EAGLETRT_STATIC void prv_inverters_minimum_cell_voltage_limit(float rpm_front_le
 }
 
 /*!
+ * \brief Splits the torque request between the front and rear axles.
+ *
+ * \details Applies the fixed \ref INVERTERS_REAR_TORQUE_BIAS distribution: the rear
+ * wheels are scaled by the rear share and the front wheels by the front share, both
+ * normalised by the larger share so the dominant axle keeps the full request and the
+ * other is scaled down to hold the ratio (never amplifying above the pedal map). Runs
+ * first in the cut-off pipeline; because every later limit scales all four wheels by a
+ * single common factor, the front:rear ratio set here is preserved through them.
+ *
+ * \param[in,out] torque_front_left_nm  Front left request; scaled by the front share.
+ * \param[in,out] torque_front_right_nm Front right request; scaled by the front share.
+ * \param[in,out] torque_rear_left_nm   Rear left request; scaled by the rear share.
+ * \param[in,out] torque_rear_right_nm  Rear right request; scaled by the rear share.
+ */
+EAGLETRT_STATIC void prv_inverters_apply_torque_distribution(float *torque_front_left_nm, float *torque_front_right_nm, float *torque_rear_left_nm, float *torque_rear_right_nm) {
+    const float rear_bias = INVERTERS_REAR_TORQUE_BIAS;
+    const float front_bias = 1.0F - INVERTERS_REAR_TORQUE_BIAS;
+    const float norm = fmaxf(rear_bias, front_bias);
+    const float rear_factor = rear_bias / norm;
+    const float front_factor = front_bias / norm;
+
+    *torque_front_left_nm *= front_factor;
+    *torque_front_right_nm *= front_factor;
+    *torque_rear_left_nm *= rear_factor;
+    *torque_rear_right_nm *= rear_factor;
+}
+
+/*!
  * \brief Orchestrates the safety cut-off pipeline for all four inverters.
  *
  * \details This function acts as the "overseer" of the powertrain. It processes raw torque
@@ -316,6 +344,8 @@ EAGLETRT_STATIC void prv_inverters_minimum_cell_voltage_limit(float rpm_front_le
  * \param[in,out] torque_rear_right_nm  Pointer to rear right request. Modified if limits are hit.
  */
 EAGLETRT_STATIC void prv_inverters_apply_cut_off(float *torque_front_left_nm, float *torque_front_right_nm, float *torque_rear_left_nm, float *torque_rear_right_nm) {
+    prv_inverters_apply_torque_distribution(torque_front_left_nm, torque_front_right_nm, torque_rear_left_nm, torque_rear_right_nm);
+
     // Load current rpm of all motors from the decoded telemetry
     float rpm_front_left = prv_inverters_wheel_rpm(EPHORUS_WHEEL_FRONT_LEFT);
     float rpm_front_right = prv_inverters_wheel_rpm(EPHORUS_WHEEL_FRONT_RIGHT);
@@ -355,6 +385,7 @@ enum InvertersReturnCode inverters_api_init(inverters_get_tick_callback get_tick
         return INVERTERS_RC_NULL_POINTER;
     }
     memset(&inverters_handler, 0, sizeof(inverters_handler));
+    inverters_handler.hv_bms_soc = 1.0F;
     inverters_handler.get_tick = get_tick;
     ephorus_api_init(&inverters_handler.driver);
     return INVERTERS_RC_OK;
@@ -387,7 +418,9 @@ bool inverters_api_is_all_in_drive(void) {
 }
 
 void inverters_api_set_soc(float hv_bms_soc) {
-    inverters_handler.hv_bms_soc = EAGLETRT_API_CLAMP(hv_bms_soc, 0.0F, 1.0F);
+    EAGLETRT_API_UNUSED(hv_bms_soc);
+    inverters_handler.hv_bms_soc = 1.0F;
+    // inverters_handler.hv_bms_soc = EAGLETRT_API_CLAMP(hv_bms_soc, 0.0F, 1.0F);
 }
 
 enum InvertersReturnCode inverters_api_step(void) {
