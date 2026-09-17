@@ -46,6 +46,8 @@
 
 #define INVERTERS_MOTOR_MAX_MECHANICAL_POWER_W (35400.0F) /*!< Maximum mechanical power allowed per motor. */
 
+#define INVERTERS_REAR_TORQUE_BIAS (0.5F) /*! < Torque bias to the rear axle. */
+
 #define INVERTERS_HV_MAX_REGEN_CURRENT_A (-40.0F) /*!< Maximum allowable regenerative current into the battery. */
 
 #define INVERTERS_HV_MIN_CELL_VOLTAGE_V (2.8F) /*!< Minimum safe voltage for a single battery cell (V). */
