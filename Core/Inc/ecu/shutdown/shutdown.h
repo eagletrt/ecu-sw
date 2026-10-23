@@ -9,7 +9,7 @@
 
 #include <stdint.h>
 
-#define SHUTDOWN_VOLTAGE_THRESHOLD_UPPER (16.0F)
+#define SHUTDOWN_VOLTAGE_THRESHOLD_UPPER (12.0F)
 #define SHUTDOWN_VOLTAGE_THRESHOLD_LOWER (0.5F)
 
 /*!
@@ -55,6 +55,7 @@ typedef enum ShutdownReturnCode (*shutdown_control_relay_callback)(bool relay_st
 struct ShutdownHandler {
     shutdown_control_relay_callback control_relay; /*!< Callback function to set the state of the shutdown line. */
     float voltages[SHUTDOWN_NAME_COUNT];           /*!< Array to hold the voltage readings for each shutdown line position. */
+    uint32_t last_tick_ms_can_send;                /*!< The last tick in milliseconds when the voltages were sent over CAN. */
 };
 
 #endif // SHUTDOWN_H

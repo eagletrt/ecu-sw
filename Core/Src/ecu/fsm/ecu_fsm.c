@@ -22,6 +22,7 @@ EAGLETRT_STATIC void prv_periodically_send(enum CanPrimaryEcufsmVehiclestatus ve
     identity_api_periodically_send_version(tick);
     identity_api_periodically_send_libcan_version(tick);
     temperatures_api_periodically_send_temperatures(tick);
+    shutdown_api_periodically_send_voltages(tick);
 }
 
 EAGLETRT_STATIC void prv_drain_can_tx_buffers(void) {
@@ -36,11 +37,8 @@ EAGLETRT_STATIC void prv_drain_can_rx_buffers(void) {
     can_communication_api_process_rx(CAN_COMMUNICATION_NETWORK_INVERTER);
 }
 
-// Advances the inverter driver's periodic setpoint transmission for this tick and
-// logs any error. Every powertrain-active state runs this once per cycle, so the
-// step-and-log boilerplate lives here instead of being copy-pasted into each state.
-EAGLETRT_STATIC void prv_step_inverters(uint32_t tick) {
-    switch (inverters_api_step(tick)) {
+EAGLETRT_STATIC void prv_step_inverters(void) {
+    switch (inverters_api_step()) {
         case INVERTERS_RC_OK:
             break;
         case INVERTERS_RC_TX_ERROR:
@@ -50,6 +48,127 @@ EAGLETRT_STATIC void prv_step_inverters(uint32_t tick) {
             logger_api_log(LOGGER_LEVEL_ERROR, "FSM: Inverter error");
             break;
     }
+}
+
+EAGLETRT_STATIC void prv_fsm_state_to_can_state(state_t state, enum CanPrimaryEcufsmVehiclestatus *vehicle_status, enum CanPrimaryEcufsmKrakenstatus *kraken_status) {
+    switch (state) {
+        case STATE_INIT:
+            *vehicle_status = CAN_PRIMARY_ECUFSM_VEHICLESTATUS_INIT;
+            *kraken_status = CAN_PRIMARY_ECUFSM_KRAKENSTATUS_INIT;
+            break;
+        case STATE_FATAL:
+            *vehicle_status = CAN_PRIMARY_ECUFSM_VEHICLESTATUS_ERROR;
+            *kraken_status = CAN_PRIMARY_ECUFSM_KRAKENSTATUS_FATAL;
+            break;
+        case STATE_IDLE:
+            *vehicle_status = CAN_PRIMARY_ECUFSM_VEHICLESTATUS_IDLE;
+            *kraken_status = CAN_PRIMARY_ECUFSM_KRAKENSTATUS_IDLE;
+            break;
+        case STATE_FLASH:
+            *vehicle_status = CAN_PRIMARY_ECUFSM_VEHICLESTATUS_IDLE; // idle as by rules, no flash is mentioned
+            *kraken_status = CAN_PRIMARY_ECUFSM_KRAKENSTATUS_FLASH;
+            break;
+        case STATE_PAUSE:
+            *vehicle_status = CAN_PRIMARY_ECUFSM_VEHICLESTATUS_IDLE; // idle as by rules, no pause is mentioned
+            *kraken_status = CAN_PRIMARY_ECUFSM_KRAKENSTATUS_PAUSE;
+            break;
+        case STATE_MANUAL_WAIT_TS_PRECHARGE:
+            *vehicle_status = CAN_PRIMARY_ECUFSM_VEHICLESTATUS_PRECHARGE;
+            *kraken_status = CAN_PRIMARY_ECUFSM_KRAKENSTATUS_MANUAL_WAIT_TS_PRECHARGE;
+            break;
+        case STATE_AS_OFF:
+            *vehicle_status = CAN_PRIMARY_ECUFSM_VEHICLESTATUS_ASOFF;
+            *kraken_status = CAN_PRIMARY_ECUFSM_KRAKENSTATUS_AS_OFF;
+            break;
+        case STATE_WAIT_DRIVER:
+            *vehicle_status = CAN_PRIMARY_ECUFSM_VEHICLESTATUS_TSON;
+            *kraken_status = CAN_PRIMARY_ECUFSM_KRAKENSTATUS_WAIT_DRIVER;
+            break;
+        case STATE_MANUAL_WAIT_TS_DISCHARGE:
+            *vehicle_status = CAN_PRIMARY_ECUFSM_VEHICLESTATUS_DISCHARGE;
+            *kraken_status = CAN_PRIMARY_ECUFSM_KRAKENSTATUS_MANUAL_WAIT_TS_DISCHARGE;
+            break;
+        case STATE_MANUAL_WAIT_INV_ENABLE:
+            *vehicle_status = CAN_PRIMARY_ECUFSM_VEHICLESTATUS_TSON;
+            *kraken_status = CAN_PRIMARY_ECUFSM_KRAKENSTATUS_MANUAL_WAIT_INV_ENABLE;
+            break;
+        case STATE_DRIVING:
+            *vehicle_status = CAN_PRIMARY_ECUFSM_VEHICLESTATUS_TSON;
+            *kraken_status = CAN_PRIMARY_ECUFSM_KRAKENSTATUS_DRIVING;
+            break;
+        case STATE_MANUAL_WAIT_INV_DISABLE:
+            *vehicle_status = CAN_PRIMARY_ECUFSM_VEHICLESTATUS_TSON;
+            *kraken_status = CAN_PRIMARY_ECUFSM_KRAKENSTATUS_MANUAL_WAIT_INV_DISABLE;
+            break;
+        case STATE_AS_OFF_WAIT_TS_PRECHARGE:
+            *vehicle_status = CAN_PRIMARY_ECUFSM_VEHICLESTATUS_PRECHARGE;
+            *kraken_status = CAN_PRIMARY_ECUFSM_KRAKENSTATUS_AS_OFF_WAIT_TS_PRECHARGE;
+            break;
+        case STATE_AS_READY:
+            *vehicle_status = CAN_PRIMARY_ECUFSM_VEHICLESTATUS_AS_READY;
+            *kraken_status = CAN_PRIMARY_ECUFSM_KRAKENSTATUS_AS_READY;
+            break;
+        case STATE_AS_READY_WAIT_INV_ENABLE:
+            *vehicle_status = CAN_PRIMARY_ECUFSM_VEHICLESTATUS_AS_R2D;
+            *kraken_status = CAN_PRIMARY_ECUFSM_KRAKENSTATUS_AS_READY_WAIT_INV_ENABLE;
+            break;
+        case STATE_AS_EMERGENCY:
+            *vehicle_status = CAN_PRIMARY_ECUFSM_VEHICLESTATUS_AS_EMERGENCY;
+            *kraken_status = CAN_PRIMARY_ECUFSM_KRAKENSTATUS_AS_EMERGENCY;
+            break;
+        case STATE_AS_R2D:
+            *vehicle_status = CAN_PRIMARY_ECUFSM_VEHICLESTATUS_AS_R2D;
+            *kraken_status = CAN_PRIMARY_ECUFSM_KRAKENSTATUS_AS_R2D;
+            break;
+        case STATE_AS_DRIVING:
+            *vehicle_status = CAN_PRIMARY_ECUFSM_VEHICLESTATUS_AS_DRIVING;
+            *kraken_status = CAN_PRIMARY_ECUFSM_KRAKENSTATUS_AS_DRIVING;
+            break;
+        case STATE_AS_FINISHED:
+            *vehicle_status = CAN_PRIMARY_ECUFSM_VEHICLESTATUS_AS_FINISHED;
+            *kraken_status = CAN_PRIMARY_ECUFSM_KRAKENSTATUS_AS_FINISHED;
+            break;
+        case STATE_AS_OFF_WAIT_TS_DISCHARGE:
+            *vehicle_status = CAN_PRIMARY_ECUFSM_VEHICLESTATUS_DISCHARGE;
+            *kraken_status = CAN_PRIMARY_ECUFSM_KRAKENSTATUS_AS_OFF_WAIT_TS_DISCHARGE;
+            break;
+        case STATE_AS_READY_WAIT_INV_DISABLE:
+            *vehicle_status = CAN_PRIMARY_ECUFSM_VEHICLESTATUS_AS_R2D;
+            *kraken_status = CAN_PRIMARY_ECUFSM_KRAKENSTATUS_AS_READY_WAIT_INV_DISABLE;
+            break;
+        case STATE_AS_FINISHED_WAIT_INV_DISABLE:
+            *vehicle_status = CAN_PRIMARY_ECUFSM_VEHICLESTATUS_AS_FINISHED;
+            *kraken_status = CAN_PRIMARY_ECUFSM_KRAKENSTATUS_AS_FINISHED_WAIT_INV_DISABLE;
+            break;
+        case STATE_AS_FINISHED_WAIT_TS_DISCHARGE:
+            *vehicle_status = CAN_PRIMARY_ECUFSM_VEHICLESTATUS_AS_FINISHED;
+            *kraken_status = CAN_PRIMARY_ECUFSM_KRAKENSTATUS_AS_FINISHED_WAIT_TS_DISCHARGE;
+            break;
+        case STATE_AS_EMERGENCY_WAIT_INV_DISABLE:
+            *vehicle_status = CAN_PRIMARY_ECUFSM_VEHICLESTATUS_AS_EMERGENCY;
+            *kraken_status = CAN_PRIMARY_ECUFSM_KRAKENSTATUS_AS_EMERGENCY_WAIT_INV_DISABLE;
+            break;
+        case STATE_AS_EMERGENCY_WAIT_TS_DISCHARGE:
+            *vehicle_status = CAN_PRIMARY_ECUFSM_VEHICLESTATUS_AS_EMERGENCY;
+            *kraken_status = CAN_PRIMARY_ECUFSM_KRAKENSTATUS_AS_EMERGENCY_WAIT_TS_DISCHARGE;
+            break;
+        default:
+            logger_api_log(LOGGER_LEVEL_ERROR, "FSM: Unknown state %d", state);
+            break;
+    }
+}
+
+EAGLETRT_STATIC void prv_log_and_periodical_can(state_t state, uint32_t tick) {
+    EAGLETRT_STATIC state_t last_logged = NUM_STATES; // sentinel: nothing logged yet
+    enum CanPrimaryEcufsmVehiclestatus vehicle_status;
+    enum CanPrimaryEcufsmKrakenstatus kraken_status;
+    prv_fsm_state_to_can_state(state, &vehicle_status, &kraken_status);
+    if (state != last_logged) {
+        identity_api_send_state(vehicle_status, kraken_status);
+        logger_api_log(LOGGER_LEVEL_INFO, "FSM: entered %s state", state_names[state]);
+        last_logged = state;
+    }
+    prv_periodically_send(vehicle_status, kraken_status, tick);
 }
 
 // GLOBALS
@@ -133,7 +252,7 @@ transition_func_t *const transition_table[NUM_STATES][NUM_STATES] = {
 state_t do_init(state_data_t *data) {
     state_t next_state = STATE_IDLE;
     /* Your Code Here */
-    logger_api_log(LOGGER_LEVEL_INFO, "FSM: INIT state");
+    prv_log_and_periodical_can(STATE_INIT, 0);
 
     // convert state data into POST struct configuration
     struct PostConfig *post_configuration = (struct PostConfig *)data;
@@ -151,8 +270,6 @@ state_t do_init(state_data_t *data) {
         buzzer_api_set_duration(BUZZER_TYPE_ASSI, duration);
         buzzer_api_play_sync(BUZZER_TYPE_ASSI);
     }
-
-    identity_api_send_state(CAN_PRIMARY_ECUFSM_VEHICLESTATUS_INIT, CAN_PRIMARY_ECUFSM_KRAKENSTATUS_INIT);
 
     // If ok, transit to idle
 
@@ -172,10 +289,14 @@ state_t do_init(state_data_t *data) {
 state_t do_fatal(state_data_t *data) {
     state_t next_state = NO_CHANGE;
     /* Your Code Here */
-    EAGLETRT_API_UNUSED(data);
+    if (data == NULL) {
+        logger_api_log(LOGGER_LEVEL_ERROR, "FSM: State data is NULL.");
+        return STATE_FATAL;
+    }
+    struct FsmData fsm_data = *(struct FsmData *)data;
 
     // fatal state is a sink, no other operation should be made
-    logger_api_log(LOGGER_LEVEL_ERROR, "FSM: FATAL state");
+    prv_log_and_periodical_can(STATE_FATAL, fsm_data.tick);
 
     // prevent the tractive system from being enabled in case of a fatal error
     shutdown_api_control_relay(false);
@@ -201,17 +322,17 @@ state_t do_idle(state_data_t *data) {
 
     constexpr uint32_t ready_buzzer_duration = 1000;
 
-    logger_api_log(LOGGER_LEVEL_INFO, "FSM: IDLE state");
-
     if (data == NULL) {
         logger_api_log(LOGGER_LEVEL_ERROR, "FSM: State data is NULL. Going to FATAL");
         return STATE_FATAL;
     }
     struct FsmData fsm_data = *(struct FsmData *)data;
 
+    prv_log_and_periodical_can(STATE_IDLE, fsm_data.tick);
+
     prv_drain_can_rx_buffers();
 
-    prv_step_inverters(fsm_data.tick);
+    prv_step_inverters();
 
     // this logic does:
     // 1. If the TS ON button is pressed and this is the first time it is pressed, record the current tick.
@@ -239,7 +360,6 @@ state_t do_idle(state_data_t *data) {
     }
 
     tsac_api_periodically_require_tsac_status();
-    prv_periodically_send(CAN_PRIMARY_ECUFSM_VEHICLESTATUS_IDLE, CAN_PRIMARY_ECUFSM_KRAKENSTATUS_IDLE, fsm_data.tick);
 
     prv_drain_can_tx_buffers();
 
@@ -266,8 +386,13 @@ state_t do_flash(state_data_t *data) {
     // for the moment it is left disabled
     state_t next_state = STATE_IDLE;
     /* Your Code Here */
-    EAGLETRT_API_UNUSED(data);
-    logger_api_log(LOGGER_LEVEL_INFO, "FSM: FLASH state");
+    if (data == NULL) {
+        logger_api_log(LOGGER_LEVEL_ERROR, "FSM: State data is NULL. Going to FATAL");
+        return STATE_FATAL;
+    }
+    struct FsmData fsm_data = *(struct FsmData *)data;
+
+    prv_log_and_periodical_can(STATE_FLASH, fsm_data.tick);
 
     // Remain in flash until an external request is received
     // to indicate that flashing is aborted/terminated
@@ -288,12 +413,15 @@ state_t do_flash(state_data_t *data) {
 // Function to be executed in state pause
 // valid return states: NO_CHANGE, STATE_PAUSE, STATE_IDLE
 state_t do_pause(state_data_t *data) {
-    // Pause won't be used during the 2026 season
-    // For this reason, hard-code the fallback to STATE_IDLE
-    state_t next_state = STATE_IDLE;
+    state_t next_state = NO_CHANGE;
     /* Your Code Here */
-    EAGLETRT_API_UNUSED(data);
-    logger_api_log(LOGGER_LEVEL_INFO, "FSM: PAUSE state");
+    if (data == NULL) {
+        logger_api_log(LOGGER_LEVEL_ERROR, "FSM: State data is NULL. Going to FATAL");
+        return STATE_FATAL;
+    }
+    struct FsmData fsm_data = *(struct FsmData *)data;
+
+    prv_log_and_periodical_can(STATE_PAUSE, fsm_data.tick);
 
     switch (next_state) {
         case NO_CHANGE:
@@ -312,7 +440,12 @@ state_t do_pause(state_data_t *data) {
 state_t do_manual_wait_ts_precharge(state_data_t *data) {
     state_t next_state = NO_CHANGE;
     /* Your Code Here */
-    logger_api_log(LOGGER_LEVEL_INFO, "FSM: MANUAL WAIT TS PRECHARGE state");
+
+    // If the inverters never all reach "drive" within this window, stop waiting and
+    // unwind back toward idle instead of hanging.
+    constexpr uint32_t precharge_timeout_ms = 10000;
+    EAGLETRT_STATIC uint32_t enter_tick = 0;
+    EAGLETRT_STATIC bool precharge_started = false;
 
     if (data == NULL) {
         logger_api_log(LOGGER_LEVEL_ERROR, "FSM: State data is NULL. Going to FATAL");
@@ -320,15 +453,26 @@ state_t do_manual_wait_ts_precharge(state_data_t *data) {
     }
     struct FsmData fsm_data = *(struct FsmData *)data;
 
+    prv_log_and_periodical_can(STATE_MANUAL_WAIT_TS_PRECHARGE, fsm_data.tick);
+
     prv_drain_can_rx_buffers();
 
-    prv_step_inverters(fsm_data.tick);
+    prv_step_inverters();
+
+    if (enter_tick == 0) {
+        enter_tick = fsm_data.tick;
+    }
+
+    enum CanPrimaryTsacstatusMainboardstatus tsac_status = tsac_api_get_tsac_status();
 
     // Logic is:
     // 1. If the TSAC status times out, log an error and transition to the TS DISCHARGE state.
     // 2. If the shutdown is open, log an error and transition to the TS DISCHARGE state.
     // 3. If the TSAC status is TSON and the voltage is higher than 60V, log an info message and transition to the WAIT DRIVER state.
     // 4. If the TSAC status is ERROR, log an error and transition to the TS DISCHARGE state.
+    // 5. If the precharge has not completed within the timeout, log an error and transition to the TS DISCHARGE state.
+    // 6. If the TSAC status is AIRN_CHECK, PRECHARGE, or AIRP_CHECK, and precharge has not started yet, log an info message and set precharge_started to true.
+    // 7. If precharge has started and the TSAC status is IDLE or INIT, log an error and transition to the TS DISCHARGE state.
     if (tsac_api_is_tsac_status_timeout()) {
         logger_api_log(LOGGER_LEVEL_ERROR, "FSM: Precharge failed. TSAC status timeout!");
         shutdown_api_control_relay(false);
@@ -342,10 +486,31 @@ state_t do_manual_wait_ts_precharge(state_data_t *data) {
     } else if (tsac_api_get_tsac_status() == CAN_PRIMARY_TSACSTATUS_MAINBOARDSTATUS_ERROR) {
         logger_api_log(LOGGER_LEVEL_ERROR, "FSM: Precharge failed. TSAC reported error!");
         next_state = STATE_MANUAL_WAIT_TS_DISCHARGE;
+    } else if (fsm_data.tick - enter_tick > precharge_timeout_ms) {
+        // The precharge did not happen within the timeout: give up and unwind.
+        logger_api_log(LOGGER_LEVEL_ERROR, "FSM: Precharge outside timeout.");
+        next_state = STATE_MANUAL_WAIT_TS_DISCHARGE;
+    } else if (tsac_status == CAN_PRIMARY_TSACSTATUS_MAINBOARDSTATUS_AIRN_CHECK ||
+               tsac_status == CAN_PRIMARY_TSACSTATUS_MAINBOARDSTATUS_PRECHARGE ||
+               tsac_status == CAN_PRIMARY_TSACSTATUS_MAINBOARDSTATUS_AIRP_CHECK) {
+        if (!precharge_started) {
+            logger_api_log(LOGGER_LEVEL_INFO, "FSM: TSAC precharge started.");
+            precharge_started = true;
+        }
+    } else if (precharge_started &&
+               (tsac_status == CAN_PRIMARY_TSACSTATUS_MAINBOARDSTATUS_IDLE ||
+                tsac_status == CAN_PRIMARY_TSACSTATUS_MAINBOARDSTATUS_INIT)) {
+        logger_api_log(LOGGER_LEVEL_ERROR, "FSM: Precharge stopped by TSAC. Aborting.");
+        next_state = STATE_MANUAL_WAIT_TS_DISCHARGE;
+    }
+
+    if (next_state != NO_CHANGE) {
+        buzzer_api_reset(BUZZER_TYPE_R2D);
+        enter_tick = 0;
+        precharge_started = false;
     }
 
     tsac_api_periodically_require_tsac_status();
-    prv_periodically_send(CAN_PRIMARY_ECUFSM_VEHICLESTATUS_PRECHARGE, CAN_PRIMARY_ECUFSM_KRAKENSTATUS_MANUAL_WAIT_TS_PRECHARGE, fsm_data.tick);
 
     prv_drain_can_tx_buffers();
 
@@ -391,8 +556,8 @@ state_t do_wait_driver(state_data_t *data) {
 
     constexpr uint32_t tson_required_press_time = 2000;
     EAGLETRT_STATIC uint32_t tson_first_press_tick = 0;
-
-    logger_api_log(LOGGER_LEVEL_INFO, "FSM: WAIT DRIVER state");
+    EAGLETRT_STATIC bool state_entered = false;
+    EAGLETRT_STATIC bool ignore_button_until_release = false;
 
     if (data == NULL) {
         logger_api_log(LOGGER_LEVEL_ERROR, "FSM: State data is NULL. Going to FATAL");
@@ -400,9 +565,21 @@ state_t do_wait_driver(state_data_t *data) {
     }
     struct FsmData fsm_data = *(struct FsmData *)data;
 
+    prv_log_and_periodical_can(STATE_WAIT_DRIVER, fsm_data.tick);
+
     prv_drain_can_rx_buffers();
 
-    prv_step_inverters(fsm_data.tick);
+    prv_step_inverters();
+
+    bool button_pressed = vehicle_api_get_ts_on_button_pressed();
+    if (!state_entered) {
+        state_entered = true;
+        ignore_button_until_release = button_pressed;
+    }
+    if (ignore_button_until_release && !button_pressed) {
+        ignore_button_until_release = false;
+    }
+    bool button_active = button_pressed && !ignore_button_until_release;
 
     // This logic does:
     // 1. If the TSAC status times out, log an error and transition to the TS DISCHARGE state.
@@ -418,23 +595,24 @@ state_t do_wait_driver(state_data_t *data) {
     } else if (tsac_api_get_tsac_status() != CAN_PRIMARY_TSACSTATUS_MAINBOARDSTATUS_TS_ON) {
         logger_api_log(LOGGER_LEVEL_ERROR, "FSM: TSAC not in TSON!");
         next_state = STATE_MANUAL_WAIT_TS_DISCHARGE;
-    } else if (vehicle_api_get_ts_on_button_pressed() && !pedals_api_is_brake_pressed()) {
+    } else if (button_active && !pedals_api_is_brake_pressed()) {
         logger_api_log(LOGGER_LEVEL_INFO, "FSM: TS ON pressed without pedal. Moving to TS DISCHARGE.");
         next_state = STATE_MANUAL_WAIT_TS_DISCHARGE;
-    } else if (vehicle_api_get_ts_on_button_pressed() && tson_first_press_tick == 0) {
+    } else if (button_active && tson_first_press_tick == 0) {
         tson_first_press_tick = fsm_data.tick;
-    } else if (!vehicle_api_get_ts_on_button_pressed()) {
+    } else if (!button_active) {
         tson_first_press_tick = 0;
     } else if (fsm_data.tick - tson_first_press_tick > tson_required_press_time && pedals_api_is_brake_pressed()) {
         logger_api_log(LOGGER_LEVEL_INFO, "FSM: TS ON and pedal pressed. Moving to INV ENABLE.");
         next_state = STATE_MANUAL_WAIT_INV_ENABLE;
     }
 
-    if (next_state != NO_CHANGE) {
+    if (next_state != NO_CHANGE /* TODO: whu? && next_state != STATE_WAIT_DRIVER */) {
         tson_first_press_tick = 0;
+        state_entered = false;
+        ignore_button_until_release = false;
     }
 
-    prv_periodically_send(CAN_PRIMARY_ECUFSM_VEHICLESTATUS_TSON, CAN_PRIMARY_ECUFSM_KRAKENSTATUS_WAIT_DRIVER, fsm_data.tick);
     tsac_api_periodically_require_tsac_status();
     prv_drain_can_tx_buffers();
 
@@ -456,20 +634,19 @@ state_t do_wait_driver(state_data_t *data) {
 state_t do_manual_wait_ts_discharge(state_data_t *data) {
     state_t next_state = NO_CHANGE;
     /* Your Code Here */
-
-    logger_api_log(LOGGER_LEVEL_INFO, "FSM: WAIT TS DISCHARGE state");
-
     if (data == NULL) {
         logger_api_log(LOGGER_LEVEL_ERROR, "FSM: State data is NULL. Going to FATAL");
         return STATE_FATAL;
     }
     struct FsmData fsm_data = *(struct FsmData *)data;
 
+    prv_log_and_periodical_can(STATE_MANUAL_WAIT_TS_DISCHARGE, fsm_data.tick);
+
     prv_drain_can_rx_buffers();
 
-    prv_step_inverters(fsm_data.tick);
+    prv_step_inverters();
 
-    if (!tsac_api_get_voltage_higher_than_60v() || !tsac_api_is_tsac_status_timeout()) {
+    if (!tsac_api_get_voltage_higher_than_60v() && !tsac_api_is_tsac_status_timeout()) {
         logger_api_log(LOGGER_LEVEL_INFO, "FSM: TS DISCHARGE completed. Moving to IDLE.");
         next_state = STATE_IDLE;
     } else if (tsac_api_is_tsac_status_timeout()) {
@@ -478,7 +655,6 @@ state_t do_manual_wait_ts_discharge(state_data_t *data) {
         next_state = STATE_IDLE;
     }
 
-    prv_periodically_send(CAN_PRIMARY_ECUFSM_VEHICLESTATUS_DISCHARGE, CAN_PRIMARY_ECUFSM_KRAKENSTATUS_MANUAL_WAIT_TS_DISCHARGE, fsm_data.tick);
     tsac_api_periodically_require_tsac_status();
     prv_drain_can_tx_buffers();
 
@@ -505,13 +681,13 @@ state_t do_manual_wait_inv_enable(state_data_t *data) {
     constexpr uint32_t inverter_enable_timeout_ms = 2000;
     EAGLETRT_STATIC uint32_t enter_tick = 0;
 
-    logger_api_log(LOGGER_LEVEL_INFO, "FSM: MANUAL WAIT INV ENABLE state");
-
     if (data == NULL) {
         logger_api_log(LOGGER_LEVEL_ERROR, "FSM: State data is NULL. Going to FATAL");
         return STATE_FATAL;
     }
     struct FsmData fsm_data = *(struct FsmData *)data;
+
+    prv_log_and_periodical_can(STATE_MANUAL_WAIT_INV_ENABLE, fsm_data.tick);
 
     // Latch the entry tick on the first cycle spent in this state.
     if (enter_tick == 0) {
@@ -525,17 +701,18 @@ state_t do_manual_wait_inv_enable(state_data_t *data) {
     inverters_api_arm(EPHORUS_WHEEL_REAR_LEFT);
     inverters_api_arm(EPHORUS_WHEEL_REAR_RIGHT);
 
-    prv_step_inverters(fsm_data.tick);
+    prv_step_inverters();
 
     // Decision order (first match wins):
     //   1. If the TSAC status times out, abort and disarm.
     //   2. The tractive system must stay in TS_ON with a live TSAC link; otherwise
     //      abort the enable and disarm.
-    //   3. Once every inverter reports "drive", play the R2D tone once and hand over
+    //   3. If the inverter link has timed out, abort and disarm.
+    //   4. Once every inverter reports "drive", play the R2D tone once and hand over
     //      to DRIVING when the tone (serviced by the main-loop buzzer poll) finishes.
-    //   4. If the tone had already started (we were in drive) but the inverters fell
+    //   5. If the tone had already started (we were in drive) but the inverters fell
     //      back out of drive, abort and disarm.
-    //   5. If the inverters simply never reach drive within the timeout, abort and
+    //   6. If the inverters simply never reach drive within the timeout, abort and
     //      disarm so we fall back toward idle rather than waiting forever.
     if (tsac_api_is_tsac_status_timeout()) {
         logger_api_log(LOGGER_LEVEL_ERROR, "FSM: TSAC status timeout!");
@@ -543,6 +720,9 @@ state_t do_manual_wait_inv_enable(state_data_t *data) {
         next_state = STATE_MANUAL_WAIT_INV_DISABLE;
     } else if (tsac_api_get_tsac_status() != CAN_PRIMARY_TSACSTATUS_MAINBOARDSTATUS_TS_ON) {
         logger_api_log(LOGGER_LEVEL_ERROR, "FSM: TSAC not in TSON!");
+        next_state = STATE_MANUAL_WAIT_INV_DISABLE;
+    } else if (inverters_api_is_timeout()) {
+        logger_api_log(LOGGER_LEVEL_ERROR, "FSM: Inverter comms timeout!");
         next_state = STATE_MANUAL_WAIT_INV_DISABLE;
     } else if (inverters_api_is_all_in_drive()) {
         // Request the R2D tone the first time we see full drive, then wait for the
@@ -581,7 +761,6 @@ state_t do_manual_wait_inv_enable(state_data_t *data) {
         enter_tick = 0;
     }
 
-    prv_periodically_send(CAN_PRIMARY_ECUFSM_VEHICLESTATUS_TSON, CAN_PRIMARY_ECUFSM_KRAKENSTATUS_MANUAL_WAIT_INV_ENABLE, fsm_data.tick);
     tsac_api_periodically_require_tsac_status();
     prv_drain_can_tx_buffers();
 
@@ -604,27 +783,32 @@ state_t do_driving(state_data_t *data) {
     state_t next_state = NO_CHANGE;
     /* Your Code Here */
 
-    logger_api_log(LOGGER_LEVEL_INFO, "FSM: DRIVING state");
-
     if (data == NULL) {
         logger_api_log(LOGGER_LEVEL_ERROR, "FSM: State data is NULL. Going to FATAL");
         return STATE_FATAL;
     }
     struct FsmData fsm_data = *(struct FsmData *)data;
 
+    prv_log_and_periodical_can(STATE_DRIVING, fsm_data.tick);
+
     prv_drain_can_rx_buffers();
 
-    prv_step_inverters(fsm_data.tick);
+    prv_step_inverters();
 
     // Logic is:
     // 1. If the TS ON button is pressed, abort and disarm.
-    // 2. If any inverter is not in drive, abort and disarm, and open the shutdown relay to discharge the TS.
-    // 3. If the TSAC status times out, abort and disarm, and open the shutdown relay to discharge the TS.
-    // 4. If the TSAC status is not in TSON, abort and disarm.
-    // 5. If the pedals timeout, abort and disarm.
-    // 6. If the shutdown relay is open, abort and disarm.
-    // 7. Otherwise, read the requested torque from the pedals and command it to all four inverters.
+    // 2. If the inverter link has timed out, abort and disarm.
+    // 3. If any inverter is not in drive, abort and disarm, and open the shutdown relay to discharge the TS.
+    // 4. If the TSAC status times out, abort and disarm, and open the shutdown relay to discharge the TS.
+    // 5. If the TSAC status is not in TSON, abort and disarm.
+    // 6. If the pedals timeout, abort and disarm.
+    // 7. If the shutdown relay is open, abort and disarm.
+    // 8. Otherwise, read the requested torque from the pedals and command it to all four inverters.
     if (vehicle_api_get_ts_on_button_pressed()) {
+        next_state = STATE_MANUAL_WAIT_INV_DISABLE;
+    } else if (inverters_api_is_timeout()) {
+        logger_api_log(LOGGER_LEVEL_ERROR, "FSM: Inverter comms timeout!");
+        shutdown_api_control_relay(false);
         next_state = STATE_MANUAL_WAIT_INV_DISABLE;
     } else if (!inverters_api_is_all_in_drive()) {
         logger_api_log(LOGGER_LEVEL_ERROR, "FSM: Not all inverters in drive!");
@@ -652,7 +836,6 @@ state_t do_driving(state_data_t *data) {
         inverters_api_set_torque(EPHORUS_WHEEL_FRONT_RIGHT, requested_torque);
     }
 
-    prv_periodically_send(CAN_PRIMARY_ECUFSM_VEHICLESTATUS_R2D, CAN_PRIMARY_ECUFSM_KRAKENSTATUS_DRIVING, fsm_data.tick);
     tsac_api_periodically_require_tsac_status();
     prv_drain_can_tx_buffers();
 
@@ -673,21 +856,24 @@ state_t do_driving(state_data_t *data) {
 state_t do_manual_wait_inv_disable(state_data_t *data) {
     state_t next_state = NO_CHANGE;
     /* Your Code Here */
-
-    logger_api_log(LOGGER_LEVEL_INFO, "FSM: MANUAL WAIT INV DISABLE state");
-
     if (data == NULL) {
         logger_api_log(LOGGER_LEVEL_ERROR, "FSM: State data is NULL. Going to FATAL");
         return STATE_FATAL;
     }
     struct FsmData fsm_data = *(struct FsmData *)data;
 
+    prv_log_and_periodical_can(STATE_MANUAL_WAIT_INV_DISABLE, fsm_data.tick);
+
     prv_drain_can_rx_buffers();
 
-    prv_step_inverters(fsm_data.tick);
+    prv_step_inverters();
 
     if (!inverters_api_is_all_in_drive()) {
         logger_api_log(LOGGER_LEVEL_INFO, "FSM: INV DISABLE completed. Moving to TS DISCHARGE.");
+        next_state = STATE_MANUAL_WAIT_TS_DISCHARGE;
+    } else if (inverters_api_is_timeout()) {
+        logger_api_log(LOGGER_LEVEL_ERROR, "FSM: Inverter comms timeout!");
+        shutdown_api_control_relay(false);
         next_state = STATE_MANUAL_WAIT_TS_DISCHARGE;
     } else {
         inverters_api_disarm(EPHORUS_WHEEL_FRONT_LEFT);
@@ -696,7 +882,6 @@ state_t do_manual_wait_inv_disable(state_data_t *data) {
         inverters_api_disarm(EPHORUS_WHEEL_REAR_RIGHT);
     }
 
-    prv_periodically_send(CAN_PRIMARY_ECUFSM_VEHICLESTATUS_R2D, CAN_PRIMARY_ECUFSM_KRAKENSTATUS_DRIVING, fsm_data.tick);
     tsac_api_periodically_require_tsac_status();
     prv_drain_can_tx_buffers();
 

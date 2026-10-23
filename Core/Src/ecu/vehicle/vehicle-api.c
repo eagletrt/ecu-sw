@@ -5,7 +5,7 @@
  */
 
 #include "vehicle-api.h"
-#include <stdio.h>
+#include <stddef.h>
 #include "eagletrt.h"
 
 /*!
@@ -13,11 +13,11 @@
  */
 EAGLETRT_STATIC struct VehicleHandler vehicle_handler;
 
-enum VehicleReturnCode vehicle_api_init(vehicle_tson_pressed_callback ts_on_get_button_pressed) {
-    if (ts_on_get_button_pressed == NULL) {
+enum VehicleReturnCode vehicle_api_init(vehicle_ptt_control_callback ptt_control) {
+    if (ptt_control == NULL) {
         return VEHICLE_RC_NULL_POINTER;
     }
-    vehicle_handler.ts_on_get_button_pressed = ts_on_get_button_pressed;
+    vehicle_handler.ptt_control = ptt_control;
     vehicle_handler.ts_on_button_pressed = false;
     return VEHICLE_RC_OK;
 }
@@ -28,8 +28,12 @@ enum VehicleReturnCode vehicle_api_set_ts_on_button_pressed(bool pressed) {
 }
 
 bool vehicle_api_get_ts_on_button_pressed(void) {
-    if (vehicle_handler.ts_on_get_button_pressed) {
-        return vehicle_handler.ts_on_get_button_pressed();
+    return vehicle_handler.ts_on_button_pressed;
+}
+
+enum VehicleReturnCode vehicle_api_set_ptt(bool state) {
+    if (vehicle_handler.ptt_control == NULL) {
+        return VEHICLE_RC_ERROR;
     }
-    return false;
+    return vehicle_handler.ptt_control(state);
 }

@@ -11,6 +11,7 @@
 #include "as-driver.h"
 #include "buzzer.h"
 #include "can-communication.h"
+#include "inverters.h"
 #include "lights.h"
 #include "raspberry.h"
 #include "shutdown.h"
@@ -55,8 +56,11 @@ struct PostConfig {
     /* --- TSAC callbacks --- */
     tsac_get_tick_callback tsac_get_tick; /*!< Callback to retrieve the current tick count from the TSAC module. */
 
+    /* --- Inverters callbacks --- */
+    inverters_get_tick_callback inverters_get_tick; /*!< Callback to retrieve the current tick count for the inverters RX timeout. */
+
     /* --- Vehicle callbacks --- */
-    vehicle_tson_pressed_callback vehicle_tson_pressed; /*!< Callback to check if the TSON button is pressed. */
+    vehicle_ptt_control_callback vehicle_ptt_control; /*!< Callback to drive the PTT output pin. */
 
     /* --- Lights callbacks --- */
     lights_set_state_callback lights_set_state; /*!< Callback to set the state of the vehicle's lights. */

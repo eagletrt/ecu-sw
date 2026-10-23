@@ -21,7 +21,9 @@
 #include "adc.h"
 #include "can.h"
 #include "dma.h"
+#include "logger.h"
 #include "spi.h"
+#include "stm32f7xx_hal.h"
 #include "tim.h"
 #include "usart.h"
 #include "gpio.h"
@@ -33,6 +35,7 @@
 #include "eagletrt-api.h"
 #include "can-communication-router-api.h"
 #include "logger-api.h"
+#include <stdint.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -186,7 +189,8 @@ int main(void) {
         .shutdown_control_relay = gpio_shutdown_control_relay,
         .pedals_get_tick = HAL_GetTick,
         .tsac_get_tick = HAL_GetTick,
-        .vehicle_tson_pressed = gpio_read_tson_button,
+        .inverters_get_tick = HAL_GetTick,
+        .vehicle_ptt_control = gpio_set_ptt,
         .lights_set_state = gpio_set_light_state,
     };
 
@@ -222,7 +226,12 @@ int main(void) {
 
     /* Infinite loop */
     /* USER CODE BEGIN WHILE */
+    uint32_t t = HAL_GetTick();
     while (1) {
+        if (HAL_GetTick() - t >= 100) {
+            start_adc_conversion();
+            t = HAL_GetTick();
+        }
         /* USER CODE END WHILE */
 
         /* USER CODE BEGIN 3 */
@@ -256,11 +265,10 @@ void SystemClock_Config(void) {
     /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-    RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
-    RCC_OscInitStruct.HSIState = RCC_HSI_ON;
-    RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
+    RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
+    RCC_OscInitStruct.HSEState = RCC_HSE_ON;
     RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
-    RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
+    RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
     RCC_OscInitStruct.PLL.PLLM = 8;
     RCC_OscInitStruct.PLL.PLLN = 128;
     RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;

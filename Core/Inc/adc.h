@@ -30,6 +30,8 @@ extern "C" {
 
 /* USER CODE BEGIN Includes */
 
+#include "shutdown.h"
+
 /* USER CODE END Includes */
 
 extern ADC_HandleTypeDef hadc1;
@@ -41,6 +43,8 @@ extern ADC_HandleTypeDef hadc1;
 void MX_ADC1_Init(void);
 
 /* USER CODE BEGIN Prototypes */
+
+enum ShutdownReturnCode start_adc_conversion(void);
 
 /* USER CODE END Prototypes */
 

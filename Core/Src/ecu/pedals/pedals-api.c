@@ -59,7 +59,7 @@ float pedals_api_get_requested_throttle_torque(void) {
 }
 
 bool pedals_api_is_brake_pressed() {
-    return (pedals_handler.brake >= PEDALS_BRAKE_THRESHOLD_PERCENTAGE);
+    return (pedals_handler.brake_pressure >= PEDALS_BRAKE_THRESHOLD_BAR);
 }
 
 float pedals_api_get_throttle() {

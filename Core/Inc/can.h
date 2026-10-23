@@ -95,6 +95,20 @@ enum CanCommunicationReturnCode can_send_inverter(const struct CanCommunicationF
  */
 enum ASDriverReturnCode can_air_release_from_line(enum ASDriverAirLine air_line);
 
+/*!
+ * \brief Returns how many RX-FIFO overruns the given network has suffered.
+ *
+ * \details Each overrun is a frame the peripheral dropped because its receive
+ * FIFO was full when a new frame arrived. Use it to tell overrun-induced losses
+ * (this value grows) apart from physical/bus losses (this value stays at zero
+ * while frames still go missing). Safe to call from the main loop / telemetry.
+ *
+ * \param[in] network The CAN network to query.
+ *
+ * \return The cumulative overrun count, or 0 if \p network is out of range.
+ */
+uint32_t can_get_rx_overrun_count(enum CanCommunicationNetwork network);
+
 /* USER CODE END Prototypes */
 
 #ifdef __cplusplus

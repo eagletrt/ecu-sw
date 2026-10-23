@@ -172,7 +172,7 @@ constexpr float adc_max = 4095.0f;
 constexpr float divider_ratio = (10000 + 1300) / 1300.0f; // Voltage divider with 10k and 1.3k resistors
 constexpr float adc_to_voltage = (vref / adc_max) * divider_ratio;
 
-enum ShutdownReturnCode start_adc_conversion() {
+enum ShutdownReturnCode start_adc_conversion(void) {
     if (HAL_ADC_Start_DMA(&hadc1, (uint32_t *)raw_values, 2) != HAL_OK) {
         return SHUTDOWN_RC_ERROR;
     }
