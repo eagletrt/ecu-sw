@@ -10,7 +10,6 @@
 #include "post-api.h"
 #include "raspberry-api.h"
 #include "vehicle-api.h"
-#include "eagletrt-api.h"
 #include "can-primary.h"
 #include "identity-api.h"
 #include "shutdown-api.h"
