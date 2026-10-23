@@ -31,10 +31,13 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "arena-allocator-api.h"
-#include "ecu_fsm.h"
+#include "fsm.h"
 #include "eagletrt-api.h"
 #include "can-communication-router-api.h"
+#include "shutdown-api.h"
+#include "buzzer-api.h"
 #include "logger-api.h"
+#include "post.h"
 #include <stdint.h>
 /* USER CODE END Includes */
 
@@ -60,8 +63,6 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-state_t current_state = STATE_INIT;
-
 EAGLETRT_STATIC struct ArenaAllocatorHandler arena_allocator_handler;
 EAGLETRT_STATIC struct PalHandler logger_pal_handler;
 /* USER CODE END PV */
@@ -208,7 +209,8 @@ int main(void) {
     HAL_CAN_Start(&hcan3);
 
     // single call run_state to verify POST
-    current_state = run_state(current_state, &post_configuration);
+    fsm_init();
+    fsm_run(&post_configuration);
 
     // enable can interrupts
     HAL_CAN_ActivateNotification(&hcan1, CAN_IT_RX_FIFO0_MSG_PENDING);
@@ -239,7 +241,7 @@ int main(void) {
         fsm_data.tick = HAL_GetTick();
 
         //run the fsm
-        current_state = run_state(current_state, &fsm_data);
+        fsm_run(&fsm_data);
 
         // Service the asynchronous buzzers once per loop, regardless of FSM state.
         // Sounds are triggered elsewhere with buzzer_api_request()
