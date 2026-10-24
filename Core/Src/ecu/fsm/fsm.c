@@ -1,3 +1,11 @@
+/*!
+ * \file fsm.c
+ * \date 2026-10-24
+ * \authors Thomas Moretti [majorfrost173@gmail.com]
+ *
+ * \brief The FSM state routines, transition functions, the actual states and the transitions
+ */
+
 #include "fsm.h"
 
 #include "as-driver-api.h"
@@ -19,6 +27,14 @@
 #include "eagletrt-fsm-api.h"
 #include "eagletrt-api.h"
 
+/*!
+ * \brief Static handler of the FSM
+ */
+EAGLETRT_STATIC struct FSMHandler fsm_handler;
+
+/*!
+ * \brief List of names of the various states
+ */
 const char *state_names[STATE_COUNT] = {
     "init",
     "fatal",
@@ -201,9 +217,11 @@ EAGLETRT_STATIC void prv_log_and_periodical_can(enum StateId state, uint32_t tic
     prv_periodically_send(vehicle_status, kraken_status, tick);
 }
 
-EAGLETRT_STATIC struct FSMHandler fsm_handler;
-
-// begin state functions
+/*!
+ * \brief Init state routine
+ *
+ * \param[in, out] data A pointer to some data
+ */
 void routine_init(void *data) {
     prv_log_and_periodical_can(STATE_INIT, 0);
 
@@ -225,10 +243,14 @@ void routine_init(void *data) {
     }
 }
 
+/*!
+ * \brief Fatal state routine
+ *
+ * \param[in, out] data A pointer to some data
+ */
 void routine_fatal(void *data) {
     if (data == NULL) {
         logger_api_log(LOGGER_LEVEL_ERROR, "FSM: State data is NULL.");
-        fsm_api_transition_to(&fsm_handler, STATE_FATAL);
         return;
     }
     struct FsmData fsm_data = *(struct FsmData *)data;
@@ -240,8 +262,12 @@ void routine_fatal(void *data) {
     shutdown_api_control_relay(false);
 }
 
+/*!
+ * \brief Idle state routine
+ *
+ * \param[in, out] data A pointer to some data
+ */
 void routine_idle(void *data) {
-    constexpr uint32_t tson_required_press_time = 2000;
     EAGLETRT_STATIC uint32_t tson_first_press_tick = 0;
 
     constexpr uint32_t ready_buzzer_duration = 1000;
@@ -289,6 +315,11 @@ void routine_idle(void *data) {
     prv_drain_can_tx_buffers();
 }
 
+/*!
+ * \brief Flash state routine
+ *
+ * \param[in, out] data A pointer to some data
+ */
 void routine_flash(void *data) {
     if (data == NULL) {
         logger_api_log(LOGGER_LEVEL_ERROR, "FSM: State data is NULL. Going to FATAL");
@@ -299,11 +330,14 @@ void routine_flash(void *data) {
 
     prv_log_and_periodical_can(STATE_FLASH, fsm_data.tick);
 
-    // Remain in flash until an external request is received
-    // to indicate that flashing is aborted/terminated
     prv_drain_can_rx_buffers();
 }
 
+/*!
+ * \brief Pause state routine
+ *
+ * \param[in, out] data A pointer to some data
+ */
 void routine_pause(void *data) {
     if (data == NULL) {
         logger_api_log(LOGGER_LEVEL_ERROR, "FSM: State data is NULL. Going to FATAL");
@@ -315,6 +349,11 @@ void routine_pause(void *data) {
     prv_log_and_periodical_can(STATE_PAUSE, fsm_data.tick);
 }
 
+/*!
+ * \brief Manual wait TS precharge state routine
+ *
+ * \param[in, out] data A pointer to some data
+ */
 void routine_manual_wait_ts_precharge(void *data) {
     // If the inverters never all reach "drive" within this window, stop waiting and
     // unwind back toward idle instead of hanging.
@@ -391,12 +430,21 @@ void routine_manual_wait_ts_precharge(void *data) {
     prv_drain_can_tx_buffers();
 }
 
+/*!
+ * \brief AS off state routine
+ *
+ * \param[in, out] data A pointer to some data
+ */
 void routine_as_off(void *data) {
     EAGLETRT_API_UNUSED(data);
 }
 
+/*!
+ * \brief Wait driver state routine
+ *
+ * \param[in, out] data A pointer to some data
+ */
 void routine_wait_driver(void *data) {
-    constexpr uint32_t tson_required_press_time = 2000;
     EAGLETRT_STATIC uint32_t tson_first_press_tick = 0;
     EAGLETRT_STATIC bool state_entered = false;
     EAGLETRT_STATIC bool ignore_button_until_release = false;
@@ -460,6 +508,11 @@ void routine_wait_driver(void *data) {
     prv_drain_can_tx_buffers();
 }
 
+/*!
+ * \brief Manual wait TS discharge state routine
+ *
+ * \param[in, out] data A pointer to some data
+ */
 void routine_manual_wait_ts_discharge(void *data) {
     if (data == NULL) {
         logger_api_log(LOGGER_LEVEL_ERROR, "FSM: State data is NULL. Going to FATAL");
@@ -474,6 +527,9 @@ void routine_manual_wait_ts_discharge(void *data) {
 
     prv_step_inverters();
 
+    // The logic here is:
+    // 1. If the TSAC voltage is higher than 60 V and the status isn't timed out, log a success and transition to the IDLE state.
+    // 2. If the TSAC status times out, log an error, open the shutdown relay and transition to the IDLE state.
     if (!tsac_api_get_voltage_higher_than_60v() && !tsac_api_is_tsac_status_timeout()) {
         logger_api_log(LOGGER_LEVEL_INFO, "FSM: TS DISCHARGE completed. Moving to IDLE.");
         fsm_api_transition_to(&fsm_handler, STATE_IDLE);
@@ -487,6 +543,11 @@ void routine_manual_wait_ts_discharge(void *data) {
     prv_drain_can_tx_buffers();
 }
 
+/*!
+ * \brief Manual wait inverters enable state routine
+ *
+ * \param[in, out] data A pointer to some data
+ */
 void routine_manual_wait_inv_enable(void *data) {
     // If the inverters never all reach "drive" within this window, stop waiting and
     // unwind back toward idle instead of hanging.
@@ -577,6 +638,11 @@ void routine_manual_wait_inv_enable(void *data) {
     prv_drain_can_tx_buffers();
 }
 
+/*!
+ * \brief Driving state routine
+ *
+ * \param[in, out] data A pointer to some data
+ */
 void routine_driving(void *data) {
     if (data == NULL) {
         logger_api_log(LOGGER_LEVEL_ERROR, "FSM: State data is NULL. Going to FATAL");
@@ -636,6 +702,11 @@ void routine_driving(void *data) {
     prv_drain_can_tx_buffers();
 }
 
+/*!
+ * \brief Manual wait inverters disable state routine
+ *
+ * \param[in, out] data A pointer to some data
+ */
 void routine_manual_wait_inv_disable(void *data) {
     if (data == NULL) {
         logger_api_log(LOGGER_LEVEL_ERROR, "FSM: State data is NULL. Going to FATAL");
@@ -650,6 +721,10 @@ void routine_manual_wait_inv_disable(void *data) {
 
     prv_step_inverters();
 
+    // The logic here is:
+    // 1. If any inverter is not in drive, log a success and move to the TS DISCHARGE state.
+    // 2. If the inverter link has timed out, log an error, open the shutdown relay and transition to the TS DISCHARGE state.
+    // 3. Otherwise, command all four inverters to disarm.
     if (!inverters_api_is_all_in_drive()) {
         logger_api_log(LOGGER_LEVEL_INFO, "FSM: INV DISABLE completed. Moving to TS DISCHARGE.");
         fsm_api_transition_to(&fsm_handler, STATE_MANUAL_WAIT_TS_DISCHARGE);
@@ -668,72 +743,150 @@ void routine_manual_wait_inv_disable(void *data) {
     prv_drain_can_tx_buffers();
 }
 
+/*!
+ * \brief AS off wait TS precharge state routine
+ *
+ * \param[in, out] data A pointer to some data
+ */
 void routine_as_off_wait_ts_precharge(void *data) {
     EAGLETRT_API_UNUSED(data);
 }
 
+/*!
+ * \brief AS ready state routine
+ *
+ * \param[in, out] data A pointer to some data
+ */
 void routine_as_ready(void *data) {
     EAGLETRT_API_UNUSED(data);
 }
 
+/*!
+ * \brief AS ready wait inverters enable state routine
+ *
+ * \param[in, out] data A pointer to some data
+ */
 void routine_as_ready_wait_inv_enable(void *data) {
     EAGLETRT_API_UNUSED(data);
 }
 
+/*!
+ * \brief AS emergency state routine
+ *
+ * \param[in, out] data A pointer to some data
+ */
 void routine_as_emergency(void *data) {
     EAGLETRT_API_UNUSED(data);
 }
 
+/*!
+ * \brief AS R2D state routine
+ *
+ * \param[in, out] data A pointer to some data
+ */
 void routine_as_r2d(void *data) {
     EAGLETRT_API_UNUSED(data);
 }
 
+/*!
+ * \brief AS driving state routine
+ *
+ * \param[in, out] data A pointer to some data
+ */
 void routine_as_driving(void *data) {
     EAGLETRT_API_UNUSED(data);
 }
 
+/*!
+ * \brief AS finished state routine
+ *
+ * \param[in, out] data A pointer to some data
+ */
 void routine_as_finished(void *data) {
     EAGLETRT_API_UNUSED(data);
 }
 
+/*!
+ * \brief AS off wait TS discharge state routine
+ *
+ * \param[in, out] data A pointer to some data
+ */
 void routine_as_off_wait_ts_discharge(void *data) {
     EAGLETRT_API_UNUSED(data);
 }
 
+/*!
+ * \brief AS ready wait inverters disable state routine
+ *
+ * \param[in, out] data A pointer to some data
+ */
 void routine_as_ready_wait_inv_disable(void *data) {
     EAGLETRT_API_UNUSED(data);
 }
 
+/*!
+ * \brief AS finished wait inverters disable state routine
+ *
+ * \param[in, out] data A pointer to some data
+ */
 void routine_as_finished_wait_inv_disable(void *data) {
     EAGLETRT_API_UNUSED(data);
 }
 
+/*!
+ * \brief AS finished wait TS discharge state routine
+ *
+ * \param[in, out] data A pointer to some data
+ */
 void routine_as_finished_wait_ts_discharge(void *data) {
     EAGLETRT_API_UNUSED(data);
 }
 
+/*!
+ * \brief AS emergency wait inverters disable state routine
+ *
+ * \param[in, out] data A pointer to some data
+ */
 void routine_as_emergency_wait_inv_disable(void *data) {
     EAGLETRT_API_UNUSED(data);
 }
 
+/*!
+ * \brief AS emergency wait TS discharge state routine
+ *
+ * \param[in, out] data A pointer to some data
+ */
 void routine_as_emergency_wait_ts_discharge(void *data) {
     EAGLETRT_API_UNUSED(data);
 }
-// end state functions
 
-// begin transition functions
+/*!
+ * \brief Start TS precharge transition function
+ *
+ * \param[in, out] data A pointer to some data
+ */
 void start_ts_precharge(void *data) {
     EAGLETRT_API_UNUSED(data);
 
     tsac_api_set_ts_state_to_require(true);
 }
 
+/*!
+ * \brief Start TS discharge transition function
+ *
+ * \param[in, out] data A pointer to some data
+ */
 void start_ts_discharge(void *data) {
     EAGLETRT_API_UNUSED(data);
 
     tsac_api_set_ts_state_to_require(false);
 }
 
+/*!
+ * \brief Start inverters enable transition function
+ *
+ * \param[in, out] data A pointer to some data
+ */
 void start_inv_enable(void *data) {
     EAGLETRT_API_UNUSED(data);
 
@@ -743,6 +896,11 @@ void start_inv_enable(void *data) {
     inverters_api_arm(EPHORUS_WHEEL_REAR_RIGHT);
 }
 
+/*!
+ * \brief Start inverters disable transition function
+ *
+ * \param[in, out] data A pointer to some data
+ */
 void start_inv_disable(void *data) {
     EAGLETRT_API_UNUSED(data);
 
@@ -751,17 +909,25 @@ void start_inv_disable(void *data) {
     inverters_api_disarm(EPHORUS_WHEEL_REAR_LEFT);
     inverters_api_disarm(EPHORUS_WHEEL_REAR_RIGHT);
 }
-// end transition functions
 
+/*!
+ * \brief List of the possible transitions from init
+ */
 struct Transition init_transitions[] = {
     { .to = STATE_IDLE, .function = NULL },
     { .to = STATE_FATAL, .function = NULL },
 };
 
+/*!
+ * \brief List of the possible transitions from fatal
+ */
 struct Transition fatal_transitions[] = {
     { .to = STATE_FATAL, .function = NULL },
 };
 
+/*!
+ * \brief List of the possible transitions from idle
+ */
 struct Transition idle_transitions[] = {
     { .to = STATE_FATAL, .function = NULL },
     { .to = STATE_IDLE, .function = NULL },
@@ -771,22 +937,34 @@ struct Transition idle_transitions[] = {
     { .to = STATE_AS_OFF, .function = NULL },
 };
 
+/*!
+ * \brief List of the possible transitions from flash
+ */
 struct Transition flash_transitions[] = {
     { .to = STATE_IDLE, .function = NULL },
     { .to = STATE_FLASH, .function = NULL },
 };
 
+/*!
+ * \brief List of the possible transitions from pause
+ */
 struct Transition pause_transitions[] = {
     { .to = STATE_IDLE, .function = NULL },
     { .to = STATE_PAUSE, .function = NULL },
 };
 
+/*!
+ * \brief List of the possible transitions from manual wait TS precharge
+ */
 struct Transition manual_wait_ts_precharge_transitions[] = {
     { .to = STATE_MANUAL_WAIT_TS_PRECHARGE, .function = NULL },
     { .to = STATE_WAIT_DRIVER, .function = NULL },
     { .to = STATE_MANUAL_WAIT_TS_DISCHARGE, .function = start_ts_discharge }
 };
 
+/*!
+ * \brief List of the possible transitions from AS off
+ */
 struct Transition as_off_transitions[] = {
     { .to = STATE_IDLE, .function = NULL },
     { .to = STATE_FATAL, .function = NULL },
@@ -794,102 +972,159 @@ struct Transition as_off_transitions[] = {
     { .to = STATE_AS_OFF_WAIT_TS_PRECHARGE, .function = start_ts_precharge },
 };
 
+/*!
+ * \brief List of the possible transitions from wait driver
+ */
 struct Transition wait_driver_transitions[] = {
     { .to = STATE_WAIT_DRIVER, .function = NULL },
     { .to = STATE_MANUAL_WAIT_TS_DISCHARGE, .function = start_ts_discharge },
     { .to = STATE_MANUAL_WAIT_INV_ENABLE, .function = start_inv_enable },
 };
 
+/*!
+ * \brief List of the possible transitions from manual wait TS discharge
+ */
 struct Transition manual_wait_ts_discharge_transitions[] = {
     { .to = STATE_IDLE, .function = NULL },
     { .to = STATE_MANUAL_WAIT_TS_DISCHARGE, .function = NULL },
 };
 
+/*!
+ * \brief List of the possible transitions from manual wait inverters enable
+ */
 struct Transition manual_wait_inv_enable_transitions[] = {
     { .to = STATE_MANUAL_WAIT_INV_ENABLE, .function = NULL },
     { .to = STATE_DRIVING, .function = NULL },
     { .to = STATE_MANUAL_WAIT_INV_DISABLE, .function = start_inv_disable },
 };
 
+/*!
+ * \brief List of the possible transitions from driving
+ */
 struct Transition driving_transitions[] = {
     { .to = STATE_DRIVING, .function = NULL },
     { .to = STATE_MANUAL_WAIT_INV_DISABLE, .function = start_inv_disable },
 };
 
+/*!
+ * \brief List of the possible transitions from manual wait inverters disable
+ */
 struct Transition manual_wait_inv_disable_transitions[] = {
     { .to = STATE_MANUAL_WAIT_TS_DISCHARGE, .function = start_ts_discharge },
     { .to = STATE_MANUAL_WAIT_INV_DISABLE, .function = NULL },
 };
 
+/*!
+ * \brief List of the possible transitions from AS off wait TS precharge
+ */
 struct Transition as_off_wait_ts_precharge_transitions[] = {
     { .to = STATE_AS_OFF_WAIT_TS_PRECHARGE, .function = NULL },
     { .to = STATE_AS_READY, .function = NULL },
     { .to = STATE_AS_OFF_WAIT_TS_DISCHARGE, .function = start_ts_discharge },
 };
 
+/*!
+ * \brief List of the possible transitions from AS ready
+ */
 struct Transition as_ready_transitions[] = {
     { .to = STATE_AS_READY, .function = NULL },
     { .to = STATE_AS_READY_WAIT_INV_ENABLE, .function = start_inv_enable },
     { .to = STATE_AS_EMERGENCY, .function = NULL },
 };
 
+/*!
+ * \brief List of the possible transitions from AS ready wait inverters enable
+ */
 struct Transition as_ready_wait_inv_enable_transitions[] = {
     { .to = STATE_AS_READY_WAIT_INV_ENABLE, .function = NULL },
     { .to = STATE_AS_R2D, .function = NULL },
     { .to = STATE_AS_READY_WAIT_INV_DISABLE, .function = start_inv_disable },
 };
 
+/*!
+ * \brief List of the possible transitions from AS emergency
+ */
 struct Transition as_emergency_transitions[] = {
     { .to = STATE_AS_EMERGENCY, .function = NULL },
     { .to = STATE_AS_EMERGENCY_WAIT_INV_DISABLE, .function = start_inv_disable },
 };
 
+/*!
+ * \brief List of the possible transitions from AS R2D
+ */
 struct Transition as_r2d_transitions[] = {
     { .to = STATE_AS_EMERGENCY, .function = NULL },
     { .to = STATE_AS_DRIVING, .function = NULL },
 };
 
+/*!
+ * \brief List of the possible transitions from AS driving
+ */
 struct Transition as_driving_transitions[] = {
     { .to = STATE_AS_DRIVING, .function = NULL },
     { .to = STATE_AS_EMERGENCY, .function = NULL },
     { .to = STATE_AS_FINISHED, .function = NULL },
 };
 
+/*!
+ * \brief List of the possible transitions from AS finished
+ */
 struct Transition as_finished_transitions[] = {
     { .to = STATE_AS_FINISHED, .function = NULL },
     { .to = STATE_AS_FINISHED_WAIT_INV_DISABLE, .function = start_inv_disable },
 };
 
+/*!
+ * \brief List of the possible transitions from AS off
+ */
 struct Transition as_off_wait_ts_discharge_transitions[] = {
     { .to = STATE_AS_OFF, .function = NULL },
     { .to = STATE_AS_OFF_WAIT_TS_DISCHARGE, .function = NULL },
 };
 
+/*!
+ * \brief List of the possible transitions from AS ready wait inverters disable
+ */
 struct Transition as_ready_wait_inv_disable_transitions[] = {
     { .to = STATE_AS_EMERGENCY, .function = NULL },
     { .to = STATE_AS_READY_WAIT_INV_DISABLE, .function = NULL },
 };
 
+/*!
+ * \brief List of the possible transitions from AS finished wait inverters disable
+ */
 struct Transition as_finished_wait_inv_disable_transitions[] = {
     { .to = STATE_AS_FINISHED_WAIT_INV_DISABLE, .function = NULL },
     { .to = STATE_AS_FINISHED_WAIT_TS_DISCHARGE, .function = start_ts_discharge },
 };
 
+/*!
+ * \brief List of the possible transitions from AS finished wait TS discharge
+ */
 struct Transition as_finished_wait_ts_discharge_transitions[] = {
     { .to = STATE_AS_FINISHED, .function = NULL },
     { .to = STATE_AS_FINISHED_WAIT_TS_DISCHARGE, .function = NULL },
 };
 
+/*!
+ * \brief List of the possible transitions from AS emergency wait inverters disable
+ */
 struct Transition as_emergency_wait_inv_disable_transitions[] = {
     { .to = STATE_AS_EMERGENCY_WAIT_INV_DISABLE, .function = NULL },
     { .to = STATE_AS_EMERGENCY_WAIT_TS_DISCHARGE, .function = start_ts_discharge },
 };
 
+/*!
+ * \brief List of the possible transitions from AS emergency wait TS discharge
+ */
 struct Transition as_emergency_wait_ts_discharge_transitions[] = {
     { .to = STATE_AS_EMERGENCY, .function = NULL },
     { .to = STATE_AS_EMERGENCY_WAIT_TS_DISCHARGE, .function = NULL },
 };
 
+/*!
+ * \brief List of all the states and information about each of them
+ */
 const struct State states[] = {
     [STATE_INIT] = {
         .id = STATE_INIT,
