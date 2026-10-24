@@ -330,11 +330,11 @@ EAGLETRT_STATIC_INLINE enum CanCommunicationNetwork prv_can_get_network(const CA
     }
 
     if (hcan->Instance == CAN1) {
-        return CAN_COMMUNICATION_NETWORK_PRIMARY;
+        return CAN_COMMUNICATION_NETWORK_SECONDARY;
     }
 
     if (hcan->Instance == CAN2) {
-        return CAN_COMMUNICATION_NETWORK_SECONDARY;
+        return CAN_COMMUNICATION_NETWORK_PRIMARY;
     }
 
     if (hcan->Instance == CAN3) {
@@ -351,9 +351,9 @@ EAGLETRT_STATIC_INLINE enum CanCommunicationNetwork prv_can_get_network(const CA
  */
 EAGLETRT_STATIC_INLINE CAN_HandleTypeDef *prv_can_get_handler(enum CanCommunicationNetwork network) {
     switch (network) {
-        case CAN_COMMUNICATION_NETWORK_PRIMARY:
-            return &hcan1;
         case CAN_COMMUNICATION_NETWORK_SECONDARY:
+            return &hcan1;
+        case CAN_COMMUNICATION_NETWORK_PRIMARY:
             return &hcan2;
         case CAN_COMMUNICATION_NETWORK_INVERTER:
             return &hcan3;
