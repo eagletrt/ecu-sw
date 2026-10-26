@@ -167,7 +167,7 @@ void test_pedals_api_set_brake_upper_out_of_range(void) {
  */
 
 void test_pedals_api_set_brake_pressure_in_range(void) {
-    float expected_brake_pressure = PEDALS_BRAKE_THRESHOLD_PERCENTAGE / 2;
+    float expected_brake_pressure = PEDALS_BRAKE_THRESHOLD_BAR / 2;
 
     enum PedalsReturnCode rc = pedals_api_set_brake_pressure(expected_brake_pressure);
     float brake_pressure = pedals_handler.brake_pressure;
@@ -286,7 +286,7 @@ void test_pedals_api_get_requested_throttle_torque_max_value(void) {
  */
 
 void test_pedals_api_is_brake_pressed_under_threshold(void) {
-    pedals_handler.brake = PEDALS_BRAKE_THRESHOLD_PERCENTAGE / 2;
+    pedals_handler.brake_pressure = PEDALS_BRAKE_THRESHOLD_BAR / 2;
 
     bool brake_pressed = pedals_api_is_brake_pressed();
 
@@ -294,7 +294,7 @@ void test_pedals_api_is_brake_pressed_under_threshold(void) {
 }
 
 void test_pedals_api_is_brake_pressed_same_as_threshold(void) {
-    pedals_handler.brake = PEDALS_BRAKE_THRESHOLD_PERCENTAGE;
+    pedals_handler.brake_pressure = PEDALS_BRAKE_THRESHOLD_BAR;
 
     bool brake_pressed = pedals_api_is_brake_pressed();
 
@@ -302,7 +302,7 @@ void test_pedals_api_is_brake_pressed_same_as_threshold(void) {
 }
 
 void test_pedals_api_is_brake_pressed_above_threshold(void) {
-    pedals_handler.brake = PEDALS_BRAKE_THRESHOLD_PERCENTAGE + 0.1f;
+    pedals_handler.brake_pressure = PEDALS_BRAKE_THRESHOLD_BAR + 0.1f;
 
     bool brake_pressed = pedals_api_is_brake_pressed();
 
