@@ -13,8 +13,11 @@
 
 /*!
  * \brief Initialize the module
+ *
+ * \param[in] send A pointer to the function used to send data
+ * \param[in] send_receive A pointer to the function used to send and receive data
  */
-enum ControlsReturnCode controls_api_init(void);
+enum ControlsReturnCode controls_api_init(controls_send_callback send, controls_send_receive_callback send_receive);
 
 /*!
  * \brief Get the value of the specified \p control

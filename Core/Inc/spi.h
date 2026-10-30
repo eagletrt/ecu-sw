@@ -38,12 +38,43 @@ extern SPI_HandleTypeDef hspi3;
 
 /* USER CODE BEGIN Private defines */
 
+enum SpiNetwork : uint8_t {
+    SPI_NETWORK_RASPBERRY,
+    SPI_NETWORK_SPARE,
+    SPI_NETWORK_COUNT,
+};
+
 /* USER CODE END Private defines */
 
 void MX_SPI2_Init(void);
 void MX_SPI3_Init(void);
 
 /* USER CODE BEGIN Prototypes */
+
+/*!
+ * \brief Send data via an SPI network
+ *
+ * \param network The SPI network to select
+ * \param data A pointer to the data to send
+ * \param size The length of data in bytes
+ */
+void spi_send(enum SpiNetwork network, const uint8_t *data, size_t size);
+
+/*!
+ * \brief Send and receive data via an SPI network
+ *
+ * \param network The SPI network to select
+ * \param data A pointer to the data to send
+ * \param out[out] A pointer to the array where the received data is stored
+ * \param size The length of data in bytes
+ * \param out_size The number of bytes that should be received
+ */
+void spi_send_receive(
+    enum SpiNetwork network,
+    const uint8_t *data,
+    uint8_t *out,
+    size_t size,
+    size_t out_size);
 
 /* USER CODE END Prototypes */
 

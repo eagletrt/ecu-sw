@@ -33,7 +33,9 @@ enum PostReturnCode post_api_do_init(struct PostConfig *post_config) {
         post_config->tsac_get_tick == NULL ||
         post_config->inverters_get_tick == NULL ||
         post_config->vehicle_ptt_control == NULL ||
-        post_config->lights_set_state == NULL) {
+        post_config->lights_set_state == NULL ||
+        post_config->controls_send == NULL ||
+        post_config->controls_send_receive == NULL) {
         return POST_RC_ERROR;
     }
 
@@ -112,7 +114,7 @@ enum PostReturnCode post_api_do_init(struct PostConfig *post_config) {
         final_status = POST_RC_ERROR;
     }
 
-    if (controls_api_init() != CONTROLS_RC_OK) {
+    if (controls_api_init(post_config->controls_send, post_config->controls_send_receive) != CONTROLS_RC_OK) {
         final_status = POST_RC_ERROR;
     }
 

@@ -18,6 +18,7 @@
 #include "pedals.h"
 #include "tsac.h"
 #include "vehicle.h"
+#include "controls.h"
 
 /*!
  * \brief Return codes for the post module APIs
@@ -64,6 +65,10 @@ struct PostConfig {
 
     /* --- Lights callbacks --- */
     lights_set_state_callback lights_set_state; /*!< Callback to set the state of the vehicle's lights. */
+
+    /* --- Controls callbacks --- */
+    controls_send_callback controls_send;                 /*!< Callback to send messages for controls */
+    controls_send_receive_callback controls_send_receive; /*!< Callback to send and receive messages for controls */
 };
 
 #endif

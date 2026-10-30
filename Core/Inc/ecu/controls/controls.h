@@ -12,11 +12,20 @@
 #include <stdint.h>
 
 #include "ephorus.h"
+#include "spi.h"
 
 /*!
  * \brief The maximum level allowed by the controls
  */
 constexpr uint8_t controls_api_max_level = 10U;
+
+typedef void (*controls_send_callback)(const enum SpiNetwork network, const uint8_t *const data, const size_t size);
+
+typedef void (*controls_send_receive_callback)(const enum SpiNetwork network,
+                                               const uint8_t *const data,
+                                               uint8_t *const out,
+                                               const size_t size,
+                                               const size_t out_size);
 
 /*!
  * \brief The possible return codes of the controls module functions
@@ -54,6 +63,8 @@ struct ControlsHandler {
     float requested_torque_nm[EPHORUS_WHEEL_COUNT]; /*!< Raw torque requested from the controls */
     enum ControlsStatus status;                     /*!< The status of the controls */
     uint32_t last_tick_ms_can_send;                 /*!< The last tick in milliseconds when the control levels were sent */
+    controls_send_callback send;                    /*!< Callback to send commands for controls */
+    controls_send_receive_callback send_receive;    /*!< Callback to send and receive commands for controls */
 };
 
 #endif // CONTROLS_H

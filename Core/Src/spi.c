@@ -22,6 +22,8 @@
 
 /* USER CODE BEGIN 0 */
 
+#include "eagletrt.h"
+
 /* USER CODE END 0 */
 
 SPI_HandleTypeDef hspi2;
@@ -202,5 +204,96 @@ void HAL_SPI_MspDeInit(SPI_HandleTypeDef *spiHandle) {
 }
 
 /* USER CODE BEGIN 1 */
+
+/*!
+ * \brief Get the SPI handler from the SPI network
+ *
+ * \param network The selected SPI network
+ *
+ * \returns The SPI handler or NULL on error
+ */
+EAGLETRT_STATIC SPI_HandleTypeDef *prv_spi_get_peripheral_from_network(const enum SpiNetwork network) {
+    switch (network) {
+        case SPI_NETWORK_RASPBERRY:
+            return &hspi2;
+        case SPI_NETWORK_SPARE:
+            return &hspi3;
+        default:
+            return NULL;
+    }
+}
+
+/*!
+ * \brief Get the GPIO Port from the SPI network
+ *
+ * \param network The selected SPI network
+ *
+ * \returns The GPIO Port or NULL on error
+ */
+EAGLETRT_STATIC GPIO_TypeDef *prv_spi_get_port_from_network(const enum SpiNetwork network) {
+    switch (network) {
+        case SPI_NETWORK_RASPBERRY:
+            return RASPI_CS_GPIO_Port;
+        case SPI_NETWORK_SPARE:
+        default:
+            return NULL;
+    }
+}
+
+/*!
+ * \brief Get the GPIO Pin from the SPI network
+ *
+ * \param network The selected SPI network
+ *
+ * \returns The GPIO Pin or UINT16_MAX on error
+ */
+EAGLETRT_STATIC uint16_t prv_spi_get_pin_from_network(const enum SpiNetwork network) {
+    switch (network) {
+        case SPI_NETWORK_RASPBERRY:
+            return RASPI_CS_Pin;
+        case SPI_NETWORK_SPARE:
+        default:
+            return UINT16_MAX;
+    }
+}
+
+void spi_send(const enum SpiNetwork network, const uint8_t *const data, const size_t size) {
+    if (network >= SPI_NETWORK_COUNT) {
+        return;
+    }
+
+    SPI_HandleTypeDef *const hspi = prv_spi_get_peripheral_from_network(network);
+    GPIO_TypeDef *const port = prv_spi_get_port_from_network(network);
+    const uint16_t pin = prv_spi_get_pin_from_network(network);
+
+    // Send data
+    const uint32_t timeout = size * 5U;
+    HAL_GPIO_WritePin(port, pin, GPIO_PIN_RESET);
+    HAL_SPI_Transmit(hspi, data, size, timeout);
+    HAL_GPIO_WritePin(port, pin, GPIO_PIN_SET);
+}
+
+void spi_send_receive(
+    const enum SpiNetwork network,
+    const uint8_t *const data,
+    uint8_t *const out,
+    const size_t size,
+    const size_t out_size) {
+    if (network >= SPI_NETWORK_COUNT) {
+        return;
+    }
+
+    SPI_HandleTypeDef *const hspi = prv_spi_get_peripheral_from_network(network);
+    GPIO_TypeDef *const port = prv_spi_get_port_from_network(network);
+    const uint16_t pin = prv_spi_get_pin_from_network(network);
+
+    // Send and receive data
+    const uint32_t tx_timeout = size * 5U;
+    const uint32_t rx_timeout = out_size * 5U;
+    HAL_GPIO_WritePin(port, pin, GPIO_PIN_RESET);
+    HAL_SPI_Transmit(hspi, data, size, tx_timeout);
+    HAL_SPI_Receive(hspi, out, out_size, rx_timeout);
+    HAL_GPIO_WritePin(port, pin, GPIO_PIN_SET);
+}
 
 /* USER CODE END 1 */

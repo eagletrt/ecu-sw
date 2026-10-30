@@ -193,6 +193,8 @@ int main(void) {
         .inverters_get_tick = HAL_GetTick,
         .vehicle_ptt_control = gpio_set_ptt,
         .lights_set_state = gpio_set_light_state,
+        .controls_send = spi_send,
+        .controls_send_receive = spi_send_receive,
     };
 
     // Populate buzzer configuration arrays
