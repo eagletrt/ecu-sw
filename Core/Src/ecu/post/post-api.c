@@ -18,6 +18,7 @@
 #include "tsac-api.h"
 #include "vehicle-api.h"
 #include "lights-api.h"
+#include "controls-api.h"
 
 enum PostReturnCode post_api_do_init(struct PostConfig *post_config) {
     if (post_config == NULL) {
@@ -108,6 +109,10 @@ enum PostReturnCode post_api_do_init(struct PostConfig *post_config) {
     }
 
     if (temperatures_api_init() != TEMPERATURES_RC_OK) {
+        final_status = POST_RC_ERROR;
+    }
+
+    if (controls_api_init() != CONTROLS_RC_OK) {
         final_status = POST_RC_ERROR;
     }
 
