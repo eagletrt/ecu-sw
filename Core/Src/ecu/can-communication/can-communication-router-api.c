@@ -13,6 +13,7 @@
 #include "pedals-api.h"
 #include "buzzer-api.h"
 #include "vehicle-api.h"
+#include "controls-api.h"
 #include "eagletrt.h"
 #include <stdint.h>
 
@@ -103,6 +104,13 @@ enum CanCommunicationReturnCode can_communication_router_api_receive_primary(str
             }
             previous_status = status;
             break;
+        }
+
+        case CAN_PRIMARY_MESSAGE_FRAME_ID_CONTROLMAPSSET: {
+            controls_api_set_control_value(CONTROLS_NAME_POWER, message.controlmapsset.power * controls_api_max_level);
+            controls_api_set_control_value(CONTROLS_NAME_REGEN, message.controlmapsset.regen * controls_api_max_level);
+            controls_api_set_control_value(CONTROLS_NAME_TORQUE_VECTORING, message.controlmapsset.torquevectoring * controls_api_max_level);
+            controls_api_set_control_value(CONTROLS_NAME_LAUNCH_CONTROL, message.controlmapsset.launchcontrol);
         }
 
         default:
