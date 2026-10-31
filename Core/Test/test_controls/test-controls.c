@@ -9,22 +9,42 @@
  */
 
 #include "controls-api.h"
+#include "fff.h"
 #include <unity.h>
+
+DEFINE_FFF_GLOBALS;
 
 extern struct ControlsHandler controls_handler;
 
+FAKE_VOID_FUNC(mock_controls_send, const enum SpiNetwork, const uint8_t *const, const size_t);
+FAKE_VOID_FUNC(mock_controls_send_receive, const enum SpiNetwork, const uint8_t *const, uint8_t *const, const size_t, const size_t);
+
 void setUp(void) {
-    controls_api_init();
+    RESET_FAKE(mock_controls_send);
+    RESET_FAKE(mock_controls_send_receive);
+    FFF_RESET_HISTORY();
+
+    controls_api_init(mock_controls_send, mock_controls_send_receive);
 }
 
 void tearDown(void) {
 }
 
-void test_controls_api_init_works_properly() {
-    // Init is done on each test call because of setUp
-    struct ControlsHandler fake_handler = { 0 };
+void test_controls_api_init_fails_on_null_config(void) {
+    memset(&controls_handler, 0U, sizeof(struct ControlsHandler));
+    enum ControlsReturnCode rc = controls_api_init(NULL, NULL);
+    TEST_ASSERT_EQUAL_MESSAGE(rc, CONTROLS_RC_NULL_POINTER, "Totally invalid configuration should make the function return a null pointer code");
+}
 
-    TEST_ASSERT_EQUAL_MEMORY(&fake_handler, &controls_handler, sizeof(struct ControlsHandler));
+void test_controls_api_init_fails_on_any_null_callback(void) {
+    memset(&controls_handler, 0U, sizeof(struct ControlsHandler));
+    enum ControlsReturnCode rc = controls_api_init(mock_controls_send, NULL);
+    TEST_ASSERT_EQUAL_MESSAGE(rc, CONTROLS_RC_NULL_POINTER, "Null callback should make the function return a null pointer code");
+}
+
+void test_controls_api_init_works_with_correct_parameters() {
+    enum ControlsReturnCode rc = controls_api_init(mock_controls_send, mock_controls_send_receive);
+    TEST_ASSERT_EQUAL_MESSAGE(rc, CONTROLS_RC_OK, "Valid configuration should make the function return an ok code");
 }
 
 void test_controls_api_get_control_value_invalid_control(void) {
@@ -91,7 +111,9 @@ int main(void) {
     UNITY_BEGIN();
 
     // test controls_api_init
-    RUN_TEST(test_controls_api_init_works_properly);
+    RUN_TEST(test_controls_api_init_fails_on_null_config);
+    RUN_TEST(test_controls_api_init_fails_on_any_null_callback);
+    RUN_TEST(test_controls_api_init_works_with_correct_parameters);
 
     // test controls_api_get_control_value
     RUN_TEST(test_controls_api_get_control_value_invalid_control);
