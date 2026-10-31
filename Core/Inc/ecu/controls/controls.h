@@ -12,7 +12,7 @@
 #include <stdint.h>
 
 #include "ephorus.h"
-#include "spi.h"
+#include "ecu-common.h"
 
 /*!
  * \brief The maximum level allowed by the controls
@@ -32,6 +32,7 @@ typedef void (*controls_send_receive_callback)(const enum SpiNetwork network,
  */
 enum ControlsReturnCode {
     CONTROLS_RC_OK,
+    CONTROLS_RC_NULL_POINTER,
     CONTROLS_RC_ERROR,
 };
 

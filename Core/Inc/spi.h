@@ -38,11 +38,7 @@ extern SPI_HandleTypeDef hspi3;
 
 /* USER CODE BEGIN Private defines */
 
-enum SpiNetwork : uint8_t {
-    SPI_NETWORK_RASPBERRY,
-    SPI_NETWORK_SPARE,
-    SPI_NETWORK_COUNT,
-};
+#include "ecu-common.h"
 
 /* USER CODE END Private defines */
 
