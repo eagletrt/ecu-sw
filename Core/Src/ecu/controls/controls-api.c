@@ -16,6 +16,10 @@
 EAGLETRT_STATIC struct ControlsHandler controls_handler;
 
 enum ControlsReturnCode controls_api_init(controls_send_callback send, controls_send_receive_callback send_receive) {
+    if (send == NULL || send_receive == NULL) {
+        return CONTROLS_RC_NULL_POINTER;
+    }
+
     memset(&controls_handler, 0U, sizeof(struct ControlsHandler));
 
     controls_handler.send = send;
