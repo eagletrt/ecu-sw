@@ -21,7 +21,7 @@
 
 #include "ephorus.h"
 
-#define INVERTERS_HV_MAX_POWER_W (80000.0F) /*!< Maximum battery (electrical) power allowed by Formula Student rules (80kW), measured at the accumulator. */
+#define INVERTERS_HV_MAX_POWER_W (2500.0F) /*!< Maximum battery (electrical) power allowed by Formula Student rules (80kW), measured at the accumulator. */
 
 /*!
  * \brief Combined drivetrain (inverter x motor) efficiency used to convert the
@@ -30,17 +30,17 @@
  *
  * TODO: This value needs tuning based on the actual efficiency that needs to be measured.
  */
-#define INVERTERS_DRIVETRAIN_EFFICIENCY (0.9F)
+#define INVERTERS_DRIVETRAIN_EFFICIENCY (0.8F)
 
 #define INVERTERS_RPM_TO_RAD_COEFFICIENT ((2 * (float)M_PI) / 60.0F) /*!< Conversion factor: RPM to radians per second. */
 
 #define INVERTERS_RPM_SPEED_THRESHOLD (0.1F) /*!< Avoid division by zero in case the RPM is equal/near to zero*/
 
-#define INVERTERS_INVERTER_MAX_CONTINUOUS_CURRENT_A (74.0F) /*!< Maximum continuous phase current (Arms). */
+#define INVERTERS_INVERTER_MAX_CONTINUOUS_CURRENT_A (3.0F) /*!< Maximum continuous phase current (Arms). */
 
-#define INVERTERS_INVERTER_PEAK_CURRENT_A (90.0F) /*!< Absolute peak phase current (Arms). */
+#define INVERTERS_INVERTER_PEAK_CURRENT_A (3.0F) /*!< Absolute peak phase current (Arms). */
 
-#define INVERTERS_MOTOR_PEAK_TORQUE_NM (20.0F) /*!< Maximum mechanical torque allowed per motor. */
+#define INVERTERS_MOTOR_PEAK_TORQUE_NM (10.0F) /*!< Maximum mechanical torque allowed per motor. */
 
 #define INVERTERS_MOTOR_TORQUE_PER_CURRENT_NM_A (0.492F) /*!< Torque constant (Kt) in Nm/Arms. */
 
@@ -48,13 +48,13 @@
 
 #define INVERTERS_REAR_TORQUE_BIAS (0.5F) /*! < Torque bias to the rear axle. */
 
-#define INVERTERS_HV_MAX_REGEN_CURRENT_A (-40.0F) /*!< Maximum allowable regenerative current into the battery. */
+#define INVERTERS_HV_MAX_REGEN_CURRENT_A (-3.0F) /*!< Maximum allowable regenerative current into the battery. */
 
 #define INVERTERS_HV_MIN_CELL_VOLTAGE_V (2.8F) /*!< Minimum safe voltage for a single battery cell (V). */
 
 #define INVERTERS_HV_CELL_COUNT (144) /*!< Total number of battery cells in series. */
 
-#define INVERTERS_HV_MAX_CURRENT_A (130.0F) /*!< Maximum DC current allowed to be drawn from the battery. */
+#define INVERTERS_HV_MAX_CURRENT_A (5.0F) /*!< Maximum DC current allowed to be drawn from the battery. */
 
 #define INVERTERS_HV_CELLS_PARALLEL_COUNT (3) /*!< Number of individual battery cells connected in parallel */
 

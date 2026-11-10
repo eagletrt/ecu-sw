@@ -220,8 +220,6 @@ int main(void) {
     HAL_CAN_ActivateNotification(&hcan3, CAN_IT_RX_FIFO0_MSG_PENDING);
     HAL_CAN_ActivateNotification(&hcan3, CAN_IT_RX_FIFO1_MSG_PENDING);
 
-    shutdown_api_control_relay(true);
-
     struct FsmData fsm_data;
 
     /* USER CODE END 2 */
