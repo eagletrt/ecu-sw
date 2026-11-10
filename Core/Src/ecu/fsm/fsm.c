@@ -894,6 +894,10 @@ void start_inv_enable(void *data) {
     inverters_api_arm(EPHORUS_WHEEL_FRONT_RIGHT);
     inverters_api_arm(EPHORUS_WHEEL_REAR_LEFT);
     inverters_api_arm(EPHORUS_WHEEL_REAR_RIGHT);
+    inverters_api_set_torque(EPHORUS_WHEEL_FRONT_LEFT, 0.0F);
+    inverters_api_set_torque(EPHORUS_WHEEL_FRONT_RIGHT, 0.0F);
+    inverters_api_set_torque(EPHORUS_WHEEL_REAR_LEFT, 0.0F);
+    inverters_api_set_torque(EPHORUS_WHEEL_REAR_RIGHT, 0.0F);
 }
 
 /*!
