@@ -33,23 +33,20 @@
 * Configuration
 ****************************************************************************************/
 /** \brief Maximum length of the transport layer's command transmit object packet. */
-#if defined(BOOT_XCP_CUSTOM_RX_MAX_DATA)
-#define XCP_CTO_PACKET_LEN             (BOOT_XCP_CUSTOM_RX_MAX_DATA)
-#else
 #define XCP_CTO_PACKET_LEN             (ComGetActiveInterfaceMaxRxLen())
-#endif
 
 /** \brief Maximum length of the transport layer's data transmit object packet. */
-#if defined(BOOT_XCP_CUSTOM_TX_MAX_DATA)
-#define XCP_DTO_PACKET_LEN             (BOOT_XCP_CUSTOM_TX_MAX_DATA)
-#else
 #define XCP_DTO_PACKET_LEN             (ComGetActiveInterfaceMaxTxLen())
-#endif
 
 /** \brief Name in string format that is used to identify the ECU to the XCP master
- *         using the GET_ID command.
+ *         using the GET_ID command. Note that you can override its value using macro
+ *         BOOT_XCP_STATION_ID_STRING in "blt_conf.h"
  */
-#define XCP_STATION_ID_STRING          "OpenBLT"
+#ifdef BOOT_XCP_STATION_ID_STRING
+#define XCP_STATION_ID_STRING          BOOT_XCP_STATION_ID_STRING
+#else
+#define XCP_STATION_ID_STRING          "OpenBLT" 
+#endif 
 
 #if (BOOT_CPU_BYTE_ORDER_MOTOROLA > 0)
 /** \brief XCP byte ordering according to the Motorola (big-endian). */
@@ -263,10 +260,13 @@
 /****************************************************************************************
 * Function prototypes
 ****************************************************************************************/
-void     XcpInit(void);
-blt_bool XcpIsConnected(void);
-void     XcpPacketTransmitted(void);
-void     XcpPacketReceived(blt_int8u *data, blt_int8u len);
+void       XcpInit(void);
+blt_bool   XcpIsConnected(void);
+void       XcpPacketTransmitted(void);
+void       XcpPacketReceived(blt_int8u *data, blt_int8u len);
+/* general utility functions */
+blt_int32u XcpGetOrderedLong(blt_int8u const * data);
+void       XcpSetOrderedLong(blt_int32u value, blt_int8u *data);
 
 
 /****************************************************************************************

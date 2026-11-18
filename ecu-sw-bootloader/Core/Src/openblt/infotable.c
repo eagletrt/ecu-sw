@@ -85,6 +85,9 @@ blt_bool InfoTableCheck(void)
   blt_bool result;
   blt_addr infoTableNewAddr;
   blt_addr infoTableCurrentAddr;
+#if (BOOT_EVENTS_ENABLE > 0)
+  tEventsInfoError eventsInfoError;
+#endif
 
   /* Collect info table pointers. */
   infoTableNewAddr     = InfoTableGetPtr(INFO_TABLE_ID_INTERNAL_RAM);
@@ -109,6 +112,15 @@ blt_bool InfoTableCheck(void)
   {
     /* Request bootloader application to perform the info table check. */
     result = InfoTableCheckHook(infoTableNewAddr, infoTableCurrentAddr);
+
+    #if (BOOT_EVENTS_ENABLE > 0)
+    if (result == BLT_FALSE)
+    {
+      /* trigger the OnError event.  */
+      eventsInfoError.error_id = EVENT_ERROR_ID_INFO_TABLE_CHECK;
+      EventsProcess(EVENT_ID_ON_ERROR, &eventsInfoError);
+    }
+    #endif
   }
 
   /* Give the result back to the caller. */
