@@ -23,6 +23,7 @@
 #include "shutdown-api.h"
 #include "tsac-api.h"
 #include "temperatures-api.h"
+#include "flashing-api.h"
 
 #include "eagletrt-fsm-api.h"
 #include "eagletrt-api.h"
@@ -279,6 +280,10 @@ void routine_idle(void *data) {
     }
     struct FsmData fsm_data = *(struct FsmData *)data;
 
+    if (flashing_api_is_flashing()) {
+        fsm_api_transition_to(&fsm_handler, STATE_FLASH);
+    }
+
     prv_log_and_periodical_can(STATE_IDLE, fsm_data.tick);
 
     prv_drain_can_rx_buffers();
@@ -327,6 +332,10 @@ void routine_flash(void *data) {
         return;
     }
     struct FsmData fsm_data = *(struct FsmData *)data;
+
+    if (flashing_api_is_timed_out()) {
+        fsm_api_transition_to(&fsm_handler, STATE_IDLE);
+    }
 
     prv_log_and_periodical_can(STATE_FLASH, fsm_data.tick);
 
@@ -914,6 +923,18 @@ void start_inv_disable(void *data) {
     inverters_api_disarm(EPHORUS_WHEEL_REAR_RIGHT);
 }
 
+void start_flashing(void *data) {
+    EAGLETRT_API_UNUSED(data);
+
+    flashing_api_restart_watchdog();
+}
+
+void flashing_done(void *data) {
+    EAGLETRT_API_UNUSED(data);
+
+    flashing_api_set_flashing(false);
+}
+
 /*!
  * \brief List of the possible transitions from init
  */
@@ -935,7 +956,7 @@ struct Transition fatal_transitions[] = {
 struct Transition idle_transitions[] = {
     { .to = STATE_FATAL, .function = NULL },
     { .to = STATE_IDLE, .function = NULL },
-    { .to = STATE_FLASH, .function = NULL },
+    { .to = STATE_FLASH, .function = start_flashing },
     { .to = STATE_PAUSE, .function = NULL },
     { .to = STATE_MANUAL_WAIT_TS_PRECHARGE, .function = start_ts_precharge },
     { .to = STATE_AS_OFF, .function = NULL },
@@ -945,7 +966,7 @@ struct Transition idle_transitions[] = {
  * \brief List of the possible transitions from flash
  */
 struct Transition flash_transitions[] = {
-    { .to = STATE_IDLE, .function = NULL },
+    { .to = STATE_IDLE, .function = flashing_done },
     { .to = STATE_FLASH, .function = NULL },
 };
 

@@ -11,6 +11,7 @@
 #include "as-driver.h"
 #include "buzzer.h"
 #include "can-communication.h"
+#include "flashing.h"
 #include "inverters.h"
 #include "lights.h"
 #include "raspberry.h"
@@ -18,6 +19,7 @@
 #include "pedals.h"
 #include "tsac.h"
 #include "vehicle.h"
+#include "watchdogs.h"
 
 /*!
  * \brief Return codes for the post module APIs
@@ -64,6 +66,10 @@ struct PostConfig {
 
     /* --- Lights callbacks --- */
     lights_set_state_callback lights_set_state; /*!< Callback to set the state of the vehicle's lights. */
+
+    struct WatchdogHandler *watchdog_handler;
+
+    flashing_system_reset_callback flashing_system_reset;
 };
 
 #endif

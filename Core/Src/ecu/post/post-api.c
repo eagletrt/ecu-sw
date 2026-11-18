@@ -9,6 +9,7 @@
 #include "as-driver-api.h"
 #include "buzzer-api.h"
 #include "can-communication-api.h"
+#include "flashing-api.h"
 #include "identity-api.h"
 #include "inverters-api.h"
 #include "pedals-api.h"
@@ -32,7 +33,9 @@ enum PostReturnCode post_api_do_init(struct PostConfig *post_config) {
         post_config->tsac_get_tick == NULL ||
         post_config->inverters_get_tick == NULL ||
         post_config->vehicle_ptt_control == NULL ||
-        post_config->lights_set_state == NULL) {
+        post_config->lights_set_state == NULL ||
+        post_config->watchdog_handler == NULL ||
+        post_config->flashing_system_reset == NULL) {
         return POST_RC_ERROR;
     }
 
@@ -108,6 +111,10 @@ enum PostReturnCode post_api_do_init(struct PostConfig *post_config) {
     }
 
     if (temperatures_api_init() != TEMPERATURES_RC_OK) {
+        final_status = POST_RC_ERROR;
+    }
+
+    if (flashing_api_init(post_config->watchdog_handler, post_config->flashing_system_reset) != FLASHING_RC_OK) {
         final_status = POST_RC_ERROR;
     }
 
