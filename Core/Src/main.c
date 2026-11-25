@@ -38,6 +38,7 @@
 #include "buzzer-api.h"
 #include "logger-api.h"
 #include "post.h"
+#include "watchdogs-api.h"
 #include <stdint.h>
 /* USER CODE END Includes */
 
@@ -65,6 +66,7 @@
 /* USER CODE BEGIN PV */
 EAGLETRT_STATIC struct ArenaAllocatorHandler arena_allocator_handler;
 EAGLETRT_STATIC struct PalHandler logger_pal_handler;
+EAGLETRT_STATIC struct WatchdogHandler watchdog_handler;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -152,6 +154,8 @@ int main(void) {
     EAGLETRT_API_UNUSED(logger_api_init(&logger_pal_handler, LOGGER_ENABLED));
     // end of LOGGER configuration ------------------------------------------------------
 
+    watchdogs_api_init_pool(&watchdog_handler, HAL_GetTick);
+
     // Initialize POST configuration ----------------------------------------------------
     logger_api_log(LOGGER_LEVEL_DEBUG, "Initialize POST");
 
@@ -193,6 +197,8 @@ int main(void) {
         .inverters_get_tick = HAL_GetTick,
         .vehicle_ptt_control = gpio_set_ptt,
         .lights_set_state = gpio_set_light_state,
+        .watchdog_handler = &watchdog_handler,
+        .flashing_system_reset = NVIC_SystemReset,
     };
 
     // Populate buzzer configuration arrays
@@ -239,6 +245,8 @@ int main(void) {
         /* USER CODE BEGIN 3 */
 
         fsm_data.tick = HAL_GetTick();
+
+        watchdogs_api_routine(&watchdog_handler);
 
         //run the fsm
         fsm_run(&fsm_data);

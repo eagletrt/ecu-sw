@@ -13,6 +13,7 @@
 #include "pedals-api.h"
 #include "buzzer-api.h"
 #include "vehicle-api.h"
+#include "flashing-api.h"
 #include "eagletrt.h"
 #include <stdint.h>
 
@@ -105,8 +106,19 @@ enum CanCommunicationReturnCode can_communication_router_api_receive_primary(str
             break;
         }
 
-        default:
+        case CAN_PRIMARY_MESSAGE_FRAME_ID_ECUFLASHINGRX: {
+            flashing_api_perform_reset();
             break;
+        }
+
+        default: {
+            if (frame->id >= flashing_can_min_frame_id && frame->id <= flashing_can_max_frame_id) {
+                flashing_api_set_flashing(true);
+                flashing_api_pet_watchdog();
+            }
+
+            break;
+        }
     }
 
     return CAN_COMMUNICATION_RC_OK;

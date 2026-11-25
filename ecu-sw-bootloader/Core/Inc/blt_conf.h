@@ -1,6 +1,8 @@
 #ifndef BLT_CONF_H
 #define BLT_CONF_H
 
+#include "can-primary.h"
+
 /****************************************************************************************
 *   C P U   D R I V E R   C O N F I G U R A T I O N
 ****************************************************************************************/
@@ -21,12 +23,12 @@
 ****************************************************************************************/
 /* CAN communication */
 #define BOOT_COM_CAN_ENABLE (1)
-#define BOOT_COM_CAN_BAUDRATE (1000000) /* pick what matches your bus */
-#define BOOT_COM_CAN_TX_MSG_ID (0x17u)  /* to be modified when ids defined */
+#define BOOT_COM_CAN_BAUDRATE (1000000)                                     /* pick what matches your bus */
+#define BOOT_COM_CAN_TX_MSG_ID (CAN_PRIMARY_MESSAGE_FRAME_ID_ECUFLASHINGTX) /* to be modified when ids defined */
 #define BOOT_COM_CAN_TX_MAX_DATA (8)
-#define BOOT_COM_CAN_RX_MSG_ID (0x18u) /* to be modified when ids defined */
+#define BOOT_COM_CAN_RX_MSG_ID (CAN_PRIMARY_MESSAGE_FRAME_ID_ECUFLASHINGRX) /* to be modified when ids defined */
 #define BOOT_COM_CAN_RX_MAX_DATA (8)
-#define BOOT_COM_CAN_CHANNEL_INDEX (0)
+#define BOOT_COM_CAN_CHANNEL_INDEX (1)
 
 /* UART (RS232) – enabled, by default is disabled as CAN already active */
 #define BOOT_COM_RS232_ENABLE (1)

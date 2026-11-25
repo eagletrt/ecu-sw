@@ -34,7 +34,7 @@
 /** \brief Main version number of the bootloader core. */
 #define BOOT_VERSION_CORE_MAIN     (1u)
 /** \brief Minor version number of the bootloader core. */
-#define BOOT_VERSION_CORE_MINOR    (20u)
+#define BOOT_VERSION_CORE_MINOR    (22u)
 /** \brief Patch number of the bootloader core. */
 #define BOOT_VERSION_CORE_PATCH    (0u)
 
@@ -56,6 +56,7 @@
 #include "blt_conf.h"                                 /* bootloader configuration      */
 #endif /* PROJ_BLT_CONF_H */
 #include "plausibility.h"                             /* plausibility checks           */
+#include "events.h"                                   /* events module                 */
 #include "cpu.h"                                      /* cpu driver module             */
 #include "cop.h"                                      /* watchdog driver module        */
 #include "nvm.h"                                      /* memory driver module          */

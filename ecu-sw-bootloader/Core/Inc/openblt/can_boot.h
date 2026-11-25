@@ -1,6 +1,6 @@
-/************************************************************************************/ /**
-* \file         Source/rs232.h
-* \brief        Bootloader RS232 communication interface header file.
+/************************************************************************************//**
+* \file         Source/can.h
+* \brief        Bootloader CAN communication interface header file.
 * \ingroup      Core
 * \internal
 *----------------------------------------------------------------------------------------
@@ -25,17 +25,18 @@
 *
 * \endinternal
 ****************************************************************************************/
-#ifndef RS232_H
-#define RS232_H
+#ifndef CAN_H
+#define CAN_H
 
-#if (BOOT_COM_RS232_ENABLE > 0)
+#if (BOOT_COM_CAN_ENABLE > 0)
 /****************************************************************************************
 * Function prototypes
 ****************************************************************************************/
-void Rs232Init(void);
-void Rs232TransmitPacket(blt_int8u *data, blt_int8u len);
-blt_bool Rs232ReceivePacket(blt_int8u *data, blt_int8u *len);
-#endif /* BOOT_COM_RS232_ENABLE > 0 */
+void     CanInit(void);
+void     CanTransmitPacket(blt_int8u *data, blt_int8u len);
+blt_bool CanReceivePacket(blt_int8u *data, blt_int8u *len);
+#endif /* BOOT_COM_CAN_ENABLE > 0 */
 
-#endif /* RS232_H */
-/*********************************** end of rs232.h ************************************/
+
+#endif /* CAN_H */
+/*********************************** end of can.h **************************************/
